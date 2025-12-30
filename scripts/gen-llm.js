@@ -1,0 +1,64 @@
+const fs = require('fs');
+
+const chutesContent = String.raw`export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChutesStreamOptions {
+  messages: ChatMessage[];
+  temperature?: number;
+  max_tokens?: number;
+  onChunk?: (chunk: string) => void;
+  onComplete?: (fullText: string) => void;
+  onError?: (error: Error) => void;
+}
+
+export async function streamChatCompletion(
+  apiKey: string,
+  options: ChutesStreamOptions
+): Promise<void> {
+  const { messages, temperature = 0.7, max_tokens = 2000, onChunk, onComplete, onError } = options;
+
+  try {
+    const response = await fetch('https://api.chutes.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': ` + '`Bearer ${apiKey}`' + `,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-reasoner',
+        messages,
+        temperature,
+        max_tokens,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(` + '`Chutes API error: ${response.status} - ${errorText}`' + `);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed === 'data: 

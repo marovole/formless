@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Formless",
+    "tagline": "Walk with Wisdom, Seek Within"
+  },
+  "nav": {
+    "home": "Home",
+    "chat": "Chat",
+    "history": "History",
+    "settings": "Settings"
+  },
+  "chat": {
+    "title": "Chat with the Formless Elder",
+    "placeholder": "Share your thoughts...",
+    "send": "Send",
+    "newChat": "New Chat",
+    "thinking": "The Elder is reflecting...",
+    "empty": "Start a conversation"
+  },
+  "history": {
+    "title": "Conversation History",
+    "empty": "No conversations yet",
+    "delete": "Delete",
+    "confirmDelete": "Delete this conversation?"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "theme": "Theme",
+    "profile": "Profile"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "signup": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?"
+  },
+  "admin": {
+    "dashboard": "Dashboard",
+    "users": "User Management",
+    "apiKeys": "API Keys",
+    "prompts": "Prompt Management",
+    "usage": "Usage Statistics"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success"
+  }
+}

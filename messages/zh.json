@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "无相",
+    "tagline": "与智慧同行，向内心寻觅"
+  },
+  "nav": {
+    "home": "首页",
+    "chat": "对话",
+    "history": "历史",
+    "settings": "设置"
+  },
+  "chat": {
+    "title": "与无相长老对话",
+    "placeholder": "说出你的困惑...",
+    "send": "发送",
+    "newChat": "新对话",
+    "thinking": "长老正在凝思...",
+    "empty": "开始一段对话吧"
+  },
+  "history": {
+    "title": "对话历史",
+    "empty": "暂无对话记录",
+    "delete": "删除",
+    "confirmDelete": "确定删除此对话？"
+  },
+  "settings": {
+    "title": "设置",
+    "language": "语言",
+    "theme": "主题",
+    "profile": "个人信息"
+  },
+  "auth": {
+    "login": "登录",
+    "logout": "退出",
+    "signup": "注册",
+    "email": "邮箱",
+    "password": "密码",
+    "forgotPassword": "忘记密码？"
+  },
+  "admin": {
+    "dashboard": "控制台",
+    "users": "用户管理",
+    "apiKeys": "API密钥",
+    "prompts": "Prompt管理",
+    "usage": "用量统计"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "edit": "编辑",
+    "confirm": "确认",
+    "loading": "加载中...",
+    "error": "出错了",
+    "success": "成功"
+  }
+}
