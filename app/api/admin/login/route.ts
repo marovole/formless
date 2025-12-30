@@ -4,6 +4,8 @@ import { getSupabaseAdminClient } from '@/lib/supabase/server'
 import { createSession } from '@/lib/auth/session'
 import { Database } from '@/lib/supabase/database.types'
 
+export const runtime = 'edge';
+
 type AdminUser = Database['public']['Tables']['admin_users']['Row']
 
 export async function POST(request: NextRequest) {

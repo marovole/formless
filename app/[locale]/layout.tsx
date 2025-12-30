@@ -7,6 +7,9 @@ import { AuthProvider } from '@/lib/auth/AuthProvider'
 import type { Metadata } from 'next'
 import '@/app/globals.css'
 
+export const dynamic = 'force-dynamic'
+export const runtime = 'edge'
+
 export const metadata: Metadata = {
   title: '无相 Formless - AI Wisdom Companion',
   description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations with an elder who remembers your journey.',
@@ -24,10 +27,6 @@ export const metadata: Metadata = {
     title: '无相 Formless - AI Wisdom Companion',
     description: 'Find clarity through conversations with a wise AI elder',
   },
-}
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }))
 }
 
 export default async function LocaleLayout({

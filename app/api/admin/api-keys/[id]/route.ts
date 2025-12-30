@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/middleware'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 
+export const runtime = 'edge';
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

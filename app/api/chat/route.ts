@@ -6,6 +6,8 @@ import { streamChatCompletion } from '@/lib/llm/chutes';
 import { streamToSSE } from '@/lib/llm/streaming';
 import type { ChatMessage } from '@/lib/llm/chutes';
 
+export const runtime = 'edge';
+
 interface ChatRequest {
   message: string;
   conversationId?: string;
