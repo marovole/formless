@@ -1,0 +1,16 @@
+name = "formless"
+compatibility_date = "2024-12-18"
+
+[vars]
+NEXT_PUBLIC_APP_URL = "https://formless.pages.dev"
+
+# 非敏感配置变量
+# 敏感变量请使用 wrangler pages secret 设置
+# 运行以下命令设置敏感变量：
+# npx wrangler pages secret put NEXT_PUBLIC_SUPABASE_URL --project-name=formless
+# npx wrangler pages secret put NEXT_PUBLIC_SUPABASE_ANON_KEY --project-name=formless
+# npx wrangler pages secret put SUPABASE_SERVICE_ROLE_KEY --project-name=formless
+# npx wrangler pages secret put CHUTES_API_KEY --project-name=formless
+# npx wrangler pages secret put OPENROUTER_API_KEYS --project-name=formless
+# npx wrangler pages secret put ADMIN_EMAIL --project-name=formless
+# npx wrangler pages secret put ADMIN_PASSWORD_HASH --project-name=formless
