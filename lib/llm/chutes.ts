@@ -68,7 +68,7 @@ export async function streamChatCompletion(
               fullText += content;
               if (onChunk) onChunk(content);
             }
-          } catch (e) {
+          } catch {
             // Skip invalid JSON
           }
         }
@@ -77,6 +77,6 @@ export async function streamChatCompletion(
 
     if (onComplete) onComplete(fullText);
   } catch (error) {
-    if (onError) onError(error);
+    if (onError) onError(error as Error);
   }
 }
