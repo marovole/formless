@@ -4,7 +4,6 @@ import { requireAuth } from '@/lib/auth/middleware'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/database.types'
 
-export const runtime = 'edge';
 
 type PromptUpdate = Database['public']['Tables']['prompts']['Update']
 

@@ -5,7 +5,6 @@ import { createSession } from '@/lib/auth/session'
 import { Database } from '@/lib/supabase/database.types'
 import { LoginSchema } from '@/lib/validation/schemas'
 
-export const runtime = 'edge';
 
 type AdminUser = Database['public']['Tables']['admin_users']['Row']
 

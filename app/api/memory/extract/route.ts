@@ -4,7 +4,6 @@ import { getSupabaseAdminClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { streamChatCompletion } from '@/lib/llm/openrouter';
 
-export const runtime = 'edge';
 
 interface ExtractRequest {
   conversationId: string;

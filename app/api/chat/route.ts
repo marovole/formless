@@ -8,7 +8,6 @@ import { streamToSSE } from '@/lib/llm/streaming';
 import { ChatSchema } from '@/lib/validation/schemas';
 import type { ChatMessage } from '@/lib/llm/chutes';
 
-export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   try {

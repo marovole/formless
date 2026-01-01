@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/middleware'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 
-export const runtime = 'edge';
 
 interface ApiUsage {
   created_at: string

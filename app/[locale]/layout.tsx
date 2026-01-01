@@ -8,7 +8,6 @@ import type { Metadata } from 'next'
 import '@/app/globals.css'
 
 export const dynamic = 'force-dynamic'
-export const runtime = 'edge'
 
 export const metadata: Metadata = {
   title: '无相 Formless - AI Wisdom Companion',
