@@ -16,7 +16,8 @@ export async function streamChatCompletion(
   apiKey: string,
   options: ChutesStreamOptions
 ): Promise<void> {
-  const { messages, onChunk, onComplete, onError } = options;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { messages: _messages, onChunk, onComplete, onError } = options;
 
   try {
     const mockResponse = '这是一个模拟回复。真实的 LLM API 集成正在开发中...';

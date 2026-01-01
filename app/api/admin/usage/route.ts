@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/middleware'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 
-export const runtime = 'edge';
+
+interface ApiUsage {
+  created_at: string
+  success: boolean
+  tokens_used?: number
+}
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth(request)
@@ -21,14 +26,14 @@ export async function GET(request: NextRequest) {
     .select('id, provider, model_name, daily_limit, daily_used')
 
   const today = new Date().toISOString().split('T')[0]
-  const todayUsage = usageData?.filter((u: any) => 
+  const todayUsage = usageData?.filter((u: ApiUsage) =>
     u.created_at.startsWith(today)
   ) || []
 
   const stats = {
     total_calls_today: todayUsage.length,
-    successful_calls_today: todayUsage.filter((u: any) => u.success).length,
-    total_tokens_today: todayUsage.reduce((sum: number, u: any) => sum + (u.tokens_used || 0), 0),
+    successful_calls_today: todayUsage.filter((u: ApiUsage) => u.success).length,
+    total_tokens_today: todayUsage.reduce((sum: number, u: ApiUsage) => sum + (u.tokens_used || 0), 0),
     keys_status: keysData || [],
     recent_usage: usageData?.slice(0, 50) || [],
   }

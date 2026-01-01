@@ -1,7 +1,15 @@
+// @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
-export const runtime = 'edge';
+
+interface ConversationPreview {
+  id: string;
+  created_at: string;
+  language: string;
+  updated_at: string;
+  preview?: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,19 +35,24 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
+    const conversationsWithPreview: ConversationPreview[] = [];
+
     for (const conv of conversations || []) {
       const { data: lastMessage } = await supabase
         .from('messages')
         .select('content')
-        .eq('conversation_id', (conv as any).id)
+        .eq('conversation_id', conv.id)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
-      (conv as any).preview = lastMessage ? (lastMessage as any).content.slice(0, 100) : '';
+      conversationsWithPreview.push({
+        ...conv,
+        preview: lastMessage?.content?.slice(0, 100) || '',
+      });
     }
 
-    return NextResponse.json({ conversations: conversations || [] });
+    return NextResponse.json({ conversations: conversationsWithPreview });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });

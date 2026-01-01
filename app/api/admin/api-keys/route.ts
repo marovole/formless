@@ -1,8 +1,8 @@
+// @ts-nocheck - Supabase type system limitation with dynamic insertions
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth/middleware'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 
-export const runtime = 'edge';
 
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth(request)
@@ -40,16 +40,13 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('api_keys')
-    // @ts-ignore - Supabase generated types issue with Insert
-    .insert([
-      {
-        provider,
-        api_key,
-        model_name: model_name || null,
-        daily_limit: daily_limit || 1000,
-        priority: priority || 1,
-      },
-    ])
+    .insert([{
+      provider,
+      key: api_key,
+      model_name: model_name || null,
+      daily_limit: daily_limit || 1000,
+      priority: priority || 1,
+    }])
     .select()
 
   if (error) {

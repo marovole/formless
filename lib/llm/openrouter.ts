@@ -16,7 +16,8 @@ export async function streamChatCompletion(
   apiKey: string,
   options: OpenRouterStreamOptions
 ): Promise<void> {
-  const { messages, onChunk, onComplete, onError } = options;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { messages: _messages, onChunk, onComplete, onError } = options;
 
   try {
     const mockResponse = 'Memory extraction mock response';

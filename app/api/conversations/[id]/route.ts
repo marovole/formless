@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
-export const runtime = 'edge';
 
 export async function DELETE(
   request: NextRequest,
