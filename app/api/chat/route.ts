@@ -56,7 +56,8 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (convError || !newConversation) {
-        throw new Error('Failed to create conversation');
+        console.error('Conversation creation error:', convError);
+        throw new Error(`Failed to create conversation: ${convError?.message || 'unknown error'}`);
       }
 
       activeConversationId = newConversation.id;
