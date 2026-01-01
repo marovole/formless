@@ -13,7 +13,7 @@ export interface ChutesStreamOptions {
 }
 
 const CHUTES_API_URL = 'https://llm.chutes.ai/v1/chat/completions';
-const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V3-0324';
+const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V3.2-TEE';
 
 export async function streamChatCompletion(
   apiKey: string,

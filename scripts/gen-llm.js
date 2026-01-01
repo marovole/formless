@@ -28,7 +28,7 @@ export async function streamChatCompletion(
         'Authorization': \`Bearer \${apiKey}\`,
       },
       body: JSON.stringify({
-        model: 'deepseek-reasoner',
+        model: 'deepseek-ai/DeepSeek-V3.2-TEE',
         messages,
         temperature,
         max_tokens,
