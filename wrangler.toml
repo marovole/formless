@@ -5,6 +5,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 NEXT_PUBLIC_APP_URL = "https://formless.pages.dev"
+NEXT_PUBLIC_SUPABASE_URL = "https://ixtvycjniqltthskfrdv.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4dHZ5Y2puaXFsdHRoc2tmcmR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxMDU5NzYsImV4cCI6MjA4MjY4MTk3Nn0.il9WwKlqIq4ZMklecZtuc_45o3oQrvPGK3l_RCzQKzw"
 
 # 非敏感配置变量
 # 敏感变量请使用 wrangler pages secret 设置
