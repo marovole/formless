@@ -12,6 +12,9 @@ export interface ChutesStreamOptions {
   onError?: (error: Error) => void;
 }
 
+const CHUTES_API_URL = 'https://llm.chutes.ai/v1/chat/completions';
+const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V3.2-TEE';
+
 export async function streamChatCompletion(
   apiKey: string,
   options: ChutesStreamOptions
@@ -19,14 +22,14 @@ export async function streamChatCompletion(
   const { messages, temperature = 0.7, max_tokens = 2000, onChunk, onComplete, onError } = options;
 
   try {
-    const response = await fetch('https://api.chutes.ai/v1/chat/completions', {
+    const response = await fetch(CHUTES_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'deepseek-ai/DeepSeek-V3.2-TEE',
+        model: DEFAULT_MODEL,
         messages,
         temperature,
         max_tokens,
@@ -39,37 +42,38 @@ export async function streamChatCompletion(
       throw new Error(`Chutes API error: ${response.status} - ${errorText}`);
     }
 
-    if (!response.body) {
-      throw new Error('Response body is null');
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new Error('No response body');
     }
 
-    const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = '';
     let fullText = '';
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split('\n');
 
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        if (trimmed === 'data: [DONE]') continue;
-        if (trimmed.startsWith('data: ')) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data === '[DONE]') {
+            if (onComplete) onComplete(fullText);
+            return;
+          }
+
           try {
-            const data = JSON.parse(trimmed.slice(6));
-            const content = data.choices[0]?.delta?.content;
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
             if (content) {
               fullText += content;
               if (onChunk) onChunk(content);
             }
           } catch {
-            // Skip invalid JSON
+            // Skip invalid JSON lines
           }
         }
       }
