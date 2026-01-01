@@ -16,21 +16,67 @@ export async function streamChatCompletion(
   apiKey: string,
   options: ChutesStreamOptions
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { messages: _messages, onChunk, onComplete, onError } = options;
+  const { messages, temperature = 0.7, max_tokens = 2000, onChunk, onComplete, onError } = options;
 
   try {
-    const mockResponse = '这是一个模拟回复。真实的 LLM API 集成正在开发中...';
-    
-    for (let i = 0; i < mockResponse.length; i++) {
-      if (onChunk) {
-        onChunk(mockResponse[i]);
-        await new Promise(resolve => setTimeout(resolve, 50));
+    const response = await fetch('https://api.chutes.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-ai/DeepSeek-V3.2-TEE',
+        messages,
+        temperature,
+        max_tokens,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Chutes API error: ${response.status} - ${errorText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('Response body is null');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullText = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        if (trimmed === 'data: [DONE]') continue;
+        if (trimmed.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(trimmed.slice(6));
+            const content = data.choices[0]?.delta?.content;
+            if (content) {
+              fullText += content;
+              if (onChunk) onChunk(content);
+            }
+          } catch (e) {
+            // Skip invalid JSON
+          }
+        }
       }
     }
-    
-    if (onComplete) onComplete(mockResponse);
+
+    if (onComplete) onComplete(fullText);
   } catch (error) {
-    if (onError) onError(error as Error);
+    if (onError) onError(error);
   }
 }
