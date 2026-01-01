@@ -16,7 +16,7 @@ interface User {
   id: string;
   email: string;
   created_at: string;
-  profile: any;
+  profile: Record<string, unknown> | null;
 }
 
 export default function AdminUsersPage() {

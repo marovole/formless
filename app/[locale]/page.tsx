@@ -15,7 +15,7 @@ export default function HomePage() {
           {t('tagline')}
         </p>
         <p className="text-lg text-stone-500 mb-12 max-w-2xl mx-auto">
-          A wise companion for your journey through life's questions. 
+          A wise companion for your journey through life&apos;s questions. 
           Guided by the wisdom of a Buddhist elder, find clarity in conversation.
         </p>
 

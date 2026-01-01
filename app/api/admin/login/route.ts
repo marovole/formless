@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { getSupabaseAdminClient } from '@/lib/supabase/server'
 import { createSession } from '@/lib/auth/session'
 import { Database } from '@/lib/supabase/database.types'
+import { LoginSchema } from '@/lib/validation/schemas'
 
 export const runtime = 'edge';
 
@@ -10,11 +11,19 @@ type AdminUser = Database['public']['Tables']['admin_users']['Row']
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate request body
     const { email, password } = await request.json()
 
-    if (!email || !password) {
+    const validationResult = LoginSchema.safeParse({ email, password })
+    if (!validationResult.success) {
+      const errors: Record<string, string[]> = {}
+      validationResult.error.issues.forEach((err) => {
+        const path = err.path.join('.')
+        if (!errors[path]) errors[path] = []
+        errors[path].push(err.message)
+      })
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Validation failed', errors },
         { status: 400 }
       )
     }
@@ -58,7 +67,10 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Login error:', error)
+    // Only log detailed errors in development
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Login error:', error)
+    }
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -2,11 +2,25 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { NextRequest } from 'next/server'
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'formless-secret-change-in-production'
-)
+// Helper function to get and validate JWT secret (called at request time, not module load)
+function getSecret() {
+  const secretString = process.env.JWT_SECRET || 'formless-secret-change-in-production'
+
+  // Production environment requires a secure JWT secret
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET environment variable is required in production')
+  }
+
+  // Validate minimum secret length for security
+  if (secretString.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long for security')
+  }
+
+  return new TextEncoder().encode(secretString)
+}
 
 export async function createSession(adminId: string, email: string) {
+  const secret = getSecret()
   const token = await new SignJWT({ adminId, email })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -32,6 +46,7 @@ export async function getSession() {
   if (!token) return null
 
   try {
+    const secret = getSecret()
     const { payload } = await jwtVerify(token, secret)
     return payload as { adminId: string; email: string }
   } catch {
@@ -50,6 +65,7 @@ export async function getSessionFromRequest(request: NextRequest) {
   if (!token) return null
 
   try {
+    const secret = getSecret()
     const { payload } = await jwtVerify(token, secret)
     return payload as { adminId: string; email: string }
   } catch {

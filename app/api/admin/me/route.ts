@@ -3,7 +3,8 @@ import { getSession } from '@/lib/auth/session'
 
 export const runtime = 'edge';
 
-export async function GET(request: NextRequest) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function GET(_request: NextRequest) {
   const session = await getSession()
 
   if (!session) {
