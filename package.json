@@ -21,7 +21,12 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test:run && npm run test:e2e",
-    "test:ci": "vitest run --coverage && playwright test"
+    "test:ci": "vitest run --coverage && playwright test",
+    "guanzhao:check": "./scripts/check-env.sh",
+    "guanzhao:deploy:db": "./scripts/deploy-db.sh",
+    "guanzhao:deploy:functions": "./scripts/deploy-functions.sh",
+    "guanzhao:deploy:all": "./scripts/deploy-all.sh",
+    "guanzhao:test": "./scripts/test-guanzhao.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
