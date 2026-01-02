@@ -1,0 +1,910 @@
+schema_version: 1
+feature_id: guanzhao
+feature_name_zh: "观照（大师人格）"
+
+persona:
+  id: master_v1
+  name_zh: "无相"
+  positioning_zh: "拥有大智慧、对世界有深刻理解的佛学大师"
+  tone_styles:
+    cibei: "慈悲（更温和、更安抚）"
+    qingming: "清明（更提问、更留白）"
+    zhizhi: "直指（更具体、更聚焦行动）"
+  principles:
+    - "少言、留白、点到为止"
+    - "观照而不说教；引导而不控制"
+    - "不做心理诊断/治疗；不使用诊断式措辞"
+    - "每次主动触达都可一键静默/退出"
+    - "默认不窥探：避免“我看到了你…”，改用“若你最近/若此刻…”"
+
+defaults:
+  enabled: true
+  frequency_level: qingjian
+  style: qingming
+  channels:
+    in_app: true
+    push: false
+  dnd_local_time:
+    start: "23:30"
+    end: "08:00"
+
+frequency_levels:
+  silent:
+    label_zh: "静默"
+    budgets:
+      in_app: { per_day: 0, per_week: 0 }
+      push: { per_day: 0, per_week: 0 }
+  qingjian:
+    label_zh: "清简"
+    budgets:
+      in_app: { per_day: 1, per_week: 2 }
+      push: { per_day: 0, per_week: 0 }
+  zhongdao:
+    label_zh: "中道"
+    budgets:
+      in_app: { per_day: 1, per_week: 5 }
+      push: { per_day: 0, per_week: 2 }
+  jingjin:
+    label_zh: "精进"
+    budgets:
+      in_app: { per_day: 2, per_week: 8 }
+      push: { per_day: 1, per_week: 5 }
+    safeguards:
+      push:
+        stop_after_consecutive_ignored: 3
+        suppress_in_dnd: true
+      in_app:
+        max_interruptions_per_session: 1
+
+global_rules:
+  suppression:
+    - id: user_disabled
+      reason_zh: "用户关闭观照"
+      when: { type: preference, key: guanzhao.enabled, eq: false }
+      suppress: [in_app, push]
+    - id: user_snoozed
+      reason_zh: "用户静默中"
+      when: { type: time_compare, key: guanzhao.snoozed_until, op: gt_now }
+      suppress: [in_app, push]
+    - id: push_in_dnd
+      reason_zh: "免打扰时段不推送"
+      when: { type: dnd_active }
+      suppress: [push]
+
+actions:
+  open_flow.observe_30s: { type: open_flow, flow_id: observe_30s }
+  open_flow.one_intention: { type: open_flow, flow_id: one_intention }
+  open_flow.one_min_reflection: { type: open_flow, flow_id: one_min_reflection }
+  open_flow.weekly_review_5m: { type: open_flow, flow_id: weekly_review_5m }
+  open_flow.choose_week_focus: { type: open_flow, flow_id: choose_week_focus }
+  open_flow.choose_companionship_topic: { type: open_flow, flow_id: choose_companionship_topic }
+  open_flow.break_down_one_step: { type: open_flow, flow_id: break_down_one_step }
+  open_flow.lighter_option: { type: open_flow, flow_id: lighter_option }
+  open_flow.record_one_line: { type: open_flow, flow_id: record_one_line }
+  open_flow.next_step_plan: { type: open_flow, flow_id: next_step_plan }
+  open_flow.rest_2min: { type: open_flow, flow_id: rest_2min }
+
+  snooze.24h: { type: snooze, duration: "PT24H" }
+  snooze.today: { type: snooze_until, until: end_of_local_day }
+  snooze.7d: { type: snooze, duration: "P7D" }
+  disable_guanzhao: { type: set_preference, key: guanzhao.enabled, value: false }
+  keep_weekly_only: { type: set_preference, key: guanzhao.mode, value: weekly_only }
+  open_settings_guanzhao: { type: open_settings, page: guanzhao }
+
+  feedback.useful: { type: feedback, value: useful }
+  feedback.not_fit: { type: feedback, value: not_fit }
+  feedback.too_frequent: { type: feedback, value: too_frequent }
+  feedback.not_relevant: { type: feedback, value: not_relevant }
+
+  safety.open_resources: { type: open_safety_resources }
+  safety.contact_trusted_person: { type: open_flow, flow_id: contact_trusted_person }
+  safety.confirm_safe: { type: set_state, key: safety.user_claims_safe, value: true }
+
+templates:
+  # --- 节律型：每日小关照 ---
+  - id: "guanzhao.daily_checkin.qingming.1"
+    trigger_id: daily_checkin
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今日观照"
+        body: "先不急。若今日只做一事，你愿意让它是哪一事？我陪你把它缩成一个小步。"
+        buttons:
+          - { id: primary, label: "观一观（30 秒）", action: open_flow.observe_30s }
+          - { id: secondary, label: "只定一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "今日静默", action: snooze.today }
+      push:
+        title: "无相 · 今日观照"
+        body: "先不急。若今日只做一事，你愿意让它是哪一事？"
+        buttons:
+          - { id: primary, label: "打开", action: open_settings_guanzhao }
+  - id: "guanzhao.daily_checkin.qingming.2"
+    trigger_id: daily_checkin
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今日观照"
+        body: "此刻心里最挂念的是什么？写一句就好——一句话也能安住一整天。"
+        buttons:
+          - { id: primary, label: "写一句", action: open_flow.record_one_line }
+          - { id: secondary, label: "观一观（30 秒）", action: open_flow.observe_30s }
+          - { id: dismiss, label: "今日静默", action: snooze.today }
+  - id: "guanzhao.daily_checkin.qingming.3"
+    trigger_id: daily_checkin
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今日观照"
+        body: "若你愿意，我们用 30 秒观一观：今天你想把力放在哪里？"
+        buttons:
+          - { id: primary, label: "观一观（30 秒）", action: open_flow.observe_30s }
+          - { id: secondary, label: "只定一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "今日静默", action: snooze.today }
+  - id: "guanzhao.daily_checkin.cibei.1"
+    trigger_id: daily_checkin
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今日观照"
+        body: "今天辛苦了。若你愿意，我陪你把心安在一处：此刻最重要的一件事是什么？"
+        buttons:
+          - { id: primary, label: "只定一事", action: open_flow.one_intention }
+          - { id: secondary, label: "观一观（30 秒）", action: open_flow.observe_30s }
+          - { id: dismiss, label: "今日静默", action: snooze.today }
+  - id: "guanzhao.daily_checkin.zhizhi.1"
+    trigger_id: daily_checkin
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今日一事"
+        body: "选一事即可。把它写成一句，然后把第一步压到 10%——现在就做。"
+        buttons:
+          - { id: primary, label: "写一句", action: open_flow.one_intention }
+          - { id: secondary, label: "拆第一步", action: open_flow.break_down_one_step }
+          - { id: dismiss, label: "今日静默", action: snooze.today }
+
+  # --- 节律型：收尾/晚安 ---
+  - id: "guanzhao.nightly_wrapup.qingming.1"
+    trigger_id: nightly_wrapup
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "夜间收摄"
+        body: "夜深了。今日已过，不必追。要不要用 1 分钟回看：你做对了什么？明日只留一小步。"
+        buttons:
+          - { id: primary, label: "一念复盘（1 分钟）", action: open_flow.one_min_reflection }
+          - { id: secondary, label: "明日只做一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "放下休息", action: snooze.today }
+  - id: "guanzhao.nightly_wrapup.qingming.2"
+    trigger_id: nightly_wrapup
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "夜间观照"
+        body: "把今日放下之前，先观一观：有什么还在心里挂着？写下来，便轻一点。"
+        buttons:
+          - { id: primary, label: "写下来", action: open_flow.record_one_line }
+          - { id: secondary, label: "一念复盘", action: open_flow.one_min_reflection }
+          - { id: dismiss, label: "放下休息", action: snooze.today }
+  - id: "guanzhao.nightly_wrapup.qingming.3"
+    trigger_id: nightly_wrapup
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "夜间收摄"
+        body: "若你愿意，做个‘收摄’：一句感谢自己，一句放下未竟。"
+        buttons:
+          - { id: primary, label: "写两句", action: open_flow.one_min_reflection }
+          - { id: secondary, label: "明日只做一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "放下休息", action: snooze.today }
+  - id: "guanzhao.nightly_wrapup.cibei.1"
+    trigger_id: nightly_wrapup
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "晚安"
+        body: "今晚就到这里。你已经很努力了。要不要给自己一句肯定，再把未竟放到明天？"
+        buttons:
+          - { id: primary, label: "给自己一句", action: open_flow.record_one_line }
+          - { id: secondary, label: "明日只做一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "放下休息", action: snooze.today }
+  - id: "guanzhao.nightly_wrapup.zhizhi.1"
+    trigger_id: nightly_wrapup
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "收尾"
+        body: "用 60 秒收尾：写下 1 件已完成、1 件未竟、明日第一步。然后停。"
+        buttons:
+          - { id: primary, label: "开始收尾（1 分钟）", action: open_flow.one_min_reflection }
+          - { id: secondary, label: "明日第一步", action: open_flow.break_down_one_step }
+          - { id: dismiss, label: "放下休息", action: snooze.today }
+
+  # --- 节律型：每周复盘 ---
+  - id: "guanzhao.weekly_review.qingming.1"
+    trigger_id: weekly_review
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "周回顾"
+        body: "一周如一息。若只留三件：得了什么、放下什么、还愿什么？我们慢慢看。"
+        buttons:
+          - { id: primary, label: "做个周回顾（5 分钟）", action: open_flow.weekly_review_5m }
+          - { id: secondary, label: "只选下周一事", action: open_flow.choose_week_focus }
+          - { id: dismiss, label: "本周静默", action: snooze.7d }
+  - id: "guanzhao.weekly_review.qingming.2"
+    trigger_id: weekly_review
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "周回顾"
+        body: "不必求全。下周你只想把力放在一处——那一处是什么？"
+        buttons:
+          - { id: primary, label: "只选下周一事", action: open_flow.choose_week_focus }
+          - { id: secondary, label: "做个周回顾", action: open_flow.weekly_review_5m }
+          - { id: dismiss, label: "本周静默", action: snooze.7d }
+  - id: "guanzhao.weekly_review.qingming.3"
+    trigger_id: weekly_review
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "周回顾"
+        body: "愿你看见自己：这周最值得被肯定的一件事是什么？"
+        buttons:
+          - { id: primary, label: "写一句肯定", action: open_flow.record_one_line }
+          - { id: secondary, label: "做个周回顾", action: open_flow.weekly_review_5m }
+          - { id: dismiss, label: "本周静默", action: snooze.7d }
+  - id: "guanzhao.weekly_review.cibei.1"
+    trigger_id: weekly_review
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "周回顾"
+        body: "这一周不容易。要不要先温柔地看一眼：你扛住了什么，也完成了什么？"
+        buttons:
+          - { id: primary, label: "做个周回顾（5 分钟）", action: open_flow.weekly_review_5m }
+          - { id: secondary, label: "只选下周一事", action: open_flow.choose_week_focus }
+          - { id: dismiss, label: "本周静默", action: snooze.7d }
+  - id: "guanzhao.weekly_review.zhizhi.1"
+    trigger_id: weekly_review
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "下周一事"
+        body: "只定一处用力点：下周最重要的一件事是什么？其余先放下。"
+        buttons:
+          - { id: primary, label: "选下周一事", action: open_flow.choose_week_focus }
+          - { id: secondary, label: "做个周回顾", action: open_flow.weekly_review_5m }
+          - { id: dismiss, label: "本周静默", action: snooze.7d }
+
+  # --- 行为型：新用户首周扶一把 ---
+  - id: "guanzhao.onboarding_nudge.qingming.1"
+    trigger_id: onboarding_nudge
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "初来"
+        body: "初来不必急。先立一愿：你想被我在何事上陪伴？只选一个方向就好。"
+        buttons:
+          - { id: primary, label: "立一愿（选方向）", action: open_flow.choose_companionship_topic }
+          - { id: secondary, label: "先看看", action: open_settings_guanzhao }
+          - { id: dismiss, label: "以后再说", action: snooze.24h }
+  - id: "guanzhao.onboarding_nudge.qingming.2"
+    trigger_id: onboarding_nudge
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先走一步"
+        body: "路很长，先走一步。要不要把你最想改变的一件事，写成一句话？"
+        buttons:
+          - { id: primary, label: "写一句", action: open_flow.one_intention }
+          - { id: secondary, label: "立一愿", action: open_flow.choose_companionship_topic }
+          - { id: dismiss, label: "以后再说", action: snooze.24h }
+  - id: "guanzhao.onboarding_nudge.qingming.3"
+    trigger_id: onboarding_nudge
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "给我一词"
+        body: "你不需要把一切都说清。给我一个词，我便能与你同行。"
+        buttons:
+          - { id: primary, label: "给一个词", action: open_flow.choose_companionship_topic }
+          - { id: secondary, label: "先看看", action: open_settings_guanzhao }
+          - { id: dismiss, label: "以后再说", action: snooze.24h }
+  - id: "guanzhao.onboarding_nudge.cibei.1"
+    trigger_id: onboarding_nudge
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "欢迎"
+        body: "欢迎你来。若你愿意，我们慢慢来：你希望我先照看哪一处？"
+        buttons:
+          - { id: primary, label: "选方向", action: open_flow.choose_companionship_topic }
+          - { id: secondary, label: "先看看", action: open_settings_guanzhao }
+          - { id: dismiss, label: "以后再说", action: snooze.24h }
+  - id: "guanzhao.onboarding_nudge.zhizhi.1"
+    trigger_id: onboarding_nudge
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先定方向"
+        body: "先定一个方向：你想先解决什么？选一个即可。"
+        buttons:
+          - { id: primary, label: "选方向", action: open_flow.choose_companionship_topic }
+          - { id: secondary, label: "写一句目标", action: open_flow.one_intention }
+          - { id: dismiss, label: "以后再说", action: snooze.24h }
+
+  # --- 行为型：断档预警（streak risk） ---
+  - id: "guanzhao.lapse_risk.qingming.1"
+    trigger_id: lapse_risk
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "最小回归"
+        body: "这两日不见。若你正忙，也无妨。要不要用 30 秒写下：今日只做的一件事？"
+        buttons:
+          - { id: primary, label: "最小回归（30 秒）", action: open_flow.observe_30s }
+          - { id: secondary, label: "我很好（不用）", action: snooze.24h }
+          - { id: dismiss, label: "静默 7 天", action: snooze.7d }
+      push:
+        title: "无相 · 最小回归"
+        body: "回来就是回来了，不必自责。要不要用 30 秒回到一处？"
+        buttons:
+          - { id: primary, label: "打开", action: open_settings_guanzhao }
+  - id: "guanzhao.lapse_risk.qingming.2"
+    trigger_id: lapse_risk
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "不必自责"
+        body: "回来就是回来了，不必自责。我们只做一个最小回归：一句话、一个动作。"
+        buttons:
+          - { id: primary, label: "最小回归（30 秒）", action: open_flow.observe_30s }
+          - { id: secondary, label: "只定一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "静默 7 天", action: snooze.7d }
+  - id: "guanzhao.lapse_risk.qingming.3"
+    trigger_id: lapse_risk
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "把心放一处"
+        body: "若此刻心乱，就先把心放在一处：你愿意选哪一处？"
+        buttons:
+          - { id: primary, label: "只选一处", action: open_flow.one_intention }
+          - { id: secondary, label: "观一观（30 秒）", action: open_flow.observe_30s }
+          - { id: dismiss, label: "静默 7 天", action: snooze.7d }
+  - id: "guanzhao.lapse_risk.cibei.1"
+    trigger_id: lapse_risk
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "你回来了"
+        body: "看到你回来，我很安心。若你愿意，就做一件很小的事，让今天轻一点。"
+        buttons:
+          - { id: primary, label: "做个小步（30 秒）", action: open_flow.observe_30s }
+          - { id: secondary, label: "只定一事", action: open_flow.one_intention }
+          - { id: dismiss, label: "静默 7 天", action: snooze.7d }
+  - id: "guanzhao.lapse_risk.zhizhi.1"
+    trigger_id: lapse_risk
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "今天一小步"
+        body: "只做一个动作：写下今天只做的一件事，然后把第一步做完。"
+        buttons:
+          - { id: primary, label: "写下那一事", action: open_flow.one_intention }
+          - { id: secondary, label: "拆第一步", action: open_flow.break_down_one_step }
+          - { id: dismiss, label: "静默 7 天", action: snooze.7d }
+
+  # --- 行为型：过载/熬夜保护 ---
+  - id: "guanzhao.overload_protection.qingming.1"
+    trigger_id: overload_protection
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先停一停"
+        body: "你已用力许久。先停一停，呼一口气。要不要静息 2 分钟，再决定继续与否？"
+        buttons:
+          - { id: primary, label: "静息 2 分钟", action: open_flow.rest_2min }
+          - { id: secondary, label: "继续（今晚不再提醒）", action: snooze.today }
+          - { id: dismiss, label: "明日再说", action: snooze.today }
+  - id: "guanzhao.overload_protection.qingming.2"
+    trigger_id: overload_protection
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "夜深不苦撑"
+        body: "夜深不宜苦撑。此刻能做的善待，是先让身体歇一歇。"
+        buttons:
+          - { id: primary, label: "静息 2 分钟", action: open_flow.rest_2min }
+          - { id: secondary, label: "今夜先停", action: snooze.today }
+          - { id: dismiss, label: "明日再说", action: snooze.today }
+  - id: "guanzhao.overload_protection.qingming.3"
+    trigger_id: overload_protection
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "把步子放慢"
+        body: "若你愿意，我们先把步子放慢：喝水、伸展、再回来。"
+        buttons:
+          - { id: primary, label: "静息 2 分钟", action: open_flow.rest_2min }
+          - { id: secondary, label: "继续（今晚不再提醒）", action: snooze.today }
+          - { id: dismiss, label: "明日再说", action: snooze.today }
+  - id: "guanzhao.overload_protection.cibei.1"
+    trigger_id: overload_protection
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "照看自己"
+        body: "你已经撑了很久。先照看自己一下：休息两分钟，也是一种前进。"
+        buttons:
+          - { id: primary, label: "休息 2 分钟", action: open_flow.rest_2min }
+          - { id: secondary, label: "今夜先停", action: snooze.today }
+          - { id: dismiss, label: "明日再说", action: snooze.today }
+  - id: "guanzhao.overload_protection.zhizhi.1"
+    trigger_id: overload_protection
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "停"
+        body: "先停 2 分钟。喝水、伸展、再决定要不要继续。"
+        buttons:
+          - { id: primary, label: "现在休息", action: open_flow.rest_2min }
+          - { id: secondary, label: "继续（今晚不再提醒）", action: snooze.today }
+          - { id: dismiss, label: "明日再说", action: snooze.today }
+
+  # --- 行为型：失败/受挫后的安抚（谨慎） ---
+  - id: "guanzhao.setback_support.qingming.1"
+    trigger_id: setback_support
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先看清"
+        body: "你不必与自己为敌。先说清：最难的是哪一步？我们只拆最小的一步。"
+        buttons:
+          - { id: primary, label: "拆一步", action: open_flow.break_down_one_step }
+          - { id: secondary, label: "换个更轻的", action: open_flow.lighter_option }
+          - { id: dismiss, label: "今天先放下", action: snooze.today }
+  - id: "guanzhao.setback_support.qingming.2"
+    trigger_id: setback_support
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "放下做成"
+        body: "此刻若沉重，就先放下‘做成’。只做‘看清’：发生了什么？"
+        buttons:
+          - { id: primary, label: "说清发生了什么", action: open_flow.one_min_reflection }
+          - { id: secondary, label: "拆一步", action: open_flow.break_down_one_step }
+          - { id: dismiss, label: "今天先放下", action: snooze.today }
+  - id: "guanzhao.setback_support.qingming.3"
+    trigger_id: setback_support
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "做到 1% 也好"
+        body: "若你愿意，先把要求降到很低：今天只做到 1% 也算走了路。"
+        buttons:
+          - { id: primary, label: "做 1% 的一步", action: open_flow.break_down_one_step }
+          - { id: secondary, label: "换个更轻的", action: open_flow.lighter_option }
+          - { id: dismiss, label: "今天先放下", action: snooze.today }
+  - id: "guanzhao.setback_support.cibei.1"
+    trigger_id: setback_support
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "你已经很难了"
+        body: "我知道这很难。先别逼自己：告诉我最难的一处，我陪你把它变小一点。"
+        buttons:
+          - { id: primary, label: "拆一步", action: open_flow.break_down_one_step }
+          - { id: secondary, label: "换个更轻的", action: open_flow.lighter_option }
+          - { id: dismiss, label: "今天先放下", action: snooze.today }
+  - id: "guanzhao.setback_support.zhizhi.1"
+    trigger_id: setback_support
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "只拆一步"
+        body: "别求全。指出最难的一步，我们只拆这一处。"
+        buttons:
+          - { id: primary, label: "拆一步", action: open_flow.break_down_one_step }
+          - { id: secondary, label: "换个更轻的", action: open_flow.lighter_option }
+          - { id: dismiss, label: "今天先放下", action: snooze.today }
+
+  # --- 行为型：成就/里程碑肯定 ---
+  - id: "guanzhao.milestone_ack.qingming.1"
+    trigger_id: milestone_ack
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "轻轻点头"
+        body: "你做到了。功不必夸，心却可安。要不要把它记成一句，让这份力量留下？"
+        buttons:
+          - { id: primary, label: "记一句（留个印记）", action: open_flow.record_one_line }
+          - { id: secondary, label: "下一步怎么走", action: open_flow.next_step_plan }
+          - { id: dismiss, label: "不必（安住就好）", action: snooze.24h }
+  - id: "guanzhao.milestone_ack.qingming.2"
+    trigger_id: milestone_ack
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "你在前行"
+        body: "此刻可以轻轻点头：你在前行。下一步，你想更稳一点，还是更快一点？"
+        buttons:
+          - { id: primary, label: "更稳一点", action: open_flow.next_step_plan }
+          - { id: secondary, label: "更快一点", action: open_flow.next_step_plan }
+          - { id: dismiss, label: "不必（安住就好）", action: snooze.24h }
+  - id: "guanzhao.milestone_ack.qingming.3"
+    trigger_id: milestone_ack
+    style: qingming
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "收束成法门"
+        body: "做成一件事，就少一分杂念。愿不愿意把它收束成一个‘可重复的小法门’？"
+        buttons:
+          - { id: primary, label: "收束成法门", action: open_flow.next_step_plan }
+          - { id: secondary, label: "记一句", action: open_flow.record_one_line }
+          - { id: dismiss, label: "不必（安住就好）", action: snooze.24h }
+  - id: "guanzhao.milestone_ack.cibei.1"
+    trigger_id: milestone_ack
+    style: cibei
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "真好"
+        body: "真好，你做到了。愿你记得这份力量：要不要给自己留一句温柔的肯定？"
+        buttons:
+          - { id: primary, label: "写一句肯定", action: open_flow.record_one_line }
+          - { id: secondary, label: "下一步", action: open_flow.next_step_plan }
+          - { id: dismiss, label: "不必（安住就好）", action: snooze.24h }
+  - id: "guanzhao.milestone_ack.zhizhi.1"
+    trigger_id: milestone_ack
+    style: zhizhi
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "下一步"
+        body: "做成了。现在只做一件事：定下一步的第一动作。"
+        buttons:
+          - { id: primary, label: "定下一步", action: open_flow.next_step_plan }
+          - { id: secondary, label: "记一句", action: open_flow.record_one_line }
+          - { id: dismiss, label: "不必（安住就好）", action: snooze.24h }
+
+  # --- 保护型：明确拒绝/免打扰（确认话术） ---
+  - id: "guanzhao.opt_out_ack.neutral.1"
+    trigger_id: opt_out_ack
+    style: neutral
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "已收摄"
+        body: "已收摄。我会安静下来。你若需要，再来唤我。"
+        buttons:
+          - { id: primary, label: "静默 7 天", action: snooze.7d }
+          - { id: secondary, label: "仅保留周回顾", action: keep_weekly_only }
+          - { id: dismiss, label: "关闭观照", action: disable_guanzhao }
+  - id: "guanzhao.opt_out_ack.neutral.2"
+    trigger_id: opt_out_ack
+    style: neutral
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "不再打扰"
+        body: "好的。此处我不再打扰。"
+        buttons:
+          - { id: primary, label: "静默 7 天", action: snooze.7d }
+          - { id: secondary, label: "仅保留周回顾", action: keep_weekly_only }
+          - { id: dismiss, label: "关闭观照", action: disable_guanzhao }
+
+  # --- 保护型：高风险表达（安全流） ---
+  - id: "guanzhao.crisis_high_risk.safety.1"
+    trigger_id: crisis_high_risk
+    style: safety
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先保安全"
+        body: "我听见你很痛苦。为了你的安全，我无法把这当作一般聊天。若你有伤害自己或他人的想法，请立刻联系当地紧急服务，或联系你信任的人/专业支持。你现在是否处于立即危险中？"
+        buttons:
+          - { id: primary, label: "我需要帮助（资源）", action: safety.open_resources }
+          - { id: secondary, label: "联系可信任的人", action: safety.contact_trusted_person }
+          - { id: dismiss, label: "我现在安全", action: safety.confirm_safe }
+  - id: "guanzhao.crisis_high_risk.safety.us.1"
+    trigger_id: crisis_high_risk
+    style: safety
+    locale: zh-CN
+    surfaces:
+      in_app:
+        title: "先保安全"
+        body: "若你在美国：可拨打或短信 988 获取支持；如有紧急危险请拨打 911。你愿意先选择一个你能做到的求助方式吗？"
+        buttons:
+          - { id: primary, label: "打开资源", action: safety.open_resources }
+          - { id: secondary, label: "联系可信任的人", action: safety.contact_trusted_person }
+          - { id: dismiss, label: "我现在安全", action: safety.confirm_safe }
+
+triggers:
+  - id: daily_checkin
+    category: rhythm
+    display_name_zh: "每日小关照"
+    enabled_by_default: false
+    budget_cost: { in_app: 1, push: 1 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.daily_checkin.qingming.1", "guanzhao.daily_checkin.qingming.2", "guanzhao.daily_checkin.qingming.3"]
+        cibei: ["guanzhao.daily_checkin.cibei.1"]
+        zhizhi: ["guanzhao.daily_checkin.zhizhi.1"]
+    in_app:
+      entrypoint: app.session_start
+      delay_minutes: { min: 5, max: 15 }
+      constraints:
+        once_per_local_day: true
+        require_first_session_of_day: true
+    push:
+      enabled_by_default: false
+      entrypoint: scheduler.time_window
+      time_window_local:
+        start: "{{user.guanzhao.checkin_window_start|09:00}}"
+        end: "{{user.guanzhao.checkin_window_end|20:00}}"
+      constraints:
+        require_push_opt_in: true
+        require_user_time_window: true
+        min_hours_since_last_activity: 24
+        once_per_local_day: true
+
+  - id: nightly_wrapup
+    category: rhythm
+    display_name_zh: "收尾/晚安"
+    enabled_by_default: false
+    budget_cost: { in_app: 1, push: 1 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.nightly_wrapup.qingming.1", "guanzhao.nightly_wrapup.qingming.2", "guanzhao.nightly_wrapup.qingming.3"]
+        cibei: ["guanzhao.nightly_wrapup.cibei.1"]
+        zhizhi: ["guanzhao.nightly_wrapup.zhizhi.1"]
+    in_app:
+      entrypoint: app.session_end
+      time_window_local: { start: "20:00", end: "23:00" }
+      constraints:
+        once_per_local_evening: true
+        require_active_today: true
+    push:
+      enabled_by_default: false
+      entrypoint: scheduler.time_window
+      time_window_local:
+        start: "{{user.guanzhao.wrapup_window_start|20:00}}"
+        end: "{{user.guanzhao.wrapup_window_end|23:00}}"
+      constraints:
+        require_push_opt_in: true
+        require_user_time_window: true
+        require_active_today: true
+        once_per_local_evening: true
+
+  - id: weekly_review
+    category: rhythm
+    display_name_zh: "每周复盘"
+    enabled_by_default: true
+    budget_cost: { in_app: 1, push: 1 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.weekly_review.qingming.1", "guanzhao.weekly_review.qingming.2", "guanzhao.weekly_review.qingming.3"]
+        cibei: ["guanzhao.weekly_review.cibei.1"]
+        zhizhi: ["guanzhao.weekly_review.zhizhi.1"]
+    in_app:
+      entrypoint: app.first_active_in_window
+      time_window_local:
+        day_of_week: "{{user.guanzhao.weekly_review_day|sun}}"
+        start: "{{user.guanzhao.weekly_review_start|17:00}}"
+        end: "{{user.guanzhao.weekly_review_end|21:00}}"
+      constraints:
+        once_per_week: true
+    push:
+      enabled_by_default: false
+      entrypoint: scheduler.time_window
+      time_window_local:
+        day_of_week: "{{user.guanzhao.weekly_review_day|sun}}"
+        start: "{{user.guanzhao.weekly_review_start|17:00}}"
+        end: "{{user.guanzhao.weekly_review_end|21:00}}"
+      constraints:
+        require_push_opt_in: true
+        only_if_not_completed_this_week: true
+        once_per_week: true
+
+  - id: onboarding_nudge
+    category: behavior
+    display_name_zh: "新用户首周扶一把"
+    enabled_by_default: true
+    budget_cost: { in_app: 1, push: 1 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.onboarding_nudge.qingming.1", "guanzhao.onboarding_nudge.qingming.2", "guanzhao.onboarding_nudge.qingming.3"]
+        cibei: ["guanzhao.onboarding_nudge.cibei.1"]
+        zhizhi: ["guanzhao.onboarding_nudge.zhizhi.1"]
+    in_app:
+      entrypoint: app.session_start
+      constraints:
+        only_in_first_7_days_since_signup: true
+        show_if_no_key_action_within_hours: 24
+        max_shows_total: 2
+    push:
+      enabled_by_default: false
+      entrypoint: scheduler.after_signup
+      after_hours: 24
+      constraints:
+        require_push_opt_in: true
+        only_in_first_7_days_since_signup: true
+        only_if_no_key_action: true
+        max_shows_total: 1
+
+  - id: lapse_risk
+    category: behavior
+    display_name_zh: "断档预警"
+    enabled_by_default: true
+    budget_cost: { in_app: 1, push: 1 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.lapse_risk.qingming.1", "guanzhao.lapse_risk.qingming.2", "guanzhao.lapse_risk.qingming.3"]
+        cibei: ["guanzhao.lapse_risk.cibei.1"]
+        zhizhi: ["guanzhao.lapse_risk.zhizhi.1"]
+    in_app:
+      entrypoint: app.on_return
+      constraints:
+        require_recently_active_days_in_last_7: 4
+        require_hours_since_last_activity_at_least: 48
+        cooldown_days: 7
+    push:
+      enabled_by_default: false
+      entrypoint: scheduler.after_last_activity
+      after_hours: 48
+      time_window_local:
+        start: "{{user.guanzhao.checkin_window_start|09:00}}"
+        end: "{{user.guanzhao.checkin_window_end|20:00}}"
+      constraints:
+        require_push_opt_in: true
+        require_recently_active_days_in_last_7: 4
+        cooldown_days: 7
+        max_shows_total: 1
+
+  - id: overload_protection
+    category: behavior
+    display_name_zh: "过载/熬夜保护"
+    enabled_by_default: true
+    budget_cost: { in_app: 0, push: 0 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.overload_protection.qingming.1", "guanzhao.overload_protection.qingming.2", "guanzhao.overload_protection.qingming.3"]
+        cibei: ["guanzhao.overload_protection.cibei.1"]
+        zhizhi: ["guanzhao.overload_protection.zhizhi.1"]
+    in_app:
+      entrypoint: app.in_session
+      constraints:
+        trigger_if_session_duration_minutes_at_least: 45
+        or_if_local_time_after: "00:30"
+        once_per_session: true
+    push:
+      enabled_by_default: false
+      constraints:
+        disabled: true
+
+  - id: setback_support
+    category: behavior
+    display_name_zh: "受挫后的观照（谨慎）"
+    enabled_by_default: false
+    budget_cost: { in_app: 0, push: 0 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.setback_support.qingming.1", "guanzhao.setback_support.qingming.2", "guanzhao.setback_support.qingming.3"]
+        cibei: ["guanzhao.setback_support.cibei.1"]
+        zhizhi: ["guanzhao.setback_support.zhizhi.1"]
+    in_app:
+      entrypoint: conversation.sentiment_down
+      constraints:
+        trigger_if_negative_utterances_in_window_at_least: 2
+        window_minutes: 10
+        once_per_24h: true
+        same_session_only: true
+    push:
+      enabled_by_default: false
+      constraints:
+        disabled: true
+
+  - id: milestone_ack
+    category: behavior
+    display_name_zh: "成就/里程碑肯定"
+    enabled_by_default: true
+    budget_cost: { in_app: 0, push: 0 }
+    template_sets:
+      fallback_style: qingming
+      by_style:
+        qingming: ["guanzhao.milestone_ack.qingming.1", "guanzhao.milestone_ack.qingming.2", "guanzhao.milestone_ack.qingming.3"]
+        cibei: ["guanzhao.milestone_ack.cibei.1"]
+        zhizhi: ["guanzhao.milestone_ack.zhizhi.1"]
+    in_app:
+      entrypoint: user.milestone_reached
+      constraints:
+        once_per_24h: true
+    push:
+      enabled_by_default: false
+      constraints:
+        disabled_by_default: true
+
+  - id: opt_out_ack
+    category: protective
+    display_name_zh: "拒绝/免打扰确认"
+    enabled_by_default: true
+    budget_cost: { in_app: 0, push: 0 }
+    template_sets:
+      fallback_style: neutral
+      by_style:
+        neutral: ["guanzhao.opt_out_ack.neutral.1", "guanzhao.opt_out_ack.neutral.2"]
+    in_app:
+      entrypoint: user.opt_out
+      constraints:
+        immediate: true
+    push:
+      enabled_by_default: false
+      constraints:
+        disabled: true
+
+  - id: crisis_high_risk
+    category: protective
+    display_name_zh: "高风险表达（安全流）"
+    enabled_by_default: true
+    budget_cost: { in_app: 0, push: 0 }
+    template_sets:
+      fallback_style: safety
+      by_style:
+        safety: ["guanzhao.crisis_high_risk.safety.1"]
+        safety_us: ["guanzhao.crisis_high_risk.safety.us.1"]
+    in_app:
+      entrypoint: conversation.high_risk_detected
+      constraints:
+        immediate: true
+        bypass_frequency_budgets: true
+    push:
+      enabled_by_default: false
+      constraints:
+        disabled: true
