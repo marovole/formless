@@ -40,29 +40,31 @@ https://app.supabase.com/project/ixtvycjniqltthskfrdv/sql/new
 
 #### 3️⃣ **迁移 3: 定时任务**
 
-⚠️ **注意**: 需要先启用 pg_cron 扩展
+⚠️ **使用修复版本**: `supabase/migrations/20250102000002_setup_cron_jobs_fixed.sql`
 
-**步骤 A: 启用 pg_cron**
+**步骤 A: 启用 pg_cron 扩展**
 1. 访问: https://app.supabase.com/project/ixtvycjniqltthskfrdv/database/extensions
 2. 搜索 `pg_cron`
 3. 点击启用（Enable）
 
-**步骤 B: 执行迁移**
-文件: `supabase/migrations/20250102000002_setup_cron_jobs.sql`
+**步骤 B: 配置环境变量**
 
-1. 打开本地文件
-2. 复制**全部内容**
-3. 粘贴到 SQL Editor
-4. 点击 **Run**
-
-**步骤 C: 配置环境变量**
-
-在 SQL Editor 中执行：
+⚠️ **必须先配置环境变量**，在 SQL Editor 中执行：
 
 ```sql
 ALTER DATABASE postgres SET app.settings.supabase_url = 'https://ixtvycjniqltthskfrdv.supabase.co';
 ALTER DATABASE postgres SET app.settings.service_role_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4dHZ5Y2puaXFsdHRoc2tmcmR2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzEwNTk3NiwiZXhwIjoyMDgyNjgxOTc2fQ.TwAh_qfiG_U03eTcrQXmiFoc62ABj2XlioMs3JqK014';
 ```
+
+**步骤 C: 执行迁移**
+
+1. 打开本地文件 `supabase/migrations/20250102000002_setup_cron_jobs_fixed.sql`
+2. 复制**全部内容**
+3. 粘贴到 SQL Editor（新建查询）
+4. 点击 **Run**
+5. 应该会看到一个表格显示 5 个定时任务
+
+**说明**: 修复版本移除了不存在的 `last_reset_at` 字段，添加了安全的任务删除逻辑。
 
 ### ✅ 验证部署
 
