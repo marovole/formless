@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { useSessionTracking, useGuanzhaoTriggers } from '@/lib/hooks/useSessionTracking';
+import { GuanzhaoTriggerContainer } from '@/components/guanzhao/GuanzhaoTriggerCard';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -16,6 +18,72 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 观照会话追踪
+  const { isActive: sessionTrackingActive } = useSessionTracking(conversationId, {
+    enabled: true,
+    heartbeatInterval: 60000,
+    pauseWhenHidden: true,
+  });
+
+  // 触发器管理
+  const {
+    pendingTrigger,
+    showTrigger,
+    dismissTrigger,
+  } = useGuanzhaoTriggers();
+
+  // 处理触发器动作
+  const handleTriggerAction = useCallback(async (action: string, triggerId: string) => {
+    try {
+      const response = await fetch('/api/guanzhao/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          triggerId,
+        }),
+      });
+
+      if (response.ok) {
+        dismissTrigger();
+      }
+    } catch (error) {
+      console.error('Error handling trigger action:', error);
+    }
+  }, [dismissTrigger]);
+
+  // 监听触发事件
+  useEffect(() => {
+    const handleTriggerEvent = (event: CustomEvent) => {
+      const { triggerId, reason } = event.detail;
+
+      // 调用触发引擎获取模板
+      fetch('/api/guanzhao/trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          triggerId,
+          channel: 'in_app',
+        }),
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.allowed && data.template) {
+            showTrigger(triggerId, data.template);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching trigger template:', error);
+        });
+    };
+
+    window.addEventListener('guanzhao:trigger', handleTriggerEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('guanzhao:trigger', handleTriggerEvent as EventListener);
+    };
+  }, [showTrigger]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,7 +166,14 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex flex-col relative">
+      {/* 触发器容器 */}
+      <GuanzhaoTriggerContainer
+        pendingTrigger={pendingTrigger}
+        onDismiss={dismissTrigger}
+        onAction={handleTriggerAction}
+      />
+
       <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
         <div className="flex-1 overflow-y-auto space-y-4 mb-4">
           {messages.map((msg, idx) => (
@@ -133,6 +208,13 @@ export default function ChatPage() {
             {isLoading ? 'Sending...' : 'Send'}
           </Button>
         </div>
+
+        {/* 会话追踪状态指示器（可选，用于调试） */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-stone-400 mt-2 text-center">
+            {sessionTrackingActive ? '🟢 Session tracking active' : '⚪ Session tracking inactive'}
+          </div>
+        )}
       </div>
     </div>
   );
