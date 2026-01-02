@@ -1,6 +1,6 @@
 # 观照（大师人格）配置包
 
-面向工程的“模板库 + 触发配置”一体化文件：
+面向工程的"模板库 + 触发配置"一体化文件：
 
 - `docs/guanzhao/guanzhao-bundle.yaml`：可读性优先（建议作为源文件）
 - `docs/guanzhao/guanzhao-bundle.json`：机器消费版（由 YAML 生成）
@@ -15,8 +15,8 @@
 
 ## 模板选择（建议实现）
 
-1) 先选 `trigger.template_sets.by_style[user.style]`，若不存在则用 `fallback_style`；  
-2) 在候选模板中随机/轮转（建议同一用户做去重轮转）；  
+1) 先选 `trigger.template_sets.by_style[user.style]`，若不存在则用 `fallback_style`；
+2) 在候选模板中随机/轮转（建议同一用户做去重轮转）；
 3) 渲染模板时执行变量替换（见下一节）。
 
 ## 占位符约定
@@ -46,3 +46,42 @@ data = yaml.safe_load(Path('docs/guanzhao/guanzhao-bundle.yaml').read_text(encod
 Path('docs/guanzhao/guanzhao-bundle.json').write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
 PY
 ```
+
+## 部署与实现
+
+完整的实现代码和部署指南请参考：
+
+- **部署指南**：[DEPLOYMENT.md](./DEPLOYMENT.md) - 详细的部署步骤和配置说明
+- **实施计划**：`/Users/marovole/.claude/plans/idempotent-sauteeing-blum.md` - 完整的实施计划
+
+## 已实现的组件
+
+### 数据库
+- `supabase/migrations/20250102000001_guanzhao_system.sql` - 数据库架构（6 个新表）
+
+### 核心库 (`lib/guanzhao/`)
+- `config.ts` - 配置加载器
+- `budget.ts` - 预算管理系统
+- `safetyKeywords.ts` - 风险检测关键词库
+- `types.ts` - TypeScript 类型定义
+
+### Edge Functions (`supabase/functions/guanzhao/`)
+- `session-tracker/` - 会话追踪
+- `trigger-engine/` - 触发引擎
+
+### 前端组件
+- `lib/hooks/useSessionTracking.ts` - 会话追踪 Hook
+- `components/guanzhao/GuanzhaoTriggerCard.tsx` - 触发器卡片组件
+- `app/[locale]/settings/guanzhao/page.tsx` - 观照设置页面
+- `app/[locale]/chat/page.tsx` - 集成了会话追踪的聊天页面
+
+### API Routes (`app/api/guanzhao/`)
+- `session/` - 会话事件处理
+- `settings/` - 设置管理
+- `actions/` - 用户动作处理
+- `trigger/` - 触发器评估
+- `push-token/` - Push 令牌管理
+
+### UI 组件 (`components/ui/`)
+- `switch.tsx` - Switch 组件
+- `radio-group.tsx` - RadioGroup 组件
