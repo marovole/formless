@@ -14,25 +14,29 @@ https://app.supabase.com/project/ixtvycjniqltthskfrdv/sql/new
 
 #### 1️⃣ **迁移 1: 基础架构**
 
-文件: `supabase/migrations/20250102000000_base_schema.sql`
+⚠️ **使用修复版本**: `supabase/migrations/20250102000000_base_schema_fixed.sql`
 
 **操作**:
-1. 打开本地文件 `supabase/migrations/20250102000000_base_schema.sql`
+1. 打开本地文件 `supabase/migrations/20250102000000_base_schema_fixed.sql`
 2. 复制**全部内容**
 3. 粘贴到 SQL Editor
 4. 点击 **Run** 或按 `Cmd+Enter`
-5. 等待执行完成（应显示成功消息）
+5. 等待执行完成（应显示成功消息："Success. No rows returned"）
+
+**说明**: 修复版本解决了 `ON CONFLICT` 约束问题，使用 `WHERE NOT EXISTS` 模式避免重复插入。
 
 #### 2️⃣ **迁移 2: 观照系统**
 
-文件: `supabase/migrations/20250102000001_guanzhao_system.sql`
+⚠️ **使用修复版本**: `supabase/migrations/20250102000001_guanzhao_system_fixed.sql`
 
 **操作**:
-1. 打开本地文件 `supabase/migrations/20250102000001_guanzhao_system.sql`
+1. 打开本地文件 `supabase/migrations/20250102000001_guanzhao_system_fixed.sql`
 2. 复制**全部内容**
 3. 粘贴到 SQL Editor（新建查询）
 4. 点击 **Run**
-5. 等待执行完成
+5. 等待执行完成（应显示成功消息："Success. No rows returned"）
+
+**说明**: 修复版本解决了 `increment_session_message_count()` 函数中的 `ORDER BY` 语法错误，使用 `DECLARE` 变量模式。
 
 #### 3️⃣ **迁移 3: 定时任务**
 
