@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
+import { getAllFrequencyLevels, getAvailableStyles, getDefaults, getFrequencyLevel } from '@/lib/guanzhao/config';
 
 // =============================================
 // Types
@@ -20,11 +21,24 @@ interface GuanzhaoSettings {
   dnd_end: string;
 }
 
+type GuanzhaoBudgetUpdate = Partial<{
+  enabled: boolean;
+  frequency_level: GuanzhaoSettings['frequency_level'];
+  style: GuanzhaoSettings['style'];
+  push_enabled: boolean;
+  dnd_start: string;
+  dnd_end: string;
+  budget_in_app_day: number;
+  budget_in_app_week: number;
+  budget_push_day: number;
+  budget_push_week: number;
+}>;
+
 // =============================================
 // GET Handler - 读取设置
 // =============================================
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // 1. 验证用户身份
     const cookieStore = cookies();
@@ -48,13 +62,14 @@ export async function GET(req: NextRequest) {
     if (error) {
       // 如果用户没有设置记录，返回默认设置
       if (error.code === 'PGRST116') {
+        const defaults = getDefaults();
         return NextResponse.json({
-          enabled: true,
-          frequency_level: 'qingjian',
-          style: 'qingming',
-          push_enabled: false,
-          dnd_start: '23:30',
-          dnd_end: '08:00',
+          enabled: defaults.enabled,
+          frequency_level: defaults.frequency_level,
+          style: defaults.style,
+          push_enabled: defaults.channels.push,
+          dnd_start: defaults.dnd_local_time.start,
+          dnd_end: defaults.dnd_local_time.end,
         });
       }
 
@@ -100,8 +115,8 @@ export async function POST(req: NextRequest) {
     const newSettings: Partial<GuanzhaoSettings> = await req.json();
 
     // 3. 验证数据
-    const validFrequencyLevels = ['silent', 'qingjian', 'zhongdao', 'jingjin'] as const;
-    const validStyles = ['qingming', 'cibei', 'zhizhi'] as const;
+    const validFrequencyLevels = Object.keys(getAllFrequencyLevels());
+    const validStyles = getAvailableStyles();
 
     if (newSettings.frequency_level && !validFrequencyLevels.includes(newSettings.frequency_level)) {
       return NextResponse.json(
@@ -134,7 +149,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. 更新设置
-    const updates: any = {};
+    const updates: GuanzhaoBudgetUpdate = {};
     if (newSettings.enabled !== undefined) updates.enabled = newSettings.enabled;
     if (newSettings.frequency_level !== undefined) updates.frequency_level = newSettings.frequency_level;
     if (newSettings.style !== undefined) updates.style = newSettings.style;
@@ -144,11 +159,17 @@ export async function POST(req: NextRequest) {
 
     // 如果频率级别改变，需要更新预算配置
     if (newSettings.frequency_level) {
-      const budgetConfig = getBudgetConfig(newSettings.frequency_level);
-      updates.budget_in_app_day = budgetConfig.in_app_day;
-      updates.budget_in_app_week = budgetConfig.in_app_week;
-      updates.budget_push_day = budgetConfig.push_day;
-      updates.budget_push_week = budgetConfig.push_week;
+      const frequencyLevel = getFrequencyLevel(newSettings.frequency_level);
+      if (!frequencyLevel) {
+        return NextResponse.json(
+          { error: 'Invalid frequency_level' },
+          { status: 400 }
+        );
+      }
+      updates.budget_in_app_day = frequencyLevel.budgets.in_app.per_day;
+      updates.budget_in_app_week = frequencyLevel.budgets.in_app.per_week;
+      updates.budget_push_day = frequencyLevel.budgets.push.per_day;
+      updates.budget_push_week = frequencyLevel.budgets.push.per_week;
     }
 
     const { data, error } = await supabase
@@ -182,42 +203,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// =============================================
-// Helper Functions
-// =============================================
-
-/**
- * 根据频率级别获取预算配置
- */
-function getBudgetConfig(level: 'silent' | 'qingjian' | 'zhongdao' | 'jingjin') {
-  const configs = {
-    silent: {
-      in_app_day: 0,
-      in_app_week: 0,
-      push_day: 0,
-      push_week: 0,
-    },
-    qingjian: {
-      in_app_day: 1,
-      in_app_week: 2,
-      push_day: 0,
-      push_week: 0,
-    },
-    zhongdao: {
-      in_app_day: 1,
-      in_app_week: 5,
-      push_day: 0,
-      push_week: 2,
-    },
-    jingjin: {
-      in_app_day: 2,
-      in_app_week: 8,
-      push_day: 1,
-      push_week: 5,
-    },
-  };
-
-  return configs[level];
 }

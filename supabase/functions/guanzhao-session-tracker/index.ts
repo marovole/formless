@@ -34,6 +34,13 @@ interface InSessionRequest {
   messagesCount?: number;
 }
 
+type SessionRequest = SessionStartRequest | SessionEndRequest | InSessionRequest;
+
+interface SessionRow {
+  id: string;
+  started_at: string | null;
+}
+
 interface ErrorResponse {
   error: string;
   details?: string;
@@ -167,7 +174,7 @@ async function handleInSession(
 ): Promise<SuccessResponse | ErrorResponse> {
   try {
     // 1. 更新会话活动时间和消息数
-    const updateData: any = {
+    const updateData: { last_activity_at: string; messages_count?: number } = {
       last_activity_at: new Date().toISOString(),
     };
 
@@ -191,7 +198,7 @@ async function handleInSession(
     // 2. 检查是否应该触发 overload_protection
     const shouldTriggerOverloadProtection = await shouldTriggerOverloadProtectionNow(
       userId,
-      session
+      session as SessionRow
     );
 
     if (shouldTriggerOverloadProtection) {
@@ -297,14 +304,14 @@ async function shouldTriggerNightlyWrapupNow(userId: string): Promise<boolean> {
  */
 async function shouldTriggerOverloadProtectionNow(
   userId: string,
-  session: any
+  session: SessionRow
 ): Promise<boolean> {
   const now = new Date();
   const hour = now.getHours();
 
   // 1. 检查是否在凌晨 0:30 之后
   if (hour >= 0 && hour < 1) {
-    return await shouldTriggerOverloadThisSession(userId, session.id);
+    return await shouldTriggerOverloadThisSession(userId);
   }
 
   // 2. 检查会话时长是否超过 45 分钟
@@ -313,7 +320,7 @@ async function shouldTriggerOverloadProtectionNow(
     const duration = (now.getTime() - startedAt.getTime()) / (1000 * 60); // 分钟
 
     if (duration >= 45) {
-      return await shouldTriggerOverloadThisSession(userId, session.id);
+      return await shouldTriggerOverloadThisSession(userId);
     }
   }
 
@@ -324,8 +331,7 @@ async function shouldTriggerOverloadProtectionNow(
  * 检查当前会话是否应该触发 overload_protection
  */
 async function shouldTriggerOverloadThisSession(
-  userId: string,
-  sessionId: string
+  userId: string
 ): Promise<boolean> {
   // 1. 检查当前会话是否已经触发过
   const { data: existingTriggers } = await supabase
@@ -377,7 +383,7 @@ serve(async (req) => {
     }
 
     // 解析请求体
-    const body = await req.json();
+    const body = await req.json() as SessionRequest;
     const { eventType } = body;
 
     if (!eventType) {

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
+import type { Template } from '@/lib/guanzhao/config';
 
 // =============================================
 // Types
@@ -56,7 +57,12 @@ interface SessionTrackingResult {
   /**
    * 处理触发器响应
    */
-  handleTriggerResponse: (response: any) => void;
+  handleTriggerResponse: (response: TriggerResponse) => void;
+}
+
+interface TriggerResponse {
+  triggerId: string;
+  reason?: string;
 }
 
 // =============================================
@@ -89,6 +95,82 @@ export function useSessionTracking(
   const [isActive, setIsActive] = useState(false);
 
   /**
+   * 处理触发器响应
+   */
+  const handleTriggerResponse = useCallback((response: TriggerResponse) => {
+    // 这个函数应该调用触发引擎来获取模板
+    // 然后显示触发器卡片
+
+    console.log('Trigger response:', response);
+
+    // 触发自定义事件，让聊天页面处理
+    window.dispatchEvent(
+      new CustomEvent('guanzhao:trigger', {
+        detail: {
+          triggerId: response.triggerId,
+          reason: response.reason,
+        },
+      })
+    );
+  }, []);
+
+  /**
+   * 停止心跳定时器
+   */
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatTimerRef.current) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
+    }
+  }, []);
+
+  /**
+   * 发送心跳
+   */
+  const sendHeartbeat = useCallback(async () => {
+    if (!sessionIdRef.current || !user || !isActive) return;
+
+    // 如果页面隐藏且配置了暂停，则跳过
+    if (pauseWhenHidden && !isPageVisibleRef.current) {
+      return;
+    }
+
+    try {
+      const response = await fetch(SESSION_TRACKING_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: 'in_session',
+          userId: user.id,
+          sessionId: sessionIdRef.current,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { shouldTrigger?: TriggerResponse };
+
+        // 如果有触发器响应，处理它
+        if (data.shouldTrigger) {
+          handleTriggerResponse(data.shouldTrigger);
+        }
+      }
+    } catch (error) {
+      console.error('Error sending heartbeat:', error);
+    }
+  }, [user, isActive, pauseWhenHidden, handleTriggerResponse]);
+
+  /**
+   * 启动心跳定时器
+   */
+  const startHeartbeat = useCallback(() => {
+    stopHeartbeat();
+
+    heartbeatTimerRef.current = setInterval(() => {
+      sendHeartbeat();
+    }, heartbeatInterval);
+  }, [heartbeatInterval, sendHeartbeat, stopHeartbeat]);
+
+  /**
    * 开始新会话
    */
   const startSession = useCallback(async () => {
@@ -110,7 +192,7 @@ export function useSessionTracking(
         return;
       }
 
-      const data = await response.json();
+      const data = await response.json() as { success?: boolean; sessionId?: string; shouldTrigger?: TriggerResponse };
 
       if (data.success && data.sessionId) {
         sessionIdRef.current = data.sessionId;
@@ -128,7 +210,7 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error starting session:', error);
     }
-  }, [user, enabled]);
+  }, [user, enabled, handleTriggerResponse, startHeartbeat]);
 
   /**
    * 结束会话
@@ -156,83 +238,7 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error ending session:', error);
     }
-  }, [user]);
-
-  /**
-   * 发送心跳
-   */
-  const sendHeartbeat = useCallback(async () => {
-    if (!sessionIdRef.current || !user || !isActive) return;
-
-    // 如果页面隐藏且配置了暂停，则跳过
-    if (pauseWhenHidden && !isPageVisibleRef.current) {
-      return;
-    }
-
-    try {
-      const response = await fetch(SESSION_TRACKING_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'in_session',
-          userId: user.id,
-          sessionId: sessionIdRef.current,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // 如果有触发器响应，处理它
-        if (data.shouldTrigger) {
-          handleTriggerResponse(data.shouldTrigger);
-        }
-      }
-    } catch (error) {
-      console.error('Error sending heartbeat:', error);
-    }
-  }, [user, isActive, pauseWhenHidden]);
-
-  /**
-   * 启动心跳定时器
-   */
-  const startHeartbeat = useCallback(() => {
-    stopHeartbeat();
-
-    heartbeatTimerRef.current = setInterval(() => {
-      sendHeartbeat();
-    }, heartbeatInterval);
-  }, [heartbeatInterval, sendHeartbeat]);
-
-  /**
-   * 停止心跳定时器
-   */
-  const stopHeartbeat = useCallback(() => {
-    if (heartbeatTimerRef.current) {
-      clearInterval(heartbeatTimerRef.current);
-      heartbeatTimerRef.current = null;
-    }
-  }, []);
-
-  /**
-   * 处理触发器响应
-   */
-  const handleTriggerResponse = useCallback((response: any) => {
-    // 这个函数应该调用触发引擎来获取模板
-    // 然后显示触发器卡片
-
-    console.log('Trigger response:', response);
-
-    // 触发自定义事件，让聊天页面处理
-    window.dispatchEvent(
-      new CustomEvent('guanzhao:trigger', {
-        detail: {
-          triggerId: response.triggerId,
-          reason: response.reason,
-        },
-      })
-    );
-  }, []);
+  }, [user, stopHeartbeat]);
 
   // =============================================
   // Lifecycle
@@ -317,33 +323,10 @@ export function useSessionTracking(
 export function useGuanzhaoTriggers() {
   const [pendingTrigger, setPendingTrigger] = useState<{
     triggerId: string;
-    template: any;
+    template: Template;
   } | null>(null);
 
   const [dismissedTriggers, setDismissedTriggers] = useState<Set<string>>(new Set());
-
-  /**
-   * 显示触发器
-   */
-  const showTrigger = useCallback((triggerId: string, template: any) => {
-    if (!dismissedTriggers.has(triggerId)) {
-      setPendingTrigger({ triggerId, template });
-    }
-  }, [dismissedTriggers]);
-
-  /**
-   * 关闭触发器
-   */
-  const dismissTrigger = useCallback((action?: string) => {
-    if (pendingTrigger) {
-      // 记录用户动作
-      if (action) {
-        recordTriggerAction(pendingTrigger.triggerId, action);
-      }
-
-      setPendingTrigger(null);
-    }
-  }, [pendingTrigger]);
 
   /**
    * 记录触发器动作
@@ -362,6 +345,29 @@ export function useGuanzhaoTriggers() {
       console.error('Error recording trigger action:', error);
     }
   }, []);
+
+  /**
+   * 显示触发器
+   */
+  const showTrigger = useCallback((triggerId: string, template: Template) => {
+    if (!dismissedTriggers.has(triggerId)) {
+      setPendingTrigger({ triggerId, template });
+    }
+  }, [dismissedTriggers]);
+
+  /**
+   * 关闭触发器
+   */
+  const dismissTrigger = useCallback((action?: string) => {
+    if (pendingTrigger) {
+      // 记录用户动作
+      if (action) {
+        recordTriggerAction(pendingTrigger.triggerId, action);
+      }
+
+      setPendingTrigger(null);
+    }
+  }, [pendingTrigger, recordTriggerAction]);
 
   /**
    * 永久关闭某个触发器（本次会话）
@@ -436,7 +442,7 @@ export function usePushNotifications() {
   const showLocalNotification = useCallback((
     title: string,
     body: string,
-    data?: any
+    data?: NotificationOptions['data']
   ) => {
     if (permission === 'granted') {
       new Notification(title, {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 
 
 export async function DELETE(
@@ -8,7 +9,24 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseAdminClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
 
     const { error: messagesError } = await supabase
       .from('messages')
@@ -31,7 +49,8 @@ export async function DELETE(
     const { error: convError } = await supabase
       .from('conversations')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (convError) {
       throw convError;

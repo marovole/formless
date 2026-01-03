@@ -1,6 +1,7 @@
 // @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createClient, getSupabaseAdminClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { getActivePrompt } from '@/lib/prompts/manager';
 import { streamChatCompletion } from '@/lib/llm/chutes';
@@ -30,12 +31,37 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationId, language = 'zh' } = validationResult.data
 
+    const cookieStore = cookies();
+    const authClient = createClient(cookieStore);
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
     const supabase = getSupabaseAdminClient();
 
     let activeConversationId = conversationId;
     let conversationHistory: ChatMessage[] = [];
 
     if (activeConversationId) {
+      const { data: conversation, error: conversationError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', activeConversationId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (conversationError || !conversation) {
+        return new Response(JSON.stringify({ error: 'Conversation not found' }), {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
       const { data: messages } = await supabase
         .from('messages')
         .select('role, content')
@@ -51,7 +77,7 @@ export async function POST(request: NextRequest) {
     } else {
       const { data: newConversation, error: convError } = await supabase
         .from('conversations')
-        .insert([{ language }])
+        .insert([{ language, user_id: user.id }])
         .select('id')
         .single();
 
@@ -71,7 +97,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = await getActivePrompt('formless_elder', language);
 
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt?.content || '' },
+      { role: 'system', content: systemPrompt || '' },
       ...conversationHistory,
       { role: 'user', content: message },
     ];

@@ -16,7 +16,6 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { ChevronLeft, Info } from 'lucide-react';
-import { useTranslations } from 'next-intl';
 
 // =============================================
 // Types
@@ -100,7 +99,6 @@ const STYLES = {
 export default function GuanzhaoSettingsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const t = useTranslations('settings.guanzhao');
 
   const [settings, setSettings] = useState<GuanzhaoSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -218,7 +216,9 @@ export default function GuanzhaoSettingsPage() {
 
               <RadioGroup
                 value={settings.frequency_level}
-                onValueChange={(value) => updateSetting('frequency_level', value as any)}
+                onValueChange={(value) =>
+                  updateSetting('frequency_level', value as GuanzhaoSettings['frequency_level'])
+                }
                 className="space-y-3"
               >
                 {(Object.entries(FREQUENCY_LEVELS) as [keyof typeof FREQUENCY_LEVELS, string][]).map(
@@ -259,7 +259,9 @@ export default function GuanzhaoSettingsPage() {
 
               <Select
                 value={settings.style}
-                onValueChange={(value) => updateSetting('style', value as any)}
+                onValueChange={(value) =>
+                  updateSetting('style', value as GuanzhaoSettings['style'])
+                }
               >
                 <SelectTrigger className="w-full">
                   <SelectValue />

@@ -1,11 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { Database } from './database.types'
 
-export async function getSupabaseServerClient() {
-  const cookieStore = await cookies()
+type CookieStore = ReturnType<typeof cookies>
 
+export function createClientWithCookies(cookieStore: CookieStore) {
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -20,6 +20,7 @@ export async function getSupabaseServerClient() {
               cookieStore.set(name, value, options)
             )
           } catch {
+            // Ignore cookie set errors in server contexts
           }
         },
       },
@@ -27,8 +28,14 @@ export async function getSupabaseServerClient() {
   )
 }
 
+export async function getSupabaseServerClient() {
+  const cookieStore = await cookies()
+
+  return createClientWithCookies(cookieStore)
+}
+
 export function getSupabaseAdminClient() {
-  return createClient<Database>(
+  return createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
@@ -37,4 +44,9 @@ export function getSupabaseAdminClient() {
       }
     }
   )
+}
+
+// Backwards-compatible helper used by API routes
+export function createClient(cookieStore: CookieStore) {
+  return createClientWithCookies(cookieStore)
 }

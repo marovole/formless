@@ -459,7 +459,7 @@ export function detectRiskWithContext(
   }
 
   // 检查是否在否定模式中
-  const hasNegation = checkNegationContext(content, baseResult.matchedKeywords, language);
+  const hasNegation = checkNegationContext(content, baseResult.matchedKeywords);
   if (hasNegation && baseResult.level !== 'crisis') {
     // 危机级别不降级，其他级别降一级
     const levelMap: Record<string, RiskLevel> = {
@@ -474,7 +474,7 @@ export function detectRiskWithContext(
   }
 
   // 检查是否在询问模式中
-  const isInquiry = checkInquiryContext(content, language);
+  const isInquiry = checkInquiryContext(content);
   if (isInquiry && baseResult.level !== 'crisis') {
     const levelMap: Record<string, RiskLevel> = {
       high: 'medium',
@@ -495,8 +495,7 @@ export function detectRiskWithContext(
  */
 function checkNegationContext(
   content: string,
-  keywords: string[],
-  language: 'zh' | 'en'
+  keywords: string[]
 ): boolean {
   const negationPatterns = CONTEXT_PATTERNS.negation;
 
@@ -515,7 +514,7 @@ function checkNegationContext(
 /**
  * 检查询问语境
  */
-function checkInquiryContext(content: string, language: 'zh' | 'en'): boolean {
+function checkInquiryContext(content: string): boolean {
   const inquiryPatterns = CONTEXT_PATTERNS.inquiry;
 
   for (const pattern of inquiryPatterns) {
