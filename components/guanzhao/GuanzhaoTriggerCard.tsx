@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
@@ -163,17 +163,6 @@ export function GuanzhaoTriggerCard({
   const surface = template.surfaces.in_app;
   const style = template.style;
 
-  // 自动关闭逻辑
-  useEffect(() => {
-    if (autoCloseDelay > 0 && !hasInteracted) {
-      const timer = setTimeout(() => {
-        handleDismiss();
-      }, autoCloseDelay);
-
-      return () => clearTimeout(timer);
-    }
-  }, [autoCloseDelay, hasInteracted]);
-
   /**
    * 处理按钮点击
    */
@@ -197,7 +186,7 @@ export function GuanzhaoTriggerCard({
   /**
    * 处理关闭
    */
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setHasInteracted(true);
 
     // 查找 dismiss 按钮
@@ -214,7 +203,18 @@ export function GuanzhaoTriggerCard({
     setTimeout(() => {
       setIsVisible(false);
     }, 300);
-  };
+  }, [onAction, onDismiss, surface.buttons, template.trigger_id]);
+
+  // 自动关闭逻辑
+  useEffect(() => {
+    if (autoCloseDelay > 0 && !hasInteracted) {
+      const timer = setTimeout(() => {
+        handleDismiss();
+      }, autoCloseDelay);
+
+      return () => clearTimeout(timer);
+    }
+  }, [autoCloseDelay, hasInteracted, handleDismiss]);
 
   // 如果不可见，返回 null
   if (!isVisible) {

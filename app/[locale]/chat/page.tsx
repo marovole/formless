@@ -78,7 +78,7 @@ export default function ChatPage() {
   // 监听触发事件
   useEffect(() => {
     const handleTriggerEvent = (event: CustomEvent) => {
-      const { triggerId, reason } = event.detail;
+      const { triggerId } = event.detail;
 
       // 调用触发引擎获取模板
       fetch('/api/guanzhao/trigger', {

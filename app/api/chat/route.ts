@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      if (conversation.user_id !== user.id) {
+      if ((conversation as any).user_id !== user.id) {
         return new Response(JSON.stringify({ error: 'Forbidden' }), {
           status: 403,
           headers: { 'Content-Type': 'application/json' },

@@ -175,7 +175,7 @@ export async function DELETE(req: NextRequest) {
 // GET Handler - 获取用户的所有令牌
 // =============================================
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     // 1. 验证用户身份
     const supabase = await getSupabaseServerClient();
@@ -201,12 +201,20 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. 返回脱敏的令牌信息
-    const sanitizedTokens = tokens.map((t: any) => ({
-      id: t.id,
-      platform: t.platform,
-      created_at: t.created_at,
-      last_used_at: t.last_used_at,
-      token_preview: t.token.substring(0, 20) + '...',
+    const tokenRows = (tokens || []) as Array<{
+      id: string;
+      platform: string;
+      created_at: string;
+      last_used_at: string | null;
+      token: string;
+    }>;
+
+    const sanitizedTokens = tokenRows.map((token) => ({
+      id: token.id,
+      platform: token.platform,
+      created_at: token.created_at,
+      last_used_at: token.last_used_at,
+      token_preview: token.token.substring(0, 20) + '...',
     }));
 
     return NextResponse.json({

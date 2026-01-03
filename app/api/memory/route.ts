@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const profile = (userData?.profile as Record<string, unknown>) || {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const profile = ((userData as any)?.profile as Record<string, unknown>) || {};
 
     return NextResponse.json({
       quotes: memories || [],

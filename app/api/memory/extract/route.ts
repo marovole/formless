@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    if (conversation.user_id !== user.id) {
+    if ((conversation as any).user_id !== user.id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

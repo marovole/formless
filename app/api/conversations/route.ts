@@ -1,4 +1,3 @@
-// @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -22,7 +21,8 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limitParam = Number.parseInt(searchParams.get('limit') || '20', 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 20;
 
     // Only return conversations for the authenticated user
     const { data: conversations, error } = await supabase
@@ -36,25 +36,34 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    const conversationsWithPreview: ConversationPreview[] = [];
+    const conversationIds = (conversations || []).map((conv) => conv.id);
+    const previewsByConversation: Record<string, string> = {};
 
-    for (const conv of conversations || []) {
-      const { data: lastMessage } = await supabase
+    if (conversationIds.length > 0) {
+      const { data: messages, error: messagesError } = await supabase
         .from('messages')
-        .select('content')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .select('conversation_id, content, created_at')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: false });
 
-      conversationsWithPreview.push({
-        id: conv.id,
-        created_at: conv.created_at,
-        language: conv.language,
-        updated_at: conv.updated_at,
-        preview: lastMessage?.content?.slice(0, 100) || conv.title || '',
-      });
+      if (messagesError) {
+        throw messagesError;
+      }
+
+      for (const message of messages || []) {
+        if (!previewsByConversation[message.conversation_id]) {
+          previewsByConversation[message.conversation_id] = message.content;
+        }
+      }
     }
+
+    const conversationsWithPreview: ConversationPreview[] = (conversations || []).map((conv) => ({
+      id: conv.id,
+      created_at: conv.created_at,
+      language: conv.language,
+      updated_at: conv.updated_at,
+      preview: previewsByConversation[conv.id]?.slice(0, 100) || conv.title || '',
+    }));
 
     return NextResponse.json({ conversations: conversationsWithPreview });
   } catch (error) {

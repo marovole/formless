@@ -87,7 +87,7 @@ export interface Action {
   duration?: string;
   until?: string;
   key?: string;
-  value?: any;
+  value?: unknown;
   page?: string;
 }
 
@@ -251,7 +251,7 @@ export interface SafetyScreeningLogEntry {
   message_content: string | null;
   risk_level: RiskLevel;
   matched_keywords: string[] | null;
-  api_response: any;
+  api_response: unknown;
   created_at: string;
 }
 

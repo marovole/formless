@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 
-interface ConversationRow {
-  id: string;
-  user_id: string;
-}
-
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -72,7 +67,8 @@ export async function DELETE(
     const { error: convError } = await supabase
       .from('conversations')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id);
 
     if (convError) {
       throw convError;

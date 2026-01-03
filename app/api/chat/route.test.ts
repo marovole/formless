@@ -5,6 +5,7 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 // Mock all dependencies
 vi.mock('@/lib/supabase/server', () => ({
   getSupabaseAdminClient: vi.fn(),
+  createClient: vi.fn(),
 }))
 
 vi.mock('@/lib/api-keys/manager', () => ({
@@ -23,7 +24,7 @@ vi.mock('@/lib/llm/streaming', () => ({
   streamToSSE: vi.fn(),
 }))
 
-import { getSupabaseAdminClient } from '@/lib/supabase/server'
+import { createClient, getSupabaseAdminClient } from '@/lib/supabase/server'
 import { getAvailableApiKey } from '@/lib/api-keys/manager'
 import { getActivePrompt } from '@/lib/prompts/manager'
 import { streamChatCompletion } from '@/lib/llm/chutes'
@@ -31,6 +32,7 @@ import { streamToSSE } from '@/lib/llm/streaming'
 
 describe('Chat API Route', () => {
   let mockSupabaseClient: any
+  let mockAuthClient: any
   let mockStream: any
 
   beforeEach(() => {
@@ -44,9 +46,20 @@ describe('Chat API Route', () => {
       eq: vi.fn(() => mockSupabaseClient),
       order: vi.fn(() => mockSupabaseClient),
       single: vi.fn(),
+      maybeSingle: vi.fn(),
     }
 
     vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
+
+    mockAuthClient = {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'user-123' } },
+          error: null,
+        }),
+      },
+    }
+    vi.mocked(createClient).mockReturnValue(mockAuthClient)
 
     // Setup mock stream
     mockStream = {
@@ -67,9 +80,7 @@ describe('Chat API Route', () => {
       provider: 'chutes',
     })
 
-    vi.mocked(getActivePrompt).mockResolvedValue({
-      content: 'You are a helpful assistant',
-    })
+    vi.mocked(getActivePrompt).mockResolvedValue('You are a helpful assistant')
   })
 
   describe('Request validation', () => {
@@ -86,7 +97,11 @@ describe('Chat API Route', () => {
       })
 
       // Setup conversation history mock
-      mockSupabaseClient.select.mockResolvedValue({
+      mockSupabaseClient.maybeSingle.mockResolvedValue({
+        data: { id: body.conversationId },
+        error: null,
+      })
+      mockSupabaseClient.order.mockResolvedValue({
         data: [
           { role: 'user', content: 'Previous message' },
           { role: 'assistant', content: 'Previous response' },
@@ -195,6 +210,7 @@ describe('Chat API Route', () => {
         
         // Re-setup mocks after clearing
         vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
+        vi.mocked(createClient).mockReturnValue(mockAuthClient)
         vi.mocked(streamToSSE).mockImplementation((callback) => {
           callback(mockStream)
           return new Response('mocked response')
@@ -204,9 +220,7 @@ describe('Chat API Route', () => {
           key: 'test-api-key',
           provider: 'chutes',
         })
-        vi.mocked(getActivePrompt).mockResolvedValue({
-          content: 'You are a helpful assistant',
-        })
+        vi.mocked(getActivePrompt).mockResolvedValue('You are a helpful assistant')
 
         const body = {
           message: 'Hello',
@@ -252,7 +266,7 @@ describe('Chat API Route', () => {
       await POST(request)
 
       expect(mockSupabaseClient.from).toHaveBeenCalledWith('conversations')
-      expect(mockSupabaseClient.insert).toHaveBeenCalledWith([{ language: 'zh' }])
+      expect(mockSupabaseClient.insert).toHaveBeenCalledWith([{ language: 'zh', user_id: 'user-123' }])
     })
 
     it('should use existing conversation when conversationId provided', async () => {
@@ -268,7 +282,11 @@ describe('Chat API Route', () => {
       })
 
       // Setup the mock chain properly
-      mockSupabaseClient.select.mockResolvedValue({
+      mockSupabaseClient.maybeSingle.mockResolvedValue({
+        data: { id: conversationId },
+        error: null,
+      })
+      mockSupabaseClient.order.mockResolvedValue({
         data: [
           { role: 'user', content: 'Previous message' },
           { role: 'assistant', content: 'Previous response' },
@@ -302,7 +320,11 @@ describe('Chat API Route', () => {
         { role: 'assistant', content: 'Second response' },
       ]
 
-      mockSupabaseClient.select.mockResolvedValue({
+      mockSupabaseClient.maybeSingle.mockResolvedValue({
+        data: { id: conversationId },
+        error: null,
+      })
+      mockSupabaseClient.order.mockResolvedValue({
         data: mockMessages,
         error: null,
       })
@@ -389,6 +411,7 @@ describe('Chat API Route', () => {
         
         // Re-setup mocks
         vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
+        vi.mocked(createClient).mockReturnValue(mockAuthClient)
         vi.mocked(streamToSSE).mockImplementation((callback) => {
           callback(mockStream)
           return new Response('mocked response')
