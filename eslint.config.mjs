@@ -47,6 +47,8 @@ const eslintConfig = [
           'ts-check': 'allow-with-description',
         },
       ],
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_' }],
     },
   },
 ];

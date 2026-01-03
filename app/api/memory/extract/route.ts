@@ -1,59 +1,46 @@
 // @ts-nocheck - Supabase type system limitation with dynamic updates
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
-import { streamChatCompletion } from '@/lib/llm/openrouter';
-import { ExtractRequestSchema } from '@/lib/validation/schemas';
+import { streamChatCompletion } from '@/lib/llm/chutes';
 
 
 interface ExtractRequest {
   conversationId: string;
-  userId?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const validationResult = ExtractRequestSchema.safeParse(body);
-
-    if (!validationResult.success) {
-      const errors: Record<string, string[]> = {};
-      validationResult.error.issues.forEach((err) => {
-        const path = err.path.join('.');
-        if (!errors[path]) {
-          errors[path] = [];
-        }
-        errors[path].push(err.message);
-      });
-      return NextResponse.json({ error: 'Validation failed', errors }, { status: 400 });
-    }
-
-    const { conversationId, userId }: ExtractRequest = validationResult.data;
-
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    // 1. Verify authentication
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (userId && userId !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    const { conversationId }: ExtractRequest = await request.json();
+
+    if (!conversationId) {
+      return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
     }
 
-    const { data: conversation } = await supabase
+    // 2. Verify conversation belongs to user
+    const { data: conversation, error: convError } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, user_id')
       .eq('id', conversationId)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .single();
 
-    if (!conversation) {
+    if (convError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
+    if ((conversation as any).user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 3. Get messages
     const { data: messages } = await supabase
       .from('messages')
       .select('role, content')
@@ -81,7 +68,7 @@ export async function POST(request: NextRequest) {
 对话内容：
 ${conversationText}`;
 
-    const apiKey = await getAvailableApiKey('openrouter');
+    const apiKey = await getAvailableApiKey('chutes');
     if (!apiKey) {
       return NextResponse.json({ error: 'No available API key' }, { status: 500 });
     }
@@ -90,7 +77,7 @@ ${conversationText}`;
 
     await streamChatCompletion(apiKey.key, {
       messages: [
-        { role: 'system', content: 'You are a memory extraction assistant.' },
+        { role: 'system', content: 'You are a memory extraction assistant. Extract key information from conversations and respond in JSON format.' },
         { role: 'user', content: extractionPrompt },
       ],
       onChunk: (chunk) => {
@@ -98,19 +85,27 @@ ${conversationText}`;
       },
       onComplete: async (fullText) => {
         try {
-          const parsed = JSON.parse(fullText);
+          // Extract JSON from response (may have markdown code blocks)
+          const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+          if (!jsonMatch) return;
 
+          const parsed = JSON.parse(jsonMatch[0]);
+
+          // Store key quotes
           if (parsed.key_quotes && Array.isArray(parsed.key_quotes)) {
             for (const quote of parsed.key_quotes) {
-              await supabase.from('key_quotes')
-                .insert([{
-                  conversation_id: conversationId,
-                  user_id: user.id,
-                  quote_text: quote,
-                }]);
+              await supabase.from('key_quotes').upsert({
+                user_id: user.id,
+                conversation_id: conversationId,
+                quote: quote,
+                context: conversationText.slice(0, 500),
+                emotion: parsed.insights?.emotion || null,
+                topic: parsed.insights?.topic || null,
+              }, { onConflict: 'user_id,conversation_id,quote' });
             }
           }
 
+          // Update user profile with insights
           if (parsed.insights) {
             const { data: existingUser } = await supabase
               .from('users')
@@ -118,10 +113,13 @@ ${conversationText}`;
               .eq('id', user.id)
               .single();
 
-            const currentProfile = existingUser?.profile || {};
+            const currentProfile = (existingUser?.profile as Record<string, unknown>) || {};
             const updatedProfile = {
               ...currentProfile,
-              ...parsed.insights,
+              personality: parsed.insights.personality || currentProfile.personality,
+              interests: parsed.insights.interests || currentProfile.interests || [],
+              concerns: parsed.insights.concerns || currentProfile.concerns || [],
+              last_memory_update: new Date().toISOString(),
             };
 
             await supabase
@@ -138,7 +136,7 @@ ${conversationText}`;
       },
     });
 
-    return NextResponse.json({ success: true, extracted: extractedData });
+    return NextResponse.json({ success: true });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });

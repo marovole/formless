@@ -4,8 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // =============================================
 // Types
@@ -28,8 +27,7 @@ interface PushTokenDeleteRequest {
 export async function POST(req: NextRequest) {
   try {
     // 1. 验证用户身份
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -69,17 +67,22 @@ export async function POST(req: NextRequest) {
 
     if (existing) {
       // 更新使用时间
-      await supabase
+      const { error: updateError } = await supabase
         .from('push_tokens')
+        // @ts-ignore - Supabase type inference issue
         .update({
           last_used_at: new Date().toISOString(),
           is_active: true,
         })
+        // @ts-ignore - Supabase type inference issue
         .eq('id', existing.id);
+
+      if (updateError) throw updateError;
     } else {
       // 插入新令牌
       const { error: insertError } = await supabase
         .from('push_tokens')
+        // @ts-ignore - Supabase type inference issue
         .insert({
           user_id: user.id,
           token,
@@ -95,7 +98,9 @@ export async function POST(req: NextRequest) {
     // 5. 启用推送通知
     await supabase
       .from('guanzhao_budget_tracking')
+      // @ts-ignore - Supabase type inference issue
       .update({ push_enabled: true })
+      // @ts-ignore - Supabase type inference issue
       .eq('user_id', user.id);
 
     return NextResponse.json({
@@ -118,8 +123,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     // 1. 验证用户身份
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -143,8 +147,11 @@ export async function DELETE(req: NextRequest) {
     // 3. 删除或禁用令牌
     const { error } = await supabase
       .from('push_tokens')
+      // @ts-ignore - Supabase type inference issue
       .update({ is_active: false })
+      // @ts-ignore - Supabase type inference issue
       .eq('user_id', user.id)
+      // @ts-ignore - Supabase type inference issue
       .eq('token', token);
 
     if (error) {
@@ -171,8 +178,7 @@ export async function DELETE(req: NextRequest) {
 export async function GET() {
   try {
     // 1. 验证用户身份
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {

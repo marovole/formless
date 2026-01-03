@@ -1,7 +1,6 @@
 // @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient, getSupabaseAdminClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { getActivePrompt } from '@/lib/prompts/manager';
 import { streamChatCompletion } from '@/lib/llm/chutes';
@@ -12,6 +11,17 @@ import type { ChatMessage } from '@/lib/llm/chutes';
 
 export async function POST(request: NextRequest) {
   try {
+    // 1. Verify user authentication
+    const supabase = await getSupabaseServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Validate request body
     const body = await request.json()
     const validationResult = ChatSchema.safeParse(body)
@@ -31,35 +41,29 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationId, language = 'zh' } = validationResult.data
 
-    const cookieStore = cookies();
-    const authClient = createClient(cookieStore);
-    const { data: { user }, error: authError } = await authClient.auth.getUser();
-
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    const supabase = getSupabaseAdminClient();
-
     let activeConversationId = conversationId;
     let conversationHistory: ChatMessage[] = [];
 
     if (activeConversationId) {
-      const { data: conversation, error: conversationError } = await supabase
+      // Verify the conversation belongs to this user
+      const { data: conversation, error: convError } = await supabase
         .from('conversations')
-        .select('id')
+        .select('id, user_id')
         .eq('id', activeConversationId)
-        .eq('user_id', user.id)
-        .maybeSingle();
+        .single();
 
-      if (conversationError || !conversation) {
+      if (convError || !conversation) {
         return new Response(JSON.stringify({ error: 'Conversation not found' }), {
           status: 404,
           headers: { 'Content-Type': 'application/json' },
-        })
+        });
+      }
+
+      if ((conversation as any).user_id !== user.id) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
 
       const { data: messages } = await supabase
@@ -75,9 +79,14 @@ export async function POST(request: NextRequest) {
         }));
       }
     } else {
+      // Create new conversation with user_id
       const { data: newConversation, error: convError } = await supabase
         .from('conversations')
-        .insert([{ language, user_id: user.id }])
+        .insert([{
+          user_id: user.id,
+          language,
+          title: message.slice(0, 50),
+        }])
         .select('id')
         .single();
 
@@ -97,7 +106,7 @@ export async function POST(request: NextRequest) {
     const systemPrompt = await getActivePrompt('formless_elder', language);
 
     const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt || '' },
+      { role: 'system', content: systemPrompt?.content || '' },
       ...conversationHistory,
       { role: 'user', content: message },
     ];
@@ -140,6 +149,7 @@ export async function POST(request: NextRequest) {
             .insert([
               {
                 api_key_id: apiKey.id,
+                user_id: user.id,
                 tokens_used: tokenCount,
                 request_type: 'chat_completion',
               },

@@ -4,9 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // =============================================
 // Types
@@ -25,8 +23,7 @@ interface ActionRequest {
 export async function POST(req: NextRequest) {
   try {
     // 1. 验证用户身份
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -79,7 +76,7 @@ async function processAction(
   action: string,
   triggerId: string | undefined,
   triggerHistoryId: string | undefined,
-  supabase: SupabaseClient
+  supabase: any
 ): Promise<{ success?: boolean; error?: string; redirectUrl?: string }> {
   // 1. 静默动作
   if (action.startsWith('snooze')) {
@@ -118,7 +115,7 @@ async function processAction(
 
   // 7. 安全资源
   if (action.startsWith('safety.')) {
-    return await handleSafetyAction(action);
+    return await handleSafetyAction(action, supabase);
   }
 
   return { error: 'Unknown action' };
@@ -127,11 +124,7 @@ async function processAction(
 /**
  * 处理静默动作
  */
-async function handleSnoozeAction(
-  userId: string,
-  action: string,
-  supabase: SupabaseClient
-) {
+async function handleSnoozeAction(userId: string, action: string, supabase: any) {
   let snoozedUntil: Date;
 
   if (action === 'snooze.24h') {
@@ -166,7 +159,7 @@ async function handleSnoozeAction(
 /**
  * 处理关闭观照
  */
-async function handleDisableAction(userId: string, supabase: SupabaseClient) {
+async function handleDisableAction(userId: string, supabase: any) {
   const { error } = await supabase
     .from('guanzhao_budget_tracking')
     .update({ enabled: false })
@@ -185,7 +178,7 @@ async function handleDisableAction(userId: string, supabase: SupabaseClient) {
 /**
  * 处理仅保留周回顾
  */
-async function handleKeepWeeklyOnly(userId: string, supabase: SupabaseClient) {
+async function handleKeepWeeklyOnly(userId: string, supabase: any) {
   // 设置为静默级别，但保留 weekly_review
   const { error } = await supabase
     .from('guanzhao_budget_tracking')
@@ -215,7 +208,7 @@ async function handleFeedbackAction(
   userId: string,
   action: string,
   triggerHistoryId: string | undefined,
-  supabase: SupabaseClient
+  supabase: any
 ) {
   const feedback = action.replace('feedback.', '');
 
@@ -266,7 +259,7 @@ async function handleFeedbackAction(
 /**
  * 处理安全资源动作
  */
-async function handleSafetyAction(action: string) {
+async function handleSafetyAction(action: string, supabase: any) {
   if (action === 'safety.open_resources') {
     return {
       redirectUrl: '/resources/crisis',

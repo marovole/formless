@@ -127,7 +127,7 @@ export interface Trigger {
   };
   template_sets: {
     fallback_style: string;
-    by_style: Record<string, string[]>;
+    by_style: Record<string, string[] | undefined>;
   };
   in_app: TriggerConfig;
   push?: TriggerConfig;
@@ -307,30 +307,5 @@ export interface GuanzhaoSettings {
 }
 
 // =============================================
-// 导出所有类型
+// 类型导出已通过上述 individual interface 声明完成
 // =============================================
-
-export type {
-  GuanzhaoConfig,
-  Persona,
-  Defaults,
-  FrequencyLevel,
-  GlobalRules,
-  SuppressionRule,
-  Action,
-  Template,
-  TemplateButton,
-  Trigger,
-  TriggerConfig,
-  RiskLevel,
-  RiskDetectionResult,
-  UserBudgetInfo,
-  TriggerHistoryEntry,
-  CooldownEntry,
-  PushTokenEntry,
-  SafetyScreeningLogEntry,
-  UserSessionEntry,
-  CanTriggerResponse,
-  EvaluateTriggerResponse,
-  GuanzhaoSettings,
-};

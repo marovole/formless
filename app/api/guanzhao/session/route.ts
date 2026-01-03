@@ -5,8 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // =============================================
 // Types
@@ -60,8 +59,7 @@ function getEdgeFunctionUrl(functionName: string): string {
 export async function POST(req: NextRequest) {
   try {
     // 1. 验证用户身份
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {

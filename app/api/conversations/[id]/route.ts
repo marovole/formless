@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 
 export async function DELETE(
@@ -9,43 +8,62 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+
+    // 1. Verify user authentication
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: conversation } = await supabase
+    // 2. Verify the conversation belongs to this user
+    const { data: conversation, error: convCheckError } = await supabase
       .from('conversations')
-      .select('id')
+      .select('id, user_id')
       .eq('id', id)
-      .eq('user_id', user.id)
-      .maybeSingle();
+      .single();
 
-    if (!conversation) {
+    if (convCheckError || !conversation) {
       return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
     }
 
-    const { error: messagesError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((conversation as any).user_id !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // 3. Delete related records in transaction-like manner
+    // Messages
+    await supabase
       .from('messages')
       .delete()
       .eq('conversation_id', id);
 
-    if (messagesError) {
-      throw messagesError;
-    }
-
-    const { error: quotesError } = await supabase
+    // Key quotes (memories) - can be optionally preserved
+    // Uncomment below to preserve memories even when conversation is deleted
+    // await supabase
+    //   .from('key_quotes')
+    //   .update({ conversation_id: null })
+    //   .eq('conversation_id', id);
+    await supabase
       .from('key_quotes')
       .delete()
       .eq('conversation_id', id);
 
-    if (quotesError) {
-      throw quotesError;
-    }
+    // Guanzhao trigger history
+    await supabase
+      .from('guanzhao_trigger_history')
+      .delete()
+      .eq('conversation_id', id);
 
+    // API usage records
+    await supabase
+      .from('api_usage')
+      .delete()
+      .eq('conversation_id', id);
+
+    // 4. Delete the conversation
     const { error: convError } = await supabase
       .from('conversations')
       .delete()

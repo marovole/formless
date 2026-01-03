@@ -1,7 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,22 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 export default function SettingsPage() {
   const router = useRouter();
-  const locale = useLocale();
+  const params = useParams();
+  const locale = params.locale as string || 'zh';
   const { user, signOut } = useAuth();
 
   const handleLanguageChange = (newLocale: string) => {
-    const currentPath = window.location.pathname;
-    const newPath = currentPath.replace(`/${locale}`, `/${newLocale}`);
-    router.push(newPath);
+    router.replace(`/${newLocale}/settings`);
   };
 
   const handleSignOut = async () => {
     await signOut();
-    router.push('/');
+    router.push(`/${locale}/auth`);
   };
 
   if (!user) {
-    router.push('/auth');
+    router.push(`/${locale}/auth`);
     return null;
   }
 
@@ -61,7 +59,7 @@ export default function SettingsPage() {
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => router.push('/history')}
+                onClick={() => router.push(`/${locale}/history`)}
               >
                 View Conversation History
               </Button>

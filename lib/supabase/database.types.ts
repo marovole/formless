@@ -131,6 +131,57 @@ export interface Database {
         Insert: Partial<Database['public']['Tables']['prompts']['Row']>
         Update: Partial<Database['public']['Tables']['prompts']['Row']>
       }
+      guanzhao_budget_tracking: {
+        Row: {
+          id: string
+          user_id: string
+          enabled: boolean
+          frequency_level: 'silent' | 'qingjian' | 'zhongdao' | 'jingjin'
+          style: 'qingming' | 'cibei' | 'zhizhi'
+          push_enabled: boolean
+          dnd_start: string
+          dnd_end: string
+          snoozed_until: string | null
+          budget_in_app_day: number
+          budget_in_app_week: number
+          budget_push_day: number
+          budget_push_week: number
+          used_in_app_day: number
+          used_in_app_week: number
+          used_push_day: number
+          used_push_week: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['guanzhao_budget_tracking']['Row']>
+        Update: Partial<Database['public']['Tables']['guanzhao_budget_tracking']['Row']>
+      }
+      guanzhao_trigger_history: {
+        Row: {
+          id: string
+          user_id: string
+          trigger_id: string
+          template_id: string
+          channel: 'in_app' | 'push'
+          status: 'shown' | 'dismissed' | 'clicked' | 'feedback'
+          feedback: string | null
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['guanzhao_trigger_history']['Row']>
+        Update: Partial<Database['public']['Tables']['guanzhao_trigger_history']['Row']>
+      }
+      guanzhao_cooldowns: {
+        Row: {
+          id: string
+          user_id: string
+          trigger_id: string
+          channel: 'in_app' | 'push'
+          cooldown_until: string
+          created_at: string
+        }
+        Insert: Partial<Database['public']['Tables']['guanzhao_cooldowns']['Row']>
+        Update: Partial<Database['public']['Tables']['guanzhao_cooldowns']['Row']>
+      }
     }
     Views: {
       user_stats: {

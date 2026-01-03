@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 
 interface ConversationPreview {
@@ -13,31 +12,25 @@ interface ConversationPreview {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userIdParam = searchParams.get('userId');
-    const limitParam = Number.parseInt(searchParams.get('limit') || '20', 10);
-    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 20;
-
-    const cookieStore = cookies();
-    const supabase = createClient(cookieStore);
+    // 1. Verify user authentication
+    const supabase = await getSupabaseServerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (userIdParam && userIdParam !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+    const { searchParams } = new URL(request.url);
+    const limitParam = Number.parseInt(searchParams.get('limit') || '20', 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 20;
 
-    const query = supabase
+    // Only return conversations for the authenticated user
+    const { data: conversations, error } = await supabase
       .from('conversations')
-      .select('id, created_at, language, updated_at')
+      .select('id, created_at, language, updated_at, title')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(limit);
-
-    const { data: conversations, error } = await query;
 
     if (error) {
       throw error;
@@ -65,8 +58,11 @@ export async function GET(request: NextRequest) {
     }
 
     const conversationsWithPreview: ConversationPreview[] = (conversations || []).map((conv) => ({
-      ...conv,
-      preview: previewsByConversation[conv.id]?.slice(0, 100) || '',
+      id: conv.id,
+      created_at: conv.created_at,
+      language: conv.language,
+      updated_at: conv.updated_at,
+      preview: previewsByConversation[conv.id]?.slice(0, 100) || conv.title || '',
     }));
 
     return NextResponse.json({ conversations: conversationsWithPreview });
