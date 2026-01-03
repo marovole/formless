@@ -1,6 +1,6 @@
 // @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 
 interface ConversationPreview {
@@ -13,23 +13,24 @@ interface ConversationPreview {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    // 1. Verify user authentication
+    const supabase = await getSupabaseServerClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    const supabase = getSupabaseAdminClient();
-
-    let query = supabase
-      .from('conversations')
-      .select('id, created_at, language, updated_at')
-      .order('updated_at', { ascending: false })
-      .limit(limit);
-
-    if (userId) {
-      query = query.eq('user_id', userId);
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { data: conversations, error } = await query;
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    // Only return conversations for the authenticated user
+    const { data: conversations, error } = await supabase
+      .from('conversations')
+      .select('id, created_at, language, updated_at, title')
+      .eq('user_id', user.id)
+      .order('updated_at', { ascending: false })
+      .limit(limit);
 
     if (error) {
       throw error;
@@ -47,8 +48,11 @@ export async function GET(request: NextRequest) {
         .single();
 
       conversationsWithPreview.push({
-        ...conv,
-        preview: lastMessage?.content?.slice(0, 100) || '',
+        id: conv.id,
+        created_at: conv.created_at,
+        language: conv.language,
+        updated_at: conv.updated_at,
+        preview: lastMessage?.content?.slice(0, 100) || conv.title || '',
       });
     }
 

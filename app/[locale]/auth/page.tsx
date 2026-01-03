@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from 'next-intl';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 
 export default function AuthPage() {
   const router = useRouter();
+  const locale = useLocale();
   const { signIn, signUp } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -27,7 +29,7 @@ export default function AuthPage() {
       } else {
         await signUp(email, password);
       }
-      router.push('/chat');
+      router.push(`/${locale}/chat`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {

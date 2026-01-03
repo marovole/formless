@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useAuthGuard } from '@/lib/hooks/useAuth';
 
 interface Conversation {
   id: string;
@@ -12,7 +13,12 @@ interface Conversation {
 }
 
 export default function HistoryPage() {
+  // Auth guard - redirect to login if not authenticated
+  useAuthGuard();
+
   const router = useRouter();
+  const params = useParams();
+  const locale = params.locale as string || 'zh';
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +57,7 @@ export default function HistoryPage() {
   };
 
   const handleContinue = (id: string) => {
-    router.push(`/chat?conversationId=${id}`);
+    router.push(`/${locale}/chat?conversationId=${id}`);
   };
 
   if (loading) {
@@ -105,7 +111,7 @@ export default function HistoryPage() {
         )}
 
         <div className="mt-8">
-          <Button onClick={() => router.push('/chat')}>
+          <Button onClick={() => router.push(`/${locale}/chat`)}>
             Start New Conversation
           </Button>
         </div>

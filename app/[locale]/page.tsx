@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl'
-import Link from 'next/link'
+import { Link } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
 
 export default function HomePage() {
@@ -15,23 +15,23 @@ export default function HomePage() {
           {t('tagline')}
         </p>
         <p className="text-lg text-stone-500 mb-12 max-w-2xl mx-auto">
-          A wise companion for your journey through life&apos;s questions. 
+          A wise companion for your journey through life&apos;s questions.
           Guided by the wisdom of a Buddhist elder, find clarity in conversation.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
           <Link href="/chat">
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               className="bg-amber-600 hover:bg-amber-700 text-white px-8 py-6 text-lg shadow-lg hover:shadow-xl transition-all"
             >
               Start Conversation
             </Button>
           </Link>
           <Link href="/auth">
-            <Button 
-              size="lg" 
-              variant="outline" 
+            <Button
+              size="lg"
+              variant="outline"
               className="px-8 py-6 text-lg border-stone-300 hover:border-amber-600 hover:text-amber-700 transition-all"
             >
               Sign In

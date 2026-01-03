@@ -44,7 +44,16 @@ const DEFAULT_SETTINGS: GuanzhaoSettings = {
 // Frequency Level Descriptions
 // =============================================
 
-const FREQUENCY_LEVELS = {
+type FrequencyLevelKey = 'silent' | 'qingjian' | 'zhongdao' | 'jingjin';
+
+interface FrequencyLevelInfo {
+  label: string;
+  description: string;
+  in_app: string;
+  push: string;
+}
+
+const FREQUENCY_LEVELS: Record<FrequencyLevelKey, FrequencyLevelInfo> = {
   silent: {
     label: '静默',
     description: '完全关闭主动触达',
@@ -75,7 +84,15 @@ const FREQUENCY_LEVELS = {
 // Style Descriptions
 // =============================================
 
-const STYLES = {
+type StyleKey = 'qingming' | 'cibei' | 'zhizhi';
+
+interface StyleInfo {
+  label: string;
+  description: string;
+  tone: string;
+}
+
+const STYLES: Record<StyleKey, StyleInfo> = {
   qingming: {
     label: '清明',
     description: '更提问、更留白，引导你自省',
@@ -221,7 +238,7 @@ export default function GuanzhaoSettingsPage() {
                 onValueChange={(value) => updateSetting('frequency_level', value as any)}
                 className="space-y-3"
               >
-                {(Object.entries(FREQUENCY_LEVELS) as [keyof typeof FREQUENCY_LEVELS, string][]).map(
+                {(Object.entries(FREQUENCY_LEVELS) as [FrequencyLevelKey, FrequencyLevelInfo][]).map(
                   ([key, level]) => (
                     <div
                       key={key}
@@ -265,7 +282,7 @@ export default function GuanzhaoSettingsPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.entries(STYLES) as [keyof typeof STYLES, string][]).map(([key, style]) => (
+                  {(Object.entries(STYLES) as [StyleKey, StyleInfo][]).map(([key, style]) => (
                     <SelectItem key={key} value={key}>
                       <div className="flex items-center justify-between w-full pr-4">
                         <span className="font-medium">{style.label}</span>
