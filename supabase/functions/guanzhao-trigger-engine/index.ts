@@ -20,11 +20,11 @@ interface EvaluateTriggerRequest {
   userId: string;
   triggerId: string;
   channel: 'in_app' | 'push';
-  userConfig?: Record<string, any>;
+  userConfig?: Record<string, unknown>;
   context?: {
     sessionId?: string;
     conversationId?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -67,11 +67,22 @@ interface EvaluateTriggerResponse {
   };
 }
 
+interface BudgetRow {
+  budget_in_app_day: number;
+  budget_in_app_week: number;
+  budget_push_day: number;
+  budget_push_week: number;
+  used_in_app_day: number;
+  used_in_app_week: number;
+  used_push_day: number;
+  used_push_week: number;
+}
+
 // =============================================
 // Configuration (loaded from docs/guanzhao/guanzhao-bundle.json)
 // =============================================
 
-let guanzhaoConfig: any = null;
+let guanzhaoConfig: Record<string, unknown> | null = null;
 
 async function loadConfig() {
   if (guanzhaoConfig) return guanzhaoConfig;
@@ -108,7 +119,7 @@ async function checkBudget(
   userId: string,
   channel: 'in_app' | 'push',
   cost: number
-): Promise<{ allowed: boolean; remaining?: any }> {
+): Promise<{ allowed: boolean; remaining?: EvaluateTriggerResponse['budgetRemaining'] }> {
   const { data: budget } = await supabase
     .from('guanzhao_budget_tracking')
     .select('*')
@@ -119,9 +130,11 @@ async function checkBudget(
     return { allowed: false };
   }
 
+  const budgetRow = budget as BudgetRow;
+
   if (channel === 'in_app') {
-    const dayRemaining = budget.budget_in_app_day - budget.used_in_app_day;
-    const weekRemaining = budget.budget_in_app_week - budget.used_in_app_week;
+    const dayRemaining = budgetRow.budget_in_app_day - budgetRow.used_in_app_day;
+    const weekRemaining = budgetRow.budget_in_app_week - budgetRow.used_in_app_week;
 
     if (cost > dayRemaining || cost > weekRemaining) {
       return {
@@ -133,8 +146,8 @@ async function checkBudget(
       };
     }
   } else {
-    const dayRemaining = budget.budget_push_day - budget.used_push_day;
-    const weekRemaining = budget.budget_push_week - budget.used_push_week;
+    const dayRemaining = budgetRow.budget_push_day - budgetRow.used_push_day;
+    const weekRemaining = budgetRow.budget_push_week - budgetRow.used_push_week;
 
     if (cost > dayRemaining || cost > weekRemaining) {
       return { allowed: false };
@@ -152,22 +165,41 @@ async function consumeBudget(
   channel: 'in_app' | 'push',
   cost: number
 ): Promise<boolean> {
-  const updates: any = {};
+  const { data: budget } = await supabase
+    .from('guanzhao_budget_tracking')
+    .select('used_in_app_day, used_in_app_week, used_push_day, used_push_week')
+    .eq('user_id', userId)
+    .single();
 
-  if (channel === 'in_app') {
-    updates.used_in_app_day = supabase.rpc('increment', { amount: cost });
-    updates.used_in_app_week = supabase.rpc('increment', { amount: cost });
-  } else {
-    updates.used_push_day = supabase.rpc('increment', { amount: cost });
-    updates.used_push_week = supabase.rpc('increment', { amount: cost });
+  if (!budget) {
+    return false;
   }
 
-  const { error } = await supabase
-    .from('guanzhao_budget_tracking')
-    .update(updates)
-    .eq('user_id', userId);
+  const budgetRow = budget as Pick<BudgetRow, 'used_in_app_day' | 'used_in_app_week' | 'used_push_day' | 'used_push_week'>;
+  const updates: Partial<Pick<BudgetRow, 'used_in_app_day' | 'used_in_app_week' | 'used_push_day' | 'used_push_week'>> = {};
+  let query = supabase.from('guanzhao_budget_tracking').update(updates).eq('user_id', userId);
 
-  return !error;
+  if (channel === 'in_app') {
+    updates.used_in_app_day = budgetRow.used_in_app_day + cost;
+    updates.used_in_app_week = budgetRow.used_in_app_week + cost;
+    query = query
+      .eq('used_in_app_day', budgetRow.used_in_app_day)
+      .eq('used_in_app_week', budgetRow.used_in_app_week);
+  } else {
+    updates.used_push_day = budgetRow.used_push_day + cost;
+    updates.used_push_week = budgetRow.used_push_week + cost;
+    query = query
+      .eq('used_push_day', budgetRow.used_push_day)
+      .eq('used_push_week', budgetRow.used_push_week);
+  }
+
+  const { data, error } = await query.select('user_id').maybeSingle();
+  if (error) {
+    console.error('Error consuming budget:', error);
+    return false;
+  }
+
+  return !!data;
 }
 
 // =============================================
@@ -253,18 +285,7 @@ async function selectTemplate(
   triggerId: string,
   style: string
 ): Promise<Template | null> {
-  // 1. 获取最近使用的模板
-  const { data: recentTriggers } = await supabase
-    .from('guanzhao_trigger_history')
-    .select('template_id')
-    .eq('user_id', userId)
-    .eq('trigger_id', triggerId)
-    .order('created_at', { ascending: false })
-    .limit(5);
-
-  const recentlyUsed = recentTriggers?.map((t) => t.template_id) || [];
-
-  // 2. 获取触发器的所有模板
+  // 1. 获取触发器的所有模板
   // 实际实现中应该从配置文件加载
   // 这里返回一个示例模板
   const template: Template = {
@@ -339,7 +360,7 @@ serve(async (req) => {
   try {
     // 解析请求
     const body: EvaluateTriggerRequest = await req.json();
-    const { userId, triggerId, channel, userConfig, context } = body;
+    const { userId, triggerId, channel } = body;
 
     // 1. 加载配置
     await loadConfig();

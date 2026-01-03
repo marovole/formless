@@ -1,19 +1,42 @@
-// @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+    const userIdParam = searchParams.get('userId');
     const conversationId = searchParams.get('conversationId');
 
-    if (!userId && !conversationId) {
+    if (!userIdParam && !conversationId) {
       return NextResponse.json({ error: 'userId or conversationId required' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdminClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (userIdParam && userIdParam !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    if (conversationId) {
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('id', conversationId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!conversation) {
+        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+      }
+    }
 
     let query = supabase
       .from('key_quotes')
@@ -21,8 +44,8 @@ export async function GET(request: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(10);
 
-    if (userId) {
-      query = query.eq('user_id', userId);
+    if (userIdParam) {
+      query = query.eq('user_id', user.id);
     }
 
     if (conversationId) {
@@ -36,11 +59,11 @@ export async function GET(request: NextRequest) {
     }
 
     let profile = null;
-    if (userId) {
+    if (userIdParam) {
       const { data: userData } = await supabase
         .from('users')
         .select('profile')
-        .eq('id', userId)
+        .eq('id', user.id)
         .single();
 
       profile = userData?.profile as Record<string, unknown> | null;

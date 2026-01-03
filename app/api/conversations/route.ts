@@ -1,6 +1,6 @@
-// @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 
 
 interface ConversationPreview {
@@ -14,20 +14,28 @@ interface ConversationPreview {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const userIdParam = searchParams.get('userId');
+    const limitParam = Number.parseInt(searchParams.get('limit') || '20', 10);
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 20;
 
-    const supabase = getSupabaseAdminClient();
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    let query = supabase
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (userIdParam && userIdParam !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const query = supabase
       .from('conversations')
       .select('id, created_at, language, updated_at')
+      .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
       .limit(limit);
-
-    if (userId) {
-      query = query.eq('user_id', userId);
-    }
 
     const { data: conversations, error } = await query;
 
@@ -35,22 +43,31 @@ export async function GET(request: NextRequest) {
       throw error;
     }
 
-    const conversationsWithPreview: ConversationPreview[] = [];
+    const conversationIds = (conversations || []).map((conv) => conv.id);
+    const previewsByConversation: Record<string, string> = {};
 
-    for (const conv of conversations || []) {
-      const { data: lastMessage } = await supabase
+    if (conversationIds.length > 0) {
+      const { data: messages, error: messagesError } = await supabase
         .from('messages')
-        .select('content')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .select('conversation_id, content, created_at')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: false });
 
-      conversationsWithPreview.push({
-        ...conv,
-        preview: lastMessage?.content?.slice(0, 100) || '',
-      });
+      if (messagesError) {
+        throw messagesError;
+      }
+
+      for (const message of messages || []) {
+        if (!previewsByConversation[message.conversation_id]) {
+          previewsByConversation[message.conversation_id] = message.content;
+        }
+      }
     }
+
+    const conversationsWithPreview: ConversationPreview[] = (conversations || []).map((conv) => ({
+      ...conv,
+      preview: previewsByConversation[conv.id]?.slice(0, 100) || '',
+    }));
 
     return NextResponse.json({ conversations: conversationsWithPreview });
   } catch (error) {

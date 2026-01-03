@@ -6,8 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
-import { getGuanzhaoConfig, getTemplate, getRandomTemplate, getTemplatesForTrigger } from '@/lib/guanzhao/config';
-import type { GuanzhaoTemplate } from '@/components/guanzhao/GuanzhaoTriggerCard';
+import { getGuanzhaoConfig, type Trigger, type Template } from '@/lib/guanzhao/config';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 // =============================================
 // Types
@@ -16,7 +16,23 @@ import type { GuanzhaoTemplate } from '@/components/guanzhao/GuanzhaoTriggerCard
 interface EvaluateTriggerRequest {
   triggerId: string;
   channel: 'in_app' | 'push';
-  userConfig?: Record<string, any>;
+}
+
+interface UserSettings {
+  enabled: boolean;
+  push_enabled: boolean;
+  snoozed_until: string | null;
+  dnd_start: string | null;
+  dnd_end: string | null;
+  style: string | null;
+  budget_in_app_day: number;
+  budget_in_app_week: number;
+  budget_push_day: number;
+  budget_push_week: number;
+  used_in_app_day: number;
+  used_in_app_week: number;
+  used_push_day: number;
+  used_push_week: number;
 }
 
 // =============================================
@@ -39,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     // 2. 解析请求
     const body: EvaluateTriggerRequest = await req.json();
-    const { triggerId, channel, userConfig } = body;
+    const { triggerId, channel } = body;
 
     if (!triggerId || !channel) {
       return NextResponse.json(
@@ -50,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     // 3. 加载配置
     const config = getGuanzhaoConfig();
-    const trigger = config.triggers.find((t: any) => t.id === triggerId);
+    const trigger = (config.triggers as Trigger[]).find((t) => t.id === triggerId);
 
     if (!trigger) {
       return NextResponse.json(
@@ -60,11 +76,13 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. 检查用户设置
-    const { data: userSettings } = await supabase
+    const { data: userSettingsData } = await supabase
       .from('guanzhao_budget_tracking')
       .select('*')
       .eq('user_id', user.id)
       .single();
+
+    const userSettings = userSettingsData as UserSettings | null;
 
     if (!userSettings) {
       return NextResponse.json(
@@ -81,7 +99,15 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 6. 检查静默状态
+    // 6. 检查渠道是否启用（仅 push）
+    if (channel === 'push' && !userSettings.push_enabled) {
+      return NextResponse.json({
+        allowed: false,
+        reason: 'Push notifications are not enabled',
+      });
+    }
+
+    // 7. 检查静默状态
     if (userSettings.snoozed_until) {
       const snoozedUntil = new Date(userSettings.snoozed_until);
       if (snoozedUntil > new Date()) {
@@ -93,7 +119,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 7. 检查 DND（仅 push）
+    // 8. 检查 DND（仅 push）
     if (channel === 'push') {
       const now = new Date();
       const currentHour = now.getHours();
@@ -112,7 +138,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 8. 检查预算
+    // 9. 检查预算
     const budgetCost = trigger.budget_cost?.[channel] || 0;
 
     if (budgetCost > 0) {
@@ -136,7 +162,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 9. 检查冷却时间
+    // 10. 检查冷却时间
     const cooldownCheck = await checkCooldown(supabase, user.id, triggerId, channel);
     if (cooldownCheck.inCooldown) {
       return NextResponse.json({
@@ -146,7 +172,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 10. 选择模板
+    // 11. 选择模板
     const userStyle = userSettings.style || 'qingming';
     const templateIds = trigger.template_sets?.by_style?.[userStyle] ||
                         trigger.template_sets?.by_style?.[trigger.template_sets?.fallback_style || 'qingming'];
@@ -167,15 +193,17 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(templateIds.length);
 
-    const recentlyUsed = recentTriggers?.map((t: any) => t.template_id) || [];
+    const recentlyUsed = (recentTriggers || [])
+      .map((row: { template_id: string | null }) => row.template_id)
+      .filter((id): id is string => Boolean(id));
 
     // 选择一个未使用的模板
-    const availableTemplateIds = templateIds.filter((id: string) => !recentlyUsed.includes(id));
+    const availableTemplateIds = templateIds.filter((id) => !recentlyUsed.includes(id));
     const selectedTemplateId = availableTemplateIds.length > 0
       ? availableTemplateIds[Math.floor(Math.random() * availableTemplateIds.length)]
       : templateIds[Math.floor(Math.random() * templateIds.length)];
 
-    const template = config.templates.find((t: any) => t.id === selectedTemplateId);
+    const template = (config.templates as Template[]).find((t) => t.id === selectedTemplateId);
 
     if (!template) {
       return NextResponse.json({
@@ -184,12 +212,18 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 11. 消耗预算
+    // 12. 消耗预算
     if (budgetCost > 0) {
-      await consumeBudget(supabase, user.id, channel, budgetCost);
+      const consumed = await consumeBudget(supabase, user.id, channel, budgetCost, userSettings);
+      if (!consumed) {
+        return NextResponse.json(
+          { allowed: false, reason: 'Budget changed, please retry' },
+          { status: 409 }
+        );
+      }
     }
 
-    // 12. 记录触发历史
+    // 13. 记录触发历史
     await supabase
       .from('guanzhao_trigger_history')
       .insert({
@@ -200,7 +234,7 @@ export async function POST(req: NextRequest) {
         status: 'shown',
       });
 
-    // 13. 设置冷却时间（如果有）
+    // 14. 设置冷却时间（如果有）
     const cooldownDays = trigger[channel]?.constraints?.cooldown_days;
     if (cooldownDays) {
       const cooldownUntil = new Date(Date.now() + cooldownDays * 24 * 60 * 60 * 1000);
@@ -214,7 +248,7 @@ export async function POST(req: NextRequest) {
         });
     }
 
-    // 14. 返回成功
+    // 15. 返回成功
     return NextResponse.json({
       allowed: true,
       triggerId: triggerId,
@@ -262,11 +296,11 @@ function parseTime(timeStr: string): number {
  * 检查用户是否有足够预算
  */
 async function checkUserBudget(
-  supabase: any,
+  _supabase: SupabaseClient,
   userId: string,
   channel: 'in_app' | 'push',
   cost: number,
-  settings: any
+  settings: UserSettings
 ): Promise<boolean> {
   if (cost === 0) return true;
 
@@ -287,32 +321,46 @@ async function checkUserBudget(
  * 消耗预算
  */
 async function consumeBudget(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   channel: 'in_app' | 'push',
-  cost: number
-): Promise<void> {
-  const updates: any = {};
+  cost: number,
+  settings: UserSettings
+): Promise<boolean> {
+  const updates: Partial<Pick<UserSettings,
+    'used_in_app_day' | 'used_in_app_week' | 'used_push_day' | 'used_push_week'
+  >> = {};
+  let query = supabase.from('guanzhao_budget_tracking').update(updates).eq('user_id', userId);
 
   if (channel === 'in_app') {
-    updates.used_in_app_day = supabase.rpc('increment', { amount: cost, row_id: userId });
-    updates.used_in_app_week = supabase.rpc('increment', { amount: cost, row_id: userId });
+    updates.used_in_app_day = settings.used_in_app_day + cost;
+    updates.used_in_app_week = settings.used_in_app_week + cost;
+    query = query
+      .eq('used_in_app_day', settings.used_in_app_day)
+      .eq('used_in_app_week', settings.used_in_app_week);
   } else {
-    updates.used_push_day = supabase.rpc('increment', { amount: cost, row_id: userId });
-    updates.used_push_week = supabase.rpc('increment', { amount: cost, row_id: userId });
+    updates.used_push_day = settings.used_push_day + cost;
+    updates.used_push_week = settings.used_push_week + cost;
+    query = query
+      .eq('used_push_day', settings.used_push_day)
+      .eq('used_push_week', settings.used_push_week);
   }
 
-  await supabase
-    .from('guanzhao_budget_tracking')
-    .update(updates)
-    .eq('user_id', userId);
+  const { data, error } = await query.select('user_id').maybeSingle();
+
+  if (error) {
+    console.error('Failed to consume budget:', error);
+    return false;
+  }
+
+  return !!data;
 }
 
 /**
  * 检查冷却时间
  */
 async function checkCooldown(
-  supabase: any,
+  supabase: SupabaseClient,
   userId: string,
   triggerId: string,
   channel: 'in_app' | 'push'

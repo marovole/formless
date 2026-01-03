@@ -1,8 +1,10 @@
 // @ts-nocheck - Supabase type system limitation with dynamic updates
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { createClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { streamChatCompletion } from '@/lib/llm/openrouter';
+import { ExtractRequestSchema } from '@/lib/validation/schemas';
 
 
 interface ExtractRequest {
@@ -12,13 +14,45 @@ interface ExtractRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    const { conversationId, userId }: ExtractRequest = await request.json();
+    const body = await request.json();
+    const validationResult = ExtractRequestSchema.safeParse(body);
 
-    if (!conversationId) {
-      return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
+    if (!validationResult.success) {
+      const errors: Record<string, string[]> = {};
+      validationResult.error.issues.forEach((err) => {
+        const path = err.path.join('.');
+        if (!errors[path]) {
+          errors[path] = [];
+        }
+        errors[path].push(err.message);
+      });
+      return NextResponse.json({ error: 'Validation failed', errors }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdminClient();
+    const { conversationId, userId }: ExtractRequest = validationResult.data;
+
+    const cookieStore = cookies();
+    const supabase = createClient(cookieStore);
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (userId && userId !== user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('id', conversationId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
 
     const { data: messages } = await supabase
       .from('messages')
@@ -71,17 +105,17 @@ ${conversationText}`;
               await supabase.from('key_quotes')
                 .insert([{
                   conversation_id: conversationId,
-                  user_id: userId || null,
+                  user_id: user.id,
                   quote_text: quote,
                 }]);
             }
           }
 
-          if (userId && parsed.insights) {
+          if (parsed.insights) {
             const { data: existingUser } = await supabase
               .from('users')
               .select('profile')
-              .eq('id', userId)
+              .eq('id', user.id)
               .single();
 
             const currentProfile = existingUser?.profile || {};
@@ -93,7 +127,7 @@ ${conversationText}`;
             await supabase
               .from('users')
               .update({ profile: updatedProfile })
-              .eq('id', userId);
+              .eq('id', user.id);
           }
         } catch (parseError) {
           console.error('Failed to parse extraction result:', parseError);

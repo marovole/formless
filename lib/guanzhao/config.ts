@@ -89,7 +89,7 @@ export interface Action {
   duration?: string;
   until?: string;
   key?: string;
-  value?: any;
+  value?: unknown;
   page?: string;
 }
 
@@ -336,8 +336,6 @@ export function getBudgetForFrequencyLevel(
   const frequencyLevel = getFrequencyLevel(level);
   if (!frequencyLevel) return 0;
 
-  const key = `${channel}_${period}` as 'in_app_day' | 'in_app_week' | 'push_day' | 'push_week';
-
   // 处理嵌套的 budgets 对象
   if (period === 'day') {
     return frequencyLevel.budgets[channel]?.per_day || 0;
@@ -439,7 +437,7 @@ export function getTriggerBudgetCost(triggerId: string, channel: 'in_app' | 'pus
  */
 export function resolvePlaceholder(
   value: string,
-  userConfig: Record<string, any>
+  userConfig: Record<string, unknown>
 ): string {
   const placeholderRegex = /\{\{user\.(\w+)\|([^}]*)\}\}/g;
 
@@ -453,7 +451,7 @@ export function resolvePlaceholder(
  */
 export function resolveTimeWindow(
   timeWindow: { start: string; end: string; day_of_week?: string },
-  userConfig: Record<string, any>
+  userConfig: Record<string, unknown>
 ): { start: string; end: string; day_of_week?: string } {
   return {
     start: resolvePlaceholder(timeWindow.start, userConfig),

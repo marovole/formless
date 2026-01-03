@@ -6,9 +6,8 @@
 import { createClient } from '@/lib/supabase/client';
 import {
   getTriggerBudgetCost,
-  getBudgetForFrequencyLevel,
-  resolveTimeWindow,
-  type Trigger,
+  getDefaults,
+  getFrequencyLevel,
 } from './config';
 
 // =============================================
@@ -96,18 +95,25 @@ export async function getUserBudgetInfo(userId: string): Promise<UserBudgetInfo 
  */
 export async function initializeUserBudget(userId: string): Promise<UserBudgetInfo | null> {
   const supabase = getSupabaseClient();
+  const defaults = getDefaults();
+  const frequencyLevel = getFrequencyLevel(defaults.frequency_level);
+  const budgets = frequencyLevel?.budgets;
 
   const { data, error } = await supabase
     .from('guanzhao_budget_tracking')
     .upsert({
       user_id: userId,
       // 默认值
-      frequency_level: 'qingjian',
-      enabled: true,
-      push_enabled: false,
-      dnd_start: '23:30',
-      dnd_end: '08:00',
-      style: 'qingming',
+      frequency_level: defaults.frequency_level,
+      enabled: defaults.enabled,
+      push_enabled: defaults.channels.push,
+      dnd_start: defaults.dnd_local_time.start,
+      dnd_end: defaults.dnd_local_time.end,
+      style: defaults.style,
+      budget_in_app_day: budgets?.in_app.per_day ?? 0,
+      budget_in_app_week: budgets?.in_app.per_week ?? 0,
+      budget_push_day: budgets?.push.per_day ?? 0,
+      budget_push_week: budgets?.push.per_week ?? 0,
     })
     .select()
     .single();
@@ -135,10 +141,23 @@ export async function updateUserBudgetSettings(
   }>
 ): Promise<boolean> {
   const supabase = getSupabaseClient();
+  const updates = { ...settings } as Record<string, unknown>;
+
+  if (settings.frequency_level) {
+    const frequencyLevel = getFrequencyLevel(settings.frequency_level);
+    if (!frequencyLevel) {
+      console.error('Invalid frequency level:', settings.frequency_level);
+      return false;
+    }
+    updates.budget_in_app_day = frequencyLevel.budgets.in_app.per_day;
+    updates.budget_in_app_week = frequencyLevel.budgets.in_app.per_week;
+    updates.budget_push_day = frequencyLevel.budgets.push.per_day;
+    updates.budget_push_week = frequencyLevel.budgets.push.per_week;
+  }
 
   const { error } = await supabase
     .from('guanzhao_budget_tracking')
-    .update(settings)
+    .update(updates)
     .eq('user_id', userId);
 
   if (error) {
@@ -200,8 +219,7 @@ export async function setSnooze(
 export async function canTrigger(
   userId: string,
   triggerId: string,
-  channel: 'in_app' | 'push',
-  userConfig?: Record<string, any>
+  channel: 'in_app' | 'push'
 ): Promise<CanTriggerResult> {
   // 1. 获取用户预算信息
   let budgetInfo = await getUserBudgetInfo(userId);
@@ -319,7 +337,6 @@ async function hasSufficientBudget(
   channel: 'in_app' | 'push',
   cost: number
 ): Promise<boolean> {
-  const supabase = getSupabaseClient();
   const budgetInfo = await getUserBudgetInfo(userId);
 
   if (!budgetInfo) return false;
