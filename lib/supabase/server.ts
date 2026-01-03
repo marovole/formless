@@ -3,7 +3,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import { Database } from './database.types'
 
-type CookieStore = ReturnType<typeof cookies>
+type CookieStore = Awaited<ReturnType<typeof cookies>>
 
 export function createClientWithCookies(cookieStore: CookieStore) {
   return createServerClient<Database>(

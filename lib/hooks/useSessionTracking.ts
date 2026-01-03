@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import type { Template } from '@/lib/guanzhao/config';
+import type { Template } from '@/lib/guanzhao/types';
 
 // =============================================
 // Types

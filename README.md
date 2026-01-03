@@ -1,36 +1,281 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 无相 Formless
 
-## Getting Started
+> 一个充满佛性与耐心的 AI 长老，通过智慧对话帮助用户答疑解惑、疏导情绪、获得内心平静。
 
-First, run the development server:
+## 项目当前阶段
+
+### 📋 MVP 功能已完成，正在准备部署
+
+**核心功能完成度：100%**
+
+项目已完成所有 MVP 核心功能的开发和测试，包括：
+
+#### ✅ 已完成功能
+
+**1. 对话系统**
+- 实时流式对话（SSE）
+- 对话历史管理（查看/删除/继续对话）
+- 中英双语支持
+- DeepSeek R1 模型集成
+
+**2. 记忆系统**
+- 自动提取对话中的关键信息
+- 记忆召回注入到新对话
+- 用户档案管理
+- 删除对话时联动清理记忆
+
+**3. 用户系统**
+- 邮箱注册/登录（Supabase Auth）
+- 强制登录访问控制
+- 用户设置页面
+- RLS 权限隔离
+
+**4. 后台管理系统**
+- API Key 管理（CRUD + 轮询策略）
+- 用量统计与分析
+- Prompt 模板管理
+- 用户管理
+
+**5. 观照系统（亮点功能）**
+- 主动关怀 Agent 系统
+- 会话追踪与触发器引擎
+- 多种触发场景：
+  - 每日签到
+  - 夜间总结
+  - 过载保护
+  - 危机高风险处理
+- 预算与冷却管理
+- 用户自定义频率和风格
+
+**6. 技术基础设施**
+- 完整的测试框架（Vitest + Playwright）
+- 国际化路由（next-intl）
+- Cloudflare Pages 部署配置
+- Supabase 数据库架构（8 张表）
+
+---
+
+## 快速开始
+
+### 环境要求
+
+- Node.js >= 20.0.0
+- npm/yarn/pnpm/bun
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 配置环境变量
+
+复制 `.env.example` 到 `.env.local` 并配置：
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# API Keys（可选 - 用于开发测试）
+OPENROUTER_API_KEY=your_openrouter_key
+CHUTES_API_KEY=your_chutes_key
+```
+
+### 本地开发
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 运行测试
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# 单元测试
+npm run test
 
-## Learn More
+# E2E 测试
+npm run test:e2e
 
-To learn more about Next.js, take a look at the following resources:
+# 全部测试
+npm run test:all
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 部署指南
 
-## Deploy on Vercel
+### Cloudflare Pages 部署
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# 构建项目
+npm run pages:build
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# 部署到 Cloudflare Pages
+npm run deploy
+```
+
+### Supabase 数据库设置
+
+```bash
+# 链接 Supabase 项目
+supabase link --project-ref YOUR_PROJECT_REF
+
+# 推送数据库迁移
+supabase db push
+
+# 部署 Edge Functions（观照系统）
+supabase functions deploy guanzhao/session-tracker
+supabase functions deploy guanzhao/trigger-engine
+```
+
+详细部署文档请参考：
+- [观照系统部署指南](./docs/guanzhao/DEPLOYMENT.md)
+- [实施检查清单](./docs/guanzhao/IMPLEMENTATION_CHECKLIST.md)
+
+---
+
+## 项目结构
+
+```
+accra/
+├── app/                        # Next.js App Router
+│   ├── [locale]/              # 国际化路由
+│   │   ├── auth/             # 认证页面
+│   │   ├── chat/             # 对话页面
+│   │   ├── history/          # 对话历史
+│   │   └── settings/         # 用户设置
+│   ├── admin/                # 后台管理
+│   └── api/                  # API Routes
+├── components/                # React 组件
+│   ├── ui/                   # shadcn/ui 组件
+│   └── guanzhao/             # 观照系统组件
+├── docs/                      # 项目文档
+│   ├── prd.md                # 产品需求文档
+│   ├── iteration-plan.md     # 迭代计划
+│   └── guanzhao/             # 观照系统文档
+├── lib/                       # 核心库
+│   ├── supabase/             # Supabase 客户端
+│   ├── guanzhao/             # 观照系统核心
+│   └── hooks/                # React Hooks
+├── supabase/                  # Supabase 配置
+│   ├── functions/            # Edge Functions
+│   └── migrations/           # 数据库迁移
+├── e2e/                       # E2E 测试
+└── __tests__/                 # 单元测试
+```
+
+---
+
+## 技术栈
+
+| 层级 | 技术选型 |
+|------|----------|
+| 框架 | Next.js 14 (App Router) |
+| 部署 | Cloudflare Pages + Workers |
+| 数据库 | Supabase (PostgreSQL) |
+| 国际化 | next-intl |
+| 样式 | Tailwind CSS |
+| 后台 UI | shadcn/ui |
+| 测试 | Vitest + Playwright |
+| 对话模型 | DeepSeek R1 (Chutes) |
+| 记忆提取 | GLM-4.5-Air (OpenRouter) |
+
+---
+
+## 核心功能说明
+
+### 对话系统
+
+无相长老是一位修行千年的智者，通过对话帮助用户：
+
+- **倾听**：让每个人感到被看见、被接纳
+- **启发**：不给答案，用问题引导思考
+- **安宁**：让对话本身成为疗愈
+
+对话特点：
+- 慢：不急于回应，语句间有呼吸感
+- 柔：永远温和，不评判
+- 深：一针见血但不刺痛
+- 简：惜字如金，不堆砌
+
+### 记忆系统
+
+- 自动提取对话中的关键信息
+- 在后续对话中召回历史记忆
+- 构建用户档案，提供个性化体验
+
+### 观照系统（创新亮点）
+
+主动关怀 Agent，在适当时机主动出现：
+
+- **每日签到**：新的一天开始时的问候
+- **夜间总结**：对话结束时的回顾
+- **过载保护**：长时间对话的关怀
+- **危机处理**：检测到高风险时的安全提示
+
+用户可以自定义：
+- 触发频率（静默/清简/中道/精进）
+- 交互风格（慈悲/清明/直指）
+- 免打扰时段
+
+---
+
+## 待办事项
+
+### 观照系统部署（P0）
+
+观照系统代码已 100% 完成，需要部署：
+
+- [ ] 链接 Supabase 项目
+- [ ] 执行数据库迁移（包括 pg_cron 配置）
+- [ ] 部署 Edge Functions
+- [ ] 配置环境变量
+- [ ] 功能测试
+
+详见：[观照系统部署清单](./docs/guanzhao/IMPLEMENTATION_CHECKLIST.md)
+
+### 后续计划（P1-P2）
+
+- [ ] Landing Page 优化
+- [ ] SEO 优化
+- [ ] 移动端适配
+- [ ] 性能优化
+- [ ] 用户反馈收集
+
+---
+
+## 文档索引
+
+- [产品需求文档 (PRD)](./docs/prd.md)
+- [迭代计划](./docs/iteration-plan.md)
+- [开发计划](./docs/dev-plan.md)
+- [观照系统 README](./docs/guanzhao/README.md)
+
+---
+
+## 贡献指南
+
+本项目目前处于 MVP 阶段，暂不接受外部贡献。
+
+---
+
+## 许可证
+
+Copyright © 2025 Formless. All rights reserved.
+
+---
+
+## 联系方式
+
+如有问题或建议，请通过以下方式联系：
+
+- 提交 Issue
+- 发送邮件
+
+---
+
+*"凡所有相，皆是虚妄。无相，即不执着于外在形式，回归内心本质。"*

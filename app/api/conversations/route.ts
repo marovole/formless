@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 
+interface Conversation {
+  id: string;
+  created_at: string;
+  language: string;
+  updated_at: string;
+  title?: string;
+}
+
+interface Message {
+  conversation_id: string;
+  content: string;
+  created_at: string;
+}
+
 interface ConversationPreview {
   id: string;
   created_at: string;
@@ -30,7 +44,7 @@ export async function GET(request: NextRequest) {
       .select('id, created_at, language, updated_at, title')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
-      .limit(limit);
+      .limit(limit) as { data: Conversation[] | null, error: any };
 
     if (error) {
       throw error;
@@ -44,7 +58,7 @@ export async function GET(request: NextRequest) {
         .from('messages')
         .select('conversation_id, content, created_at')
         .in('conversation_id', conversationIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as { data: Message[] | null, error: any };
 
       if (messagesError) {
         throw messagesError;
