@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "pages:build": "npx @opennextjs/cloudflare build",
+    "pages:build": "npx @opennextjs/cloudflare build && bash ./scripts/post-build.sh",
     "preview": "npm run pages:build && wrangler pages dev .open-next",
     "deploy": "npm run pages:build && wrangler pages deploy .open-next",
     "test": "vitest",
@@ -52,8 +52,8 @@
     "react-dom": "^18",
     "react-hook-form": "^7.69.0",
     "tailwind-merge": "^3.4.0",
-    "zustand": "^5.0.2",
-    "zod": "^4.2.1"
+    "zod": "^4.2.1",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -75,6 +75,7 @@
     "eslint-config-next": "^15.1.11",
     "jsdom": "^27.4.0",
     "msw": "^2.12.7",
+    "pg": "^8.16.3",
     "playwright": "^1.57.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
