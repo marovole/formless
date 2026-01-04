@@ -1,60 +1,190 @@
-// @ts-nocheck - Supabase type system limitation with dynamic updates
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { streamChatCompletion } from '@/lib/llm/chutes';
-
+import { requireAuth } from '@/lib/api/middleware';
+import { handleApiError, validationErrorResponse, forbiddenResponse, notFoundResponse } from '@/lib/api/responses';
+import { logger } from '@/lib/logger';
+import type { TypedSupabaseClient, Conversation, Message } from '@/lib/supabase/types';
 
 interface ExtractRequest {
   conversationId: string;
 }
 
+interface ExtractedMemory {
+  key_quotes?: string[];
+  insights?: {
+    personality?: string;
+    interests?: string[];
+    concerns?: string[];
+    emotion?: string;
+    topic?: string;
+  };
+}
+
+interface UserProfile {
+  personality?: string;
+  interests?: string[];
+  concerns?: string[];
+  last_memory_update?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * 验证对话所有权
+ */
+async function verifyConversationOwnership(
+  supabase: TypedSupabaseClient,
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .select('id, user_id')
+    .eq('id', conversationId)
+    .single();
+
+  if (error || !conversation) {
+    throw new Error('对话不存在');
+  }
+
+  if (conversation.user_id !== userId) {
+    throw new Error('无权访问此对话');
+  }
+}
+
+/**
+ * 获取对话消息
+ */
+async function getConversationMessages(
+  supabase: TypedSupabaseClient,
+  conversationId: string
+): Promise<string> {
+  const { data: messages, error } = await supabase
+    .from('messages')
+    .select('role, content')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    logger.error('获取对话消息失败', { error, conversationId });
+    throw new Error('获取对话消息失败');
+  }
+
+  if (!messages || messages.length === 0) {
+    throw new Error('对话没有消息');
+  }
+
+  return messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+}
+
+/**
+ * 存储提取的记忆
+ */
+async function storeExtractedQuotes(
+  supabase: TypedSupabaseClient,
+  userId: string,
+  conversationId: string,
+  quotes: string[],
+  conversationContext: string,
+  insights?: ExtractedMemory['insights']
+): Promise<void> {
+  for (const quote of quotes) {
+    const { error } = await supabase.from('key_quotes').upsert(
+      {
+        user_id: userId,
+        conversation_id: conversationId,
+        quote,
+        context: conversationContext.slice(0, 500),
+        emotion: insights?.emotion || null,
+        topic: insights?.topic || null,
+      },
+      { onConflict: 'user_id,conversation_id,quote' }
+    );
+
+    if (error) {
+      logger.warn('存储记忆引用失败', { error, quote: quote.slice(0, 50) });
+    }
+  }
+}
+
+/**
+ * 更新用户档案洞察
+ */
+async function updateUserInsights(
+  supabase: TypedSupabaseClient,
+  userId: string,
+  insights: NonNullable<ExtractedMemory['insights']>
+): Promise<void> {
+  const { data: existingUser, error: fetchError } = await supabase
+    .from('users')
+    .select('profile')
+    .eq('id', userId)
+    .single();
+
+  if (fetchError) {
+    logger.warn('获取用户档案失败', { error: fetchError, userId });
+    return;
+  }
+
+  const currentProfile = (existingUser?.profile as UserProfile) || {};
+  const updatedProfile: UserProfile = {
+    ...currentProfile,
+    personality: insights.personality || currentProfile.personality,
+    interests: insights.interests || currentProfile.interests || [],
+    concerns: insights.concerns || currentProfile.concerns || [],
+    last_memory_update: new Date().toISOString(),
+  };
+
+  const { error: updateError } = await supabase
+    .from('users')
+    .update({ profile: updatedProfile })
+    .eq('id', userId);
+
+  if (updateError) {
+    logger.error('更新用户档案失败', { error: updateError, userId });
+  }
+}
+
+/**
+ * 解析提取结果
+ */
+function parseExtractionResult(rawText: string): ExtractedMemory | null {
+  try {
+    // 提取JSON (可能在markdown代码块中)
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      logger.warn('未找到JSON格式的提取结果');
+      return null;
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as ExtractedMemory;
+    return parsed;
+  } catch (error) {
+    logger.error('解析提取结果失败', { error, rawText: rawText.slice(0, 200) });
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // 1. Verify authentication
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 1. 认证用户
+    const { user, supabase } = await requireAuth(request);
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { conversationId }: ExtractRequest = await request.json();
+    // 2. 验证请求体
+    const body = await request.json();
+    const { conversationId } = body as ExtractRequest;
 
     if (!conversationId) {
-      return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 });
+      return validationErrorResponse('缺少对话ID');
     }
 
-    // 2. Verify conversation belongs to user
-    const { data: conversation, error: convError } = await supabase
-      .from('conversations')
-      .select('id, user_id')
-      .eq('id', conversationId)
-      .single();
+    // 3. 验证对话所有权
+    await verifyConversationOwnership(supabase, conversationId, user.id);
 
-    if (convError || !conversation) {
-      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
-    }
+    // 4. 获取对话内容
+    const conversationText = await getConversationMessages(supabase, conversationId);
 
-    if ((conversation as any).user_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // 3. Get messages
-    const { data: messages } = await supabase
-      .from('messages')
-      .select('role, content')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-
-    if (!messages || messages.length === 0) {
-      return NextResponse.json({ error: 'No messages found' }, { status: 404 });
-    }
-
-    const conversationText = messages
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
-
+    // 5. 构建提取Prompt
     const extractionPrompt = `分析以下对话，提取用户的关键信息、重要原话和性格特点。以JSON格式返回：
 {
   "key_quotes": ["重要原话1", "重要原话2"],
@@ -68,77 +198,56 @@ export async function POST(request: NextRequest) {
 对话内容：
 ${conversationText}`;
 
+    // 6. 获取API密钥
     const apiKey = await getAvailableApiKey('chutes');
     if (!apiKey) {
-      return NextResponse.json({ error: 'No available API key' }, { status: 500 });
+      logger.error('没有可用的API密钥', { userId: user.id });
+      throw new Error('服务暂时不可用');
     }
 
+    // 7. 执行记忆提取
     let extractedData = '';
 
-    await streamChatCompletion(apiKey.key, {
+    await streamChatCompletion(apiKey.api_key, {
       messages: [
-        { role: 'system', content: 'You are a memory extraction assistant. Extract key information from conversations and respond in JSON format.' },
+        {
+          role: 'system',
+          content:
+            'You are a memory extraction assistant. Extract key information from conversations and respond in JSON format.',
+        },
         { role: 'user', content: extractionPrompt },
       ],
       onChunk: (chunk) => {
         extractedData += chunk;
       },
       onComplete: async (fullText) => {
-        try {
-          // Extract JSON from response (may have markdown code blocks)
-          const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-          if (!jsonMatch) return;
+        const parsed = parseExtractionResult(fullText);
+        if (!parsed) return;
 
-          const parsed = JSON.parse(jsonMatch[0]);
+        // 存储关键引用
+        if (parsed.key_quotes && Array.isArray(parsed.key_quotes)) {
+          await storeExtractedQuotes(
+            supabase,
+            user.id,
+            conversationId,
+            parsed.key_quotes,
+            conversationText,
+            parsed.insights
+          );
+        }
 
-          // Store key quotes
-          if (parsed.key_quotes && Array.isArray(parsed.key_quotes)) {
-            for (const quote of parsed.key_quotes) {
-              await supabase.from('key_quotes').upsert({
-                user_id: user.id,
-                conversation_id: conversationId,
-                quote: quote,
-                context: conversationText.slice(0, 500),
-                emotion: parsed.insights?.emotion || null,
-                topic: parsed.insights?.topic || null,
-              }, { onConflict: 'user_id,conversation_id,quote' });
-            }
-          }
-
-          // Update user profile with insights
-          if (parsed.insights) {
-            const { data: existingUser } = await supabase
-              .from('users')
-              .select('profile')
-              .eq('id', user.id)
-              .single();
-
-            const currentProfile = (existingUser?.profile as Record<string, unknown>) || {};
-            const updatedProfile = {
-              ...currentProfile,
-              personality: parsed.insights.personality || currentProfile.personality,
-              interests: parsed.insights.interests || currentProfile.interests || [],
-              concerns: parsed.insights.concerns || currentProfile.concerns || [],
-              last_memory_update: new Date().toISOString(),
-            };
-
-            await supabase
-              .from('users')
-              .update({ profile: updatedProfile })
-              .eq('id', user.id);
-          }
-        } catch (parseError) {
-          console.error('Failed to parse extraction result:', parseError);
+        // 更新用户洞察
+        if (parsed.insights) {
+          await updateUserInsights(supabase, user.id, parsed.insights);
         }
       },
       onError: (error) => {
-        console.error('Extraction error:', error);
+        logger.error('记忆提取错误', { error, userId: user.id, conversationId });
       },
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, '记忆提取API错误');
   }
 }

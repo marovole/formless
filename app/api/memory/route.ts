@@ -1,24 +1,37 @@
-// @ts-nocheck - Supabase type system limitation with dynamic queries
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { requireAuth } from '@/lib/api/middleware';
+import { handleApiError } from '@/lib/api/responses';
+import { logger } from '@/lib/logger';
+import type { KeyQuote, User } from '@/lib/supabase/types';
 
+interface UserProfile {
+  personality?: string;
+  interests?: string[];
+  concerns?: string[];
+  [key: string]: unknown;
+}
+
+interface MemoryResponse {
+  quotes: KeyQuote[];
+  insights: {
+    personality?: string;
+    interests: string[];
+    concerns: string[];
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Verify authentication
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // 1. 认证用户
+    const { user, supabase } = await requireAuth(request);
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    // 2. 解析查询参数
     const { searchParams } = new URL(request.url);
     const conversationId = searchParams.get('conversationId') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 100); // 限制最大100
     const topic = searchParams.get('topic') || undefined;
 
-    // 2. Build query for user's memories
+    // 3. 构建查询
     let query = supabase
       .from('key_quotes')
       .select('id, quote, context, emotion, topic, created_at, conversation_id')
@@ -37,29 +50,34 @@ export async function GET(request: NextRequest) {
     const { data: memories, error } = await query;
 
     if (error) {
-      throw error;
+      logger.error('获取记忆失败', { error, userId: user.id });
+      throw new Error('获取记忆失败');
     }
 
-    // 3. Get user profile insights
-    const { data: userData } = await supabase
+    // 4. 获取用户档案洞察
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('profile')
       .eq('id', user.id)
       .single();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const profile = ((userData as any)?.profile as Record<string, unknown>) || {};
+    if (userError) {
+      logger.warn('获取用户档案失败', { error: userError, userId: user.id });
+    }
 
-    return NextResponse.json({
-      quotes: memories || [],
+    const profile = (userData?.profile as UserProfile) || {};
+
+    const response: MemoryResponse = {
+      quotes: (memories as KeyQuote[]) || [],
       insights: {
         personality: profile.personality,
         interests: profile.interests || [],
         concerns: profile.concerns || [],
       },
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, '获取记忆API错误');
   }
 }

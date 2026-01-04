@@ -1,49 +1,122 @@
-// @ts-nocheck - Supabase type system limitation with dynamic updates
-import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth/middleware'
-import { getSupabaseAdminClient } from '@/lib/supabase/server'
-import type { Database } from '@/lib/supabase/database.types'
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/api/middleware';
+import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import {
+  successResponse,
+  validationErrorResponse,
+  notFoundResponse,
+  handleApiError,
+} from '@/lib/api/responses';
+import { logger } from '@/lib/logger';
+import type { TypedSupabaseClient, PromptUpdate } from '@/lib/supabase/types';
 
+/**
+ * 更新请求体接口
+ */
+interface UpdatePromptRequest {
+  content?: string;
+  is_active?: boolean;
+  description?: string | null;
+  version?: number;
+}
 
-type PromptUpdate = Database['public']['Tables']['prompts']['Update']
+/**
+ * 验证并构建更新对象
+ */
+function buildUpdateObject(body: UpdatePromptRequest): PromptUpdate {
+  const updateObj: PromptUpdate = {};
 
+  if ('content' in body) {
+    if (typeof body.content !== 'string' || body.content.trim() === '') {
+      throw new Error('content 必须是非空字符串');
+    }
+    updateObj.content = body.content;
+  }
+
+  if ('is_active' in body) {
+    if (typeof body.is_active !== 'boolean') {
+      throw new Error('is_active 必须是布尔值');
+    }
+    updateObj.is_active = body.is_active;
+  }
+
+  if ('description' in body) {
+    if (body.description !== null && typeof body.description !== 'string') {
+      throw new Error('description 必须是字符串或null');
+    }
+    updateObj.description = body.description;
+  }
+
+  return updateObj;
+}
+
+/**
+ * 更新Prompt (管理员)
+ * 如果内容改变，版本号自动递增
+ */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const authResult = await requireAuth(request)
-  if (authResult instanceof NextResponse) return authResult
+  try {
+    await requireAuth(request);
 
-  const { id } = await params
-  const body = await request.json()
+    const { id } = await params;
+    const body = (await request.json()) as UpdatePromptRequest;
 
-  const supabase = getSupabaseAdminClient()
+    // 验证并构建更新对象
+    const updateObj = buildUpdateObject(body);
 
-  // Build update object with explicit type checks
-  const updateObj: PromptUpdate = {}
-  if ('content' in body && typeof body.content === 'string') {
-    updateObj.content = body.content
+    // 检查是否有更新内容
+    if (Object.keys(updateObj).length === 0) {
+      return validationErrorResponse('没有提供任何要更新的字段');
+    }
+
+    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+
+    // 如果内容改变，版本号递增
+    if (updateObj.content) {
+      const { data: existing, error: fetchError } = await supabase
+        .from('prompts')
+        .select('version')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) {
+        logger.error('获取Prompt版本失败', { error: fetchError, id });
+      } else if (existing) {
+        updateObj.version = (existing.version || 0) + 1;
+      }
+    }
+
+    const { data: updatedPrompt, error } = await supabase
+      .from('prompts')
+      .update(updateObj)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('更新Prompt失败', { error, id });
+      throw new Error('更新Prompt失败');
+    }
+
+    if (!updatedPrompt) {
+      return notFoundResponse('Prompt');
+    }
+
+    logger.info('Prompt更新成功', {
+      id: updatedPrompt.id,
+      name: updatedPrompt.name,
+      version: updatedPrompt.version,
+      updates: Object.keys(updateObj),
+    });
+
+    return successResponse({ prompt: updatedPrompt });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('必须')) {
+      return validationErrorResponse(error.message);
+    }
+    return handleApiError(error, '更新Prompt API错误');
   }
-  if ('is_active' in body && typeof body.is_active === 'boolean') {
-    updateObj.is_active = body.is_active
-  }
-  if ('description' in body && typeof body.description === 'string') {
-    updateObj.description = body.description
-  }
-
-  if (Object.keys(updateObj).length > 0) {
-    updateObj.version = (body.version || 1) + 1
-  }
-
-  const { data, error } = await supabase
-    .from('prompts')
-    .update(updateObj)
-    .eq('id', id)
-    .select()
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  return NextResponse.json({ data: data?.[0] })
 }
