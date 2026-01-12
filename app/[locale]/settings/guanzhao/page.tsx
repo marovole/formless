@@ -7,7 +7,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthProvider';
+import { useAuth } from '@clerk/nextjs';
+import { useAuthGuard } from '@/lib/hooks/useAuth';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -114,8 +115,9 @@ const STYLES: Record<StyleKey, StyleInfo> = {
 // =============================================
 
 export default function GuanzhaoSettingsPage() {
+  useAuthGuard();
   const router = useRouter();
-  const { user } = useAuth();
+  const { userId } = useAuth();
 
   const [settings, setSettings] = useState<GuanzhaoSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -124,10 +126,10 @@ export default function GuanzhaoSettingsPage() {
 
   // 加载用户设置
   useEffect(() => {
-    if (!user) return;
+    if (!userId) return;
 
     loadSettings();
-  }, [user]);
+  }, [userId]);
 
   const loadSettings = async () => {
     try {
@@ -173,8 +175,8 @@ export default function GuanzhaoSettingsPage() {
     setSaveSuccess(false);
   };
 
-  if (!user) {
-    router.push('/auth');
+  // useAuthGuard 会处理重定向，这里保留简单检查
+  if (!userId) {
     return null;
   }
 

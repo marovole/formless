@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useAuth } from '@/lib/auth/AuthProvider';
+import { useAuth } from '@clerk/nextjs';
 import type { Template } from '@/lib/guanzhao/types';
 
 // =============================================
@@ -86,7 +86,7 @@ export function useSessionTracking(
     pauseWhenHidden = true,
   } = options;
 
-  const { user } = useAuth();
+  const { userId } = useAuth();
   const sessionIdRef = useRef<string | null>(null);
   const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isPageVisibleRef = useRef(true);
@@ -128,7 +128,7 @@ export function useSessionTracking(
    * 发送心跳
    */
   const sendHeartbeat = useCallback(async () => {
-    if (!sessionIdRef.current || !user || !isActive) return;
+    if (!sessionIdRef.current || !userId || !isActive) return;
 
     // 如果页面隐藏且配置了暂停，则跳过
     if (pauseWhenHidden && !isPageVisibleRef.current) {
@@ -141,7 +141,7 @@ export function useSessionTracking(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventType: 'in_session',
-          userId: user.id,
+          userId: userId,
           sessionId: sessionIdRef.current,
         }),
       });
@@ -157,7 +157,7 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error sending heartbeat:', error);
     }
-  }, [user, isActive, pauseWhenHidden, handleTriggerResponse]);
+  }, [userId, isActive, pauseWhenHidden, handleTriggerResponse]);
 
   /**
    * 启动心跳定时器
@@ -174,7 +174,7 @@ export function useSessionTracking(
    * 开始新会话
    */
   const startSession = useCallback(async () => {
-    if (!user || !enabled) return;
+    if (!userId || !enabled) return;
 
     try {
       const response = await fetch(SESSION_TRACKING_API, {
@@ -182,7 +182,7 @@ export function useSessionTracking(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventType: 'session_start',
-          userId: user.id,
+          userId: userId,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
@@ -210,13 +210,13 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error starting session:', error);
     }
-  }, [user, enabled, handleTriggerResponse, startHeartbeat]);
+  }, [userId, enabled, handleTriggerResponse, startHeartbeat]);
 
   /**
    * 结束会话
    */
   const endSession = useCallback(async () => {
-    if (!sessionIdRef.current || !user) return;
+    if (!sessionIdRef.current || !userId) return;
 
     // 停止心跳
     stopHeartbeat();
@@ -227,7 +227,7 @@ export function useSessionTracking(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           eventType: 'session_end',
-          userId: user.id,
+          userId: userId,
           sessionId: sessionIdRef.current,
         }),
       });
@@ -238,14 +238,14 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error ending session:', error);
     }
-  }, [user, stopHeartbeat]);
+  }, [userId, stopHeartbeat]);
 
   // =============================================
   // Lifecycle
   // =============================================
 
   useEffect(() => {
-    if (!conversationId || !user || !enabled) {
+    if (!conversationId || !userId || !enabled) {
       return;
     }
 
@@ -257,7 +257,7 @@ export function useSessionTracking(
       // 不在卸载时结束会话，因为用户可能只是在切换页面
       // 会话应该在页面卸载或用户离开时结束
     };
-  }, [conversationId, user, enabled, startSession]);
+  }, [conversationId, userId, enabled, startSession]);
 
   // 处理页面可见性变化
   useEffect(() => {
@@ -288,7 +288,7 @@ export function useSessionTracking(
           SESSION_TRACKING_API,
           JSON.stringify({
             eventType: 'session_end',
-            userId: user?.id,
+            userId: userId,
             sessionId: sessionIdRef.current,
           })
         );
@@ -301,7 +301,7 @@ export function useSessionTracking(
       window.removeEventListener('beforeunload', handleBeforeUnload);
       endSession();
     };
-  }, [user, endSession]);
+  }, [userId, endSession]);
 
   return {
     sessionId,

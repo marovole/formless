@@ -1,17 +1,20 @@
 /**
  * API中间件
  * 提供通用的认证、验证等中间件功能
+ *
+ * NOTE: This file is being deprecated in favor of Clerk authentication.
+ * See lib/api/clerk-middleware.ts for the new auth pattern.
  */
 
 import { NextRequest } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { UnauthorizedError } from '@/lib/errors';
-import type { TypedSupabaseClient } from '@/lib/supabase/types';
 import type { User } from '@supabase/supabase-js';
 
 export interface AuthenticatedContext {
   user: User;
-  supabase: TypedSupabaseClient;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any;
 }
 
 /**
@@ -21,7 +24,7 @@ export interface AuthenticatedContext {
  * @throws {UnauthorizedError} 当用户未认证时抛出
  */
 export async function requireAuth(
-  request: NextRequest
+  _request: NextRequest
 ): Promise<AuthenticatedContext> {
   const supabase = await getSupabaseServerClient();
   const {
@@ -35,7 +38,7 @@ export async function requireAuth(
 
   return {
     user,
-    supabase: supabase as TypedSupabaseClient,
+    supabase,
   };
 }
 
@@ -44,8 +47,9 @@ export async function requireAuth(
  * 尝试获取用户信息,但不强制要求认证
  */
 export async function optionalAuth(
-  request: NextRequest
-): Promise<{ user: User | null; supabase: TypedSupabaseClient }> {
+  _request: NextRequest
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<{ user: User | null; supabase: any }> {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -53,7 +57,7 @@ export async function optionalAuth(
 
   return {
     user: user || null,
-    supabase: supabase as TypedSupabaseClient,
+    supabase,
   };
 }
 

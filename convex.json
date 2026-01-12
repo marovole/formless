@@ -1,0 +1,5 @@
+{
+  "remoteDependencies": [
+    "@clerk/nextjs"
+  ]
+}
