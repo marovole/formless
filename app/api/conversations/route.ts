@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
+import { handleApiError, unauthorizedResponse } from '@/lib/api/responses';
 
 export async function GET(request: NextRequest) {
   try {
     const { userId: clerkId } = await auth();
     if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const { searchParams } = new URL(request.url);
@@ -21,7 +22,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ conversations });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, '获取对话列表API错误');
   }
 }

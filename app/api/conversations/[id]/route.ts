@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { handleApiError, unauthorizedResponse } from '@/lib/api/responses';
 
 export async function DELETE(
   request: NextRequest,
@@ -13,7 +14,7 @@ export async function DELETE(
     const { userId: clerkId } = await auth();
 
     if (!clerkId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return unauthorizedResponse();
     }
 
     const convex = getConvexClient();
@@ -24,13 +25,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
-    if (errorMessage.includes("Forbidden")) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-    if (errorMessage.includes("Conversation not found")) {
-        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, '删除对话API错误');
   }
 }
