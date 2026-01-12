@@ -1,6 +1,15 @@
 import { mutation } from "./_generated/server";
 import { v } from "convex/values";
 
+/**
+ * API key defaults
+ * Note: Duplicated from lib/constants since Convex runs in separate environment
+ */
+const API_KEY_DEFAULTS = {
+  DAILY_LIMIT: 1000,
+  RESET_INTERVAL_MS: 24 * 60 * 60 * 1000, // 24 hours
+} as const;
+
 export const getAvailable = mutation({
   args: { provider: v.string() },
   handler: async (ctx, args) => {
@@ -12,29 +21,19 @@ export const getAvailable = mutation({
 
     if (!keys.length) return null;
 
-    const todayStart = new Date();
-    todayStart.setHours(0,0,0,0);
-    const todayTs = todayStart.getTime();
-
     for (const key of keys) {
         const resetAt = key.reset_at || 0;
-        // Logic: if reset_at is in the past compared to now (and we want to reset daily)
-        // Original code checked strict date string match.
-        // Here we just check if reset_at < todayTs means it was set before today.
-        // Actually reset_at in original was "tomorrow".
-        // Let's stick to simple: if last_used_at is not today?
-        // Or just trust reset_at.
 
+        // Reset daily usage if the reset time has passed
         if (resetAt < Date.now()) {
-             // It's time to reset
              await ctx.db.patch(key._id, {
                 daily_used: 0,
-                reset_at: Date.now() + 24 * 60 * 60 * 1000
+                reset_at: Date.now() + API_KEY_DEFAULTS.RESET_INTERVAL_MS
             });
             key.daily_used = 0;
         }
 
-        if ((key.daily_used || 0) < (key.daily_limit || 1000)) {
+        if ((key.daily_used || 0) < (key.daily_limit || API_KEY_DEFAULTS.DAILY_LIMIT)) {
             return key;
         }
     }

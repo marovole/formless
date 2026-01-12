@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { useSessionTracking, useGuanzhaoTriggers } from '@/lib/hooks/useSessionTracking';
 import { GuanzhaoTriggerContainer } from '@/components/guanzhao/GuanzhaoTriggerCard';
+import { MessageList, type ChatMessage } from '@/components/chat/MessageBubble';
+import { useSSEChat } from '@/lib/hooks/useSSEChat';
 import { useLocale } from 'next-intl';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
 import { useQuery, useMutation } from 'convex/react';
@@ -13,60 +14,70 @@ import { api } from '@/convex/_generated/api';
 import { useAuth } from '@clerk/nextjs';
 import type { Id } from '@/convex/_generated/dataModel';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  error?: boolean;
-}
-
 export default function ChatPage() {
   // Auth guard - redirect to login if not authenticated
   useAuthGuard();
 
   const locale = useLocale();
   const { userId } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<Id<'conversations'> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // SSE Chat hook for streaming
+  const { isStreaming, currentContent, sendMessage } = useSSEChat();
 
   // Convex mutations
   const createConversation = useMutation(api.conversations.create);
   const appendMessage = useMutation(api.messages.append);
 
-  // Convex 实时消息查询（当有 conversationId 时）
+  // Real-time Convex message query (when conversationId exists)
   const convexMessages = useQuery(
     api.messages.listByConversation,
     conversationId ? { conversationId } : 'skip'
   );
 
-  // 当 Convex 消息更新时，同步到本地状态
+  // Sync Convex messages to local state when updated
   useEffect(() => {
-    if (convexMessages && !isLoading) {
+    if (convexMessages && !isStreaming) {
       setMessages(convexMessages.map((m: { role: 'user' | 'assistant'; content: string }) => ({
         role: m.role,
         content: m.content,
       })));
     }
-  }, [convexMessages, isLoading]);
+  }, [convexMessages, isStreaming]);
 
-  // 观照会话追踪
+  // Update streaming message in real-time
+  useEffect(() => {
+    if (isStreaming && currentContent) {
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage?.role === 'assistant') {
+          lastMessage.content = currentContent;
+        }
+        return newMessages;
+      });
+    }
+  }, [isStreaming, currentContent]);
+
+  // Guanzhao session tracking
   const { isActive: sessionTrackingActive } = useSessionTracking(conversationId as string | null, {
     enabled: true,
     heartbeatInterval: 60000,
     pauseWhenHidden: true,
   });
 
-  // 触发器管理
+  // Trigger management
   const {
     pendingTrigger,
     showTrigger,
     dismissTrigger,
   } = useGuanzhaoTriggers();
 
-  // 处理触发器动作
+  // Handle trigger action
   const handleTriggerAction = useCallback(async (action: string, triggerId: string) => {
     try {
       const response = await fetch('/api/guanzhao/actions', {
@@ -86,12 +97,12 @@ export default function ChatPage() {
     }
   }, [dismissTrigger]);
 
-  // 监听触发事件
+  // Listen for trigger events
   useEffect(() => {
     const handleTriggerEvent = (event: CustomEvent) => {
       const { triggerId } = event.detail;
 
-      // 调用触发引擎获取模板
+      // Call trigger engine to get template
       fetch('/api/guanzhao/trigger', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,16 +138,15 @@ export default function ChatPage() {
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isStreaming) return;
 
     const userMessage = input.trim();
     setInput('');
     setErrorMessage(null);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsLoading(true);
 
     try {
-      // 1. 如果没有对话，先创建一个
+      // 1. Create conversation if not exists
       let currentConvId = conversationId;
       if (!currentConvId) {
         currentConvId = await createConversation({
@@ -146,108 +156,34 @@ export default function ChatPage() {
         setConversationId(currentConvId);
       }
 
-      // 2. 保存用户消息到 Convex
+      // 2. Save user message to Convex
       await appendMessage({
         conversationId: currentConvId,
         role: 'user',
         content: userMessage,
       });
 
-      // 3. 调用 LLM API 获取流式响应
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: userMessage,
-          conversationId: currentConvId,
-          language: locale,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP ${response.status}: Failed to send message`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body from server');
-
-      const decoder = new TextDecoder();
-      let assistantMessage = '';
-      let isComplete = false;
-
+      // 3. Add placeholder for assistant message
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-
-          if (line.startsWith('event: metadata')) {
-            const dataLine = lines[i + 1];
-            if (dataLine?.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(dataLine.slice(6));
-                if (data.conversationId) {
-                  setConversationId(data.conversationId);
-                }
-              } catch {
-                // Skip invalid JSON
-              }
-              i++;
+      // 4. Call LLM API with streaming
+      const assistantMessage = await sendMessage(
+        userMessage,
+        currentConvId,
+        locale,
+        {
+          onMetadata: (data) => {
+            if (data.conversationId) {
+              setConversationId(data.conversationId);
             }
-          }
-
-          if (line.startsWith('event: chunk')) {
-            const dataLine = lines[i + 1];
-            if (dataLine?.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(dataLine.slice(6));
-                if (data.content) {
-                  assistantMessage += data.content;
-                  setMessages(prev => {
-                    const newMessages = [...prev];
-                    if (newMessages[newMessages.length - 1]) {
-                      newMessages[newMessages.length - 1].content = assistantMessage;
-                    }
-                    return newMessages;
-                  });
-                }
-              } catch {
-                // Skip invalid JSON
-              }
-              i++;
-            }
-          }
-
-          if (line.startsWith('event: complete')) {
-            isComplete = true;
-          }
-
-          if (line.startsWith('event: error')) {
-            const dataLine = lines[i + 1];
-            if (dataLine?.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(dataLine.slice(6));
-                throw new Error(data.error || 'Stream error');
-              } catch {
-                throw new Error('Unknown stream error');
-              }
-            }
-          }
+          },
+          onError: (error) => {
+            console.error('Stream error:', error);
+          },
         }
-      }
+      );
 
-      if (!assistantMessage.trim()) {
-        throw new Error('Empty response from assistant');
-      }
-
-      // 4. 流式完成后，保存助手消息到 Convex
+      // 5. Save assistant message to Convex after streaming completes
       if (currentConvId && assistantMessage.trim()) {
         await appendMessage({
           conversationId: currentConvId,
@@ -270,15 +206,13 @@ export default function ChatPage() {
       });
 
       setErrorMessage(errorMsg);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleRetry = async () => {
     // Retry the last user message
     const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
-    if (lastUserMessage && !isLoading) {
+    if (lastUserMessage && !isStreaming) {
       setInput(lastUserMessage.content);
       await handleSend();
     }
@@ -286,7 +220,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex flex-col relative">
-      {/* 触发器容器 */}
+      {/* Trigger container */}
       <GuanzhaoTriggerContainer
         pendingTrigger={pendingTrigger}
         onDismiss={dismissTrigger}
@@ -295,35 +229,11 @@ export default function ChatPage() {
 
       <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
         <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <Card
-                className={`max-w-[80%] p-4 ${
-                  msg.role === 'user'
-                    ? 'bg-amber-50 border-amber-200'
-                    : msg.error
-                      ? 'bg-red-50 border-red-200'
-                      : 'bg-white border-stone-200'
-                }`}
-              >
-                <p className="whitespace-pre-wrap text-stone-800">{msg.content}</p>
-                {msg.error && (
-                  <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="outline" onClick={handleRetry}>
-                      Retry
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            </div>
-          ))}
+          <MessageList messages={messages} onRetry={handleRetry} />
           <div ref={messagesEndRef} />
         </div>
 
-        {/* 错误提示 */}
+        {/* Error message */}
         {errorMessage && (
           <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
             {errorMessage}
@@ -336,18 +246,18 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
             placeholder="Type your message..."
-            disabled={isLoading}
+            disabled={isStreaming}
             className="flex-1"
           />
-          <Button onClick={handleSend} disabled={isLoading}>
-            {isLoading ? 'Sending...' : 'Send'}
+          <Button onClick={handleSend} disabled={isStreaming}>
+            {isStreaming ? 'Sending...' : 'Send'}
           </Button>
         </div>
 
-        {/* 会话追踪状态指示器（可选，用于调试） */}
+        {/* Session tracking status indicator (for debugging) */}
         {process.env.NODE_ENV === 'development' && (
           <div className="text-xs text-stone-400 mt-2 text-center">
-            {sessionTrackingActive ? '🟢 Session tracking active' : '⚪ Session tracking inactive'}
+            {sessionTrackingActive ? 'Session tracking active' : 'Session tracking inactive'}
           </div>
         )}
       </div>

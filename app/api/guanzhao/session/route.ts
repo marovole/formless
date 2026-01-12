@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import type { SessionEventResponse } from '@/lib/types/api-responses';
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,13 +20,13 @@ export async function POST(req: NextRequest) {
     }
 
     const convex = getConvexClient();
-    const result: any = await convex.mutation(api.guanzhao.handleSessionEvent, {
+    const result = await convex.mutation(api.guanzhao.handleSessionEvent, {
       eventType,
       clerkId,
       sessionId: sessionId ? (sessionId as Id<"user_sessions">) : undefined,
       timezone,
       messagesCount,
-    });
+    }) as SessionEventResponse;
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });

@@ -8,7 +8,10 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { AppError, ExternalServiceError, NotFoundError, ForbiddenError } from '@/lib/errors';
+import { AppError, NotFoundError, ForbiddenError } from '@/lib/errors';
+import { LLM_DEFAULTS } from '@/lib/constants';
+import type { ChatMessage } from '@/lib/llm/types';
+import type { MessageDoc } from '@/lib/types/convex-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +32,7 @@ export async function POST(request: NextRequest) {
         if (!errors[path]) errors[path] = [];
         errors[path].push(err.message);
       });
-      return validationErrorResponse('数据验证失败', errors);
+      return validationErrorResponse('Validation failed', errors);
     }
 
     const { message, conversationId, language = 'zh' } = validationResult.data;
@@ -45,12 +48,12 @@ export async function POST(request: NextRequest) {
     });
 
     let activeConversationId: Id<"conversations">;
-    let conversationHistory: any[] = [];
+    let conversationHistory: MessageDoc[] = [];
 
     if (conversationId) {
        const conv = await convex.query(api.conversations.get, { id: conversationId as Id<"conversations"> });
-       if (!conv) throw new NotFoundError('对话不存在');
-       if (conv.user_id !== convexUserId) throw new ForbiddenError('无权访问此对话');
+       if (!conv) throw new NotFoundError('Conversation not found');
+       if (conv.user_id !== convexUserId) throw new ForbiddenError('Access denied');
 
        activeConversationId = conversationId as Id<"conversations">;
        conversationHistory = await convex.query(api.messages.list, { conversationId: activeConversationId });
@@ -58,25 +61,25 @@ export async function POST(request: NextRequest) {
        activeConversationId = await convex.mutation(api.conversations.createInternal, {
            userId: convexUserId,
            language,
-           title: message.slice(0, 50)
+           title: message.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH)
        });
     }
 
     const apiKey = await convex.mutation(api.api_keys.getAvailable, { provider: 'chutes' });
     if (!apiKey) {
-      logger.error('没有可用的API密钥', { userId: clerkId });
-      throw new AppError('服务暂时不可用', 'SERVICE_UNAVAILABLE', 500);
+      logger.error('No available API key', { userId: clerkId });
+      throw new AppError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 500);
     }
 
     const systemPrompt = await convex.query(api.prompts.getActive, { role: 'formless_elder', language });
     if (!systemPrompt) {
-      logger.error('没有找到系统Prompt', { language });
-      throw new AppError('系统配置错误', 'CONFIG_ERROR', 500);
+      logger.error('System prompt not found', { language });
+      throw new AppError('Configuration error', 'CONFIG_ERROR', 500);
     }
 
-    const messages = [
+    const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt.content },
-      ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
+      ...conversationHistory.map(m => ({ role: m.role as ChatMessage['role'], content: m.content })),
       { role: 'user', content: message },
     ];
 
@@ -96,9 +99,9 @@ export async function POST(request: NextRequest) {
       );
 
       await streamChatCompletion(apiKey.api_key, {
-        messages: messages as any[],
-        temperature: 0.7,
-        max_tokens: 2000,
+        messages,
+        temperature: LLM_DEFAULTS.TEMPERATURE,
+        max_tokens: LLM_DEFAULTS.MAX_TOKENS,
         onChunk: (chunk) => {
           fullResponse += chunk;
           tokenCount++;
@@ -128,13 +131,13 @@ export async function POST(request: NextRequest) {
           stream.sendEvent(JSON.stringify({ done: true }), 'complete');
         },
         onError: (error) => {
-          logger.error('聊天流式传输错误', { error, userId: clerkId });
+          logger.error('Chat streaming error', { error, userId: clerkId });
           stream.sendError(error.message);
         },
       });
     });
 
   } catch (error) {
-    return handleApiError(error, '聊天API错误');
+    return handleApiError(error, 'Chat API error');
   }
 }
