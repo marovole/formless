@@ -1,4 +1,4 @@
-import { test, expect } from '../../fixtures/test-data'
+import { test, expect } from '../fixtures/test-data'
 
 test.describe('Chat Page', () => {
   test.beforeEach(async ({ page }) => {

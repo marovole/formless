@@ -1,45 +1,33 @@
 'use client';
 
-import { useAuth as useClerkAuth, useUser } from '@clerk/nextjs';
+import { useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
-import { useCallback, useEffect } from 'react';
+import { useAuth as useClerkAuth } from "@clerk/nextjs";
 
-export function useAuthGuard(redirectTo = '/sign-in') {
+export function useAuthGuard() {
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useClerkAuth();
+  const { isLoaded, userId } = useClerkAuth();
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push(redirectTo);
+    if (isLoaded && !userId) {
+      router.push('/auth');
     }
-  }, [isLoaded, isSignedIn, router, redirectTo]);
+  }, [isLoaded, userId, router]);
 }
 
 export function useAuth() {
-  const { isSignedIn, isLoaded: clerkLoaded, signOut: clerkSignOut } = useClerkAuth();
-  const { user, isLoaded: userLoaded } = useUser();
+  const { userId, signOut } = useClerkAuth();
 
-  const isLoaded = clerkLoaded && userLoaded;
-  const isSigned = isSignedIn;
+  const getSession = async () => {
+    // Return mock session if compatible, or just null/true
+    return userId ? { user: { id: userId } } : null;
+  };
 
-  const getSession = useCallback(async () => {
-    // Clerk handles session automatically
-    return user ? { id: user.id, email: user.primaryEmailAddress?.emailAddress } : null;
-  }, [user]);
-
-  const getUser = useCallback(async () => {
-    return user ?? null;
-  }, [user]);
-
-  const signOut = useCallback(async () => {
-    await clerkSignOut();
-    window.location.href = '/';
-  }, [clerkSignOut]);
+  const getUser = async () => {
+    return userId ? { id: userId } : null;
+  };
 
   return {
-    user,
-    isLoaded,
-    isSignedIn: isSigned,
     getSession,
     getUser,
     signOut,

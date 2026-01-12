@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "type-check": "tsc --noEmit",
     "pages:build": "npx @opennextjs/cloudflare build && bash ./scripts/post-build.sh",
     "preview": "npm run pages:build && wrangler pages dev .open-next",
     "deploy": "npm run pages:build && wrangler pages deploy .open-next",

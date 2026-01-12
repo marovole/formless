@@ -352,7 +352,7 @@ describe('validateRequestBody', () => {
         email: 'user@example.com',
         password: 'password123'
       })
-    } as Request
+    } as unknown as Request
 
     const result = await validateRequestBody(mockRequest, LoginSchema)
     expect(result).toEqual({
@@ -367,7 +367,7 @@ describe('validateRequestBody', () => {
         email: 'invalid-email',
         password: '123'
       })
-    } as Request
+    } as unknown as Request
 
     await expect(validateRequestBody(mockRequest, LoginSchema))
       .rejects.toThrow(ValidationError)
@@ -379,7 +379,7 @@ describe('validateRequestBody', () => {
         email: 'not-an-email',
         password: 'short'
       })
-    } as Request
+    } as unknown as Request
 
     try {
       await validateRequestBody(mockRequest, LoginSchema)
@@ -398,7 +398,7 @@ describe('validateRequestBody', () => {
       json: async () => {
         throw new Error('Invalid JSON')
       }
-    } as Request
+    } as unknown as Request
 
     await expect(validateRequestBody(mockRequest, LoginSchema))
       .rejects.toThrow()
@@ -411,7 +411,7 @@ describe('validateRequestBody', () => {
         conversationId: '123e4567-e89b-12d3-a456-426614174000',
         language: 'zh'
       })
-    } as Request
+    } as unknown as Request
 
     const result = await validateRequestBody(mockRequest, ChatSchema)
     expect(result).toEqual({
@@ -428,7 +428,7 @@ describe('validateRequestBody', () => {
         api_key: 'sk-test',
         daily_limit: 1000
       })
-    } as Request
+    } as unknown as Request
 
     const result = await validateRequestBody(mockRequest, CreateApiKeySchema)
     expect(result).toEqual({

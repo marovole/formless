@@ -4,7 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { auth } from '@clerk/nextjs/server';
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
 
 // =============================================
 // Types
@@ -26,82 +28,31 @@ interface PushTokenDeleteRequest {
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { userId: clerkId } = await auth();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 解析请求
     const body: PushTokenRequest = await req.json();
     const { token, platform, deviceId } = body;
 
     if (!token || !platform) {
-      return NextResponse.json(
-        { error: 'Missing token or platform' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing token or platform' }, { status: 400 });
     }
 
-    // 3. 验证平台
     const validPlatforms = ['ios', 'android', 'web'];
     if (!validPlatforms.includes(platform)) {
-      return NextResponse.json(
-        { error: 'Invalid platform' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid platform' }, { status: 400 });
     }
 
-    // 4. 检查令牌是否已存在
-    const { data: existing } = await supabase
-      .from('push_tokens')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('token', token)
-      .maybeSingle();
-
-    if (existing) {
-      // 更新使用时间
-      const { error: updateError } = await supabase
-        .from('push_tokens')
-        // @ts-ignore - Supabase type inference issue
-        .update({
-          last_used_at: new Date().toISOString(),
-          is_active: true,
-        })
-        // @ts-ignore - Supabase type inference issue
-        .eq('id', existing.id);
-
-      if (updateError) throw updateError;
-    } else {
-      // 插入新令牌
-      const { error: insertError } = await supabase
-        .from('push_tokens')
-        // @ts-ignore - Supabase type inference issue
-        .insert({
-          user_id: user.id,
-          token,
-          platform,
-          device_id: deviceId,
-        });
-
-      if (insertError) {
-        throw insertError;
-      }
-    }
-
-    // 5. 启用推送通知
-    await supabase
-      .from('guanzhao_budget_tracking')
-      // @ts-ignore - Supabase type inference issue
-      .update({ push_enabled: true })
-      // @ts-ignore - Supabase type inference issue
-      .eq('user_id', user.id);
+    const convex = getConvexClient();
+    await convex.mutation(api.guanzhao.registerPushToken, {
+      clerkId,
+      token,
+      platform,
+      deviceId,
+    });
 
     return NextResponse.json({
       success: true,
@@ -109,10 +60,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error registering push token:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -122,41 +70,24 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { userId: clerkId } = await auth();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 解析请求
     const body: PushTokenDeleteRequest = await req.json();
     const { token } = body;
 
     if (!token) {
-      return NextResponse.json(
-        { error: 'Missing token' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing token' }, { status: 400 });
     }
 
-    // 3. 删除或禁用令牌
-    const { error } = await supabase
-      .from('push_tokens')
-      // @ts-ignore - Supabase type inference issue
-      .update({ is_active: false })
-      // @ts-ignore - Supabase type inference issue
-      .eq('user_id', user.id)
-      // @ts-ignore - Supabase type inference issue
-      .eq('token', token);
-
-    if (error) {
-      throw error;
-    }
+    const convex = getConvexClient();
+    await convex.mutation(api.guanzhao.deactivatePushToken, {
+      clerkId,
+      token,
+    });
 
     return NextResponse.json({
       success: true,
@@ -164,10 +95,7 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error) {
     console.error('Error removing push token:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -177,43 +105,20 @@ export async function DELETE(req: NextRequest) {
 
 export async function GET() {
   try {
-    // 1. 验证用户身份
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { userId: clerkId } = await auth();
 
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 获取所有活跃令牌
-    const { data: tokens, error } = await supabase
-      .from('push_tokens')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+    const convex = getConvexClient();
+    const tokens: any[] = await convex.query(api.guanzhao.getPushTokens, { clerkId });
 
-    if (error) {
-      throw error;
-    }
-
-    // 3. 返回脱敏的令牌信息
-    const tokenRows = (tokens || []) as Array<{
-      id: string;
-      platform: string;
-      created_at: string;
-      last_used_at: string | null;
-      token: string;
-    }>;
-
-    const sanitizedTokens = tokenRows.map((token) => ({
-      id: token.id,
+    const sanitizedTokens = tokens.map((token) => ({
+      id: token._id,
       platform: token.platform,
-      created_at: token.created_at,
-      last_used_at: token.last_used_at,
+      created_at: new Date(token._creationTime).toISOString(),
+      last_used_at: token.last_used_at ? new Date(token.last_used_at).toISOString() : null,
       token_preview: token.token.substring(0, 20) + '...',
     }));
 
@@ -223,9 +128,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching push tokens:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

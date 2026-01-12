@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
 import { verifyAdminSession } from '@/lib/auth/session';
-
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,18 +10,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = getSupabaseAdminClient();
+    const convex = getConvexClient();
+    const users = await convex.query(api.admin.listUsers, { limit: 100 });
 
-    const { data: users, error } = await supabase
-      .from('users')
-      .select('id, email, created_at, profile')
-      .order('created_at', { ascending: false });
+    const sanitizedUsers = users.map((u: any) => ({
+      id: u._id,
+      email: u.email,
+      created_at: new Date(u._creationTime).toISOString(),
+      profile: u.profile
+    }));
 
-    if (error) {
-      throw error;
-    }
-
-    return NextResponse.json({ users: users || [] });
+    return NextResponse.json({ users: sanitizedUsers });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return NextResponse.json({ error: errorMessage }, { status: 500 });

@@ -1,23 +1,14 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useLocale } from 'next-intl';
+import { SignIn } from "@clerk/nextjs";
+import { Card } from '@/components/ui/card';
 
-/**
- * 旧认证页面 - 重定向到 Clerk 登录
- */
 export default function AuthPage() {
-  const router = useRouter();
-  const locale = useLocale();
-
-  useEffect(() => {
-    router.replace(`/${locale}/sign-in`);
-  }, [router, locale]);
-
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <p>Redirecting to sign in...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-stone-50 to-stone-100">
+      <div className="w-full max-w-md p-4">
+        <SignIn />
+      </div>
     </div>
   );
 }

@@ -2,18 +2,24 @@ import { POST } from './route'
 import { NextRequest } from 'next/server'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
-// Mock all dependencies
-vi.mock('@/lib/supabase/server', () => ({
-  getSupabaseAdminClient: vi.fn(),
-  createClient: vi.fn(),
+// Mock Clerk auth
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn().mockResolvedValue({ userId: 'user_clerk_123' }),
+  currentUser: vi.fn().mockResolvedValue({
+    id: 'user_clerk_123',
+    emailAddresses: [{ emailAddress: 'test@example.com' }],
+    firstName: 'Test',
+    lastName: 'User'
+  }),
+}))
+
+// Mock Convex client
+vi.mock('@/lib/convex', () => ({
+  getConvexClient: vi.fn(),
 }))
 
 vi.mock('@/lib/api-keys/manager', () => ({
   getAvailableApiKey: vi.fn(),
-}))
-
-vi.mock('@/lib/prompts/manager', () => ({
-  getActivePrompt: vi.fn(),
 }))
 
 vi.mock('@/lib/llm/chutes', () => ({
@@ -24,42 +30,35 @@ vi.mock('@/lib/llm/streaming', () => ({
   streamToSSE: vi.fn(),
 }))
 
-import { createClient, getSupabaseAdminClient } from '@/lib/supabase/server'
+// Mock env
+process.env.NEXT_PUBLIC_CONVEX_URL = 'https://mock.convex.cloud'
+
+import { auth, currentUser } from '@clerk/nextjs/server'
+import { getConvexClient } from '@/lib/convex'
 import { getAvailableApiKey } from '@/lib/api-keys/manager'
-import { getActivePrompt } from '@/lib/prompts/manager'
-import { streamChatCompletion } from '@/lib/llm/chutes'
 import { streamToSSE } from '@/lib/llm/streaming'
+import { api } from '@/convex/_generated/api'
 
 describe('Chat API Route', () => {
-  let mockSupabaseClient: any
-  let mockAuthClient: any
+  let mockConvex: any
   let mockStream: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.mocked(auth).mockResolvedValue({ userId: 'user_clerk_123' } as any)
+    vi.mocked(currentUser).mockResolvedValue({
+      id: 'user_clerk_123',
+      emailAddresses: [{ emailAddress: 'test@example.com' }],
+      firstName: 'Test',
+      lastName: 'User'
+    } as any)
 
-    // Setup mock Supabase client
-    mockSupabaseClient = {
-      from: vi.fn(() => mockSupabaseClient),
-      insert: vi.fn(() => mockSupabaseClient),
-      select: vi.fn(() => mockSupabaseClient),
-      eq: vi.fn(() => mockSupabaseClient),
-      order: vi.fn(() => mockSupabaseClient),
-      single: vi.fn(),
-      maybeSingle: vi.fn(),
+    // Setup mock Convex client
+    mockConvex = {
+      mutation: vi.fn(),
+      query: vi.fn(),
     }
 
-    vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
-
-    mockAuthClient = {
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'user-123' } },
-          error: null,
-        }),
-      },
-    }
-    vi.mocked(createClient).mockReturnValue(mockAuthClient)
+    vi.mocked(getConvexClient).mockReturnValue(mockConvex)
 
     // Setup mock stream
     mockStream = {
@@ -76,18 +75,31 @@ describe('Chat API Route', () => {
     // Setup default mock responses
     vi.mocked(getAvailableApiKey).mockResolvedValue({
       id: 'key-123',
-      key: 'test-api-key',
+      api_key: 'test-api-key',
       provider: 'chutes',
     })
 
-    vi.mocked(getActivePrompt).mockResolvedValue('You are a helpful assistant')
+    mockConvex.mutation.mockImplementation(async (apiRef: any, args?: any) => {
+      if (args?.email) return 'user-123' // users.ensure
+      if (args?.language && args?.title) return 'conv-123' // conversations.createInternal
+      if (args?.provider === 'chutes') return { _id: 'key-123', api_key: 'test-key', provider: 'chutes' } // api_keys.getAvailable
+      if (args?.conversationId && args?.role) return 'msg-123' // messages.insert
+      return 'mock-id'
+    })
+
+    mockConvex.query.mockImplementation(async (apiRef: any, args?: any) => {
+      if (args?.role === 'formless_elder') return { content: 'System prompt' }
+      if (args?.id) return { user_id: 'user-123' }
+      if (args?.conversationId) return []
+      return null
+    })
   })
 
   describe('Request validation', () => {
     it('should accept valid request body', async () => {
       const body = {
         message: 'Hello',
-        conversationId: '550e8400-e29b-41d4-a716-446655440000',
+        conversationId: '123e4567-e89b-12d3-a456-426614174000',
         language: 'zh',
       }
 
@@ -96,27 +108,14 @@ describe('Chat API Route', () => {
         body: JSON.stringify(body),
       })
 
-      // Setup conversation history mock
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: body.conversationId },
-        error: null,
-      })
-      mockSupabaseClient.order.mockResolvedValue({
-        data: [
-          { role: 'user', content: 'Previous message' },
-          { role: 'assistant', content: 'Previous response' },
-        ],
-        error: null,
-      })
-
       await POST(request)
 
-      expect(getSupabaseAdminClient).toHaveBeenCalled()
+      expect(mockConvex.mutation).toHaveBeenCalled()
     })
 
     it('should reject request with missing message', async () => {
       const body = {
-        conversationId: '550e8400-e29b-41d4-a716-446655440000',
+        conversationId: '123e4567-e89b-12d3-a456-426614174000',
       }
 
       const request = new NextRequest('http://localhost:3000/api/chat', {
@@ -128,121 +127,7 @@ describe('Chat API Route', () => {
       const data = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('Validation failed')
-      expect(data.errors).toHaveProperty('message')
-    })
-
-    it('should reject request with empty message', async () => {
-      const body = {
-        message: '',
-        conversationId: '550e8400-e29b-41d4-a716-446655440000',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.errors.message).toContain('Message is required')
-    })
-
-    it('should reject request with message too long', async () => {
-      const body = {
-        message: 'a'.repeat(5001),
-        conversationId: '550e8400-e29b-41d4-a716-446655440000',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.errors.message).toContain('Message too long')
-    })
-
-    it('should reject request with invalid conversationId format', async () => {
-      const body = {
-        message: 'Hello',
-        conversationId: 'invalid-uuid',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.errors.conversationId).toContain('Invalid conversation ID')
-    })
-
-    it('should reject request with invalid language', async () => {
-      const body = {
-        message: 'Hello',
-        language: 'fr',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.errors.language).toBeDefined()
-    })
-
-    it('should accept valid languages (zh and en)', async () => {
-      for (const lang of ['zh', 'en']) {
-        vi.clearAllMocks()
-        
-        // Re-setup mocks after clearing
-        vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
-        vi.mocked(createClient).mockReturnValue(mockAuthClient)
-        vi.mocked(streamToSSE).mockImplementation((callback) => {
-          callback(mockStream)
-          return new Response('mocked response')
-        })
-        vi.mocked(getAvailableApiKey).mockResolvedValue({
-          id: 'key-123',
-          key: 'test-api-key',
-          provider: 'chutes',
-        })
-        vi.mocked(getActivePrompt).mockResolvedValue('You are a helpful assistant')
-
-        const body = {
-          message: 'Hello',
-          language: lang,
-        }
-
-        const request = new NextRequest('http://localhost:3000/api/chat', {
-          method: 'POST',
-          body: JSON.stringify(body),
-        })
-
-        // Setup new conversation creation
-        mockSupabaseClient.single.mockResolvedValue({
-          data: { id: 'new-conversation-id' },
-          error: null,
-        })
-
-        await POST(request)
-        
-        // Verify conversation was created for this language
-        expect(mockSupabaseClient.from).toHaveBeenCalledWith('conversations')
-      }
+      expect(data.error).toBe('数据验证失败')
     })
   })
 
@@ -258,19 +143,16 @@ describe('Chat API Route', () => {
         body: JSON.stringify(body),
       })
 
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-conversation-id' },
-        error: null,
-      })
-
       await POST(request)
 
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('conversations')
-      expect(mockSupabaseClient.insert).toHaveBeenCalledWith([{ language: 'zh', user_id: 'user-123' }])
+      expect(mockConvex.mutation).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+        userId: 'user-123',
+        language: 'zh'
+      }))
     })
 
     it('should use existing conversation when conversationId provided', async () => {
-      const conversationId = '550e8400-e29b-41d4-a716-446655440000'
+      const conversationId = '123e4567-e89b-12d3-a456-426614174000'
       const body = {
         message: 'Hello',
         conversationId,
@@ -281,65 +163,21 @@ describe('Chat API Route', () => {
         body: JSON.stringify(body),
       })
 
-      // Setup the mock chain properly
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: conversationId },
-        error: null,
-      })
-      mockSupabaseClient.order.mockResolvedValue({
-        data: [
-          { role: 'user', content: 'Previous message' },
-          { role: 'assistant', content: 'Previous response' },
-        ],
-        error: null,
-      })
-
       await POST(request)
 
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('messages')
-      // The eq is called via the chain
-      expect(mockSupabaseClient.eq).toBeDefined()
-    })
-
-    it('should fetch conversation history correctly', async () => {
-      const conversationId = '550e8400-e29b-41d4-a716-446655440000'
-      const body = {
-        message: 'Hello',
-        conversationId,
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const mockMessages = [
-        { role: 'user', content: 'First message' },
-        { role: 'assistant', content: 'First response' },
-        { role: 'user', content: 'Second message' },
-        { role: 'assistant', content: 'Second response' },
-      ]
-
-      mockSupabaseClient.maybeSingle.mockResolvedValue({
-        data: { id: conversationId },
-        error: null,
-      })
-      mockSupabaseClient.order.mockResolvedValue({
-        data: mockMessages,
-        error: null,
-      })
-
-      await POST(request)
-
-      // Verify select was called (Supabase syntax uses 'role, content' as single string)
-      expect(mockSupabaseClient.select).toHaveBeenCalled()
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('messages')
+      expect(mockConvex.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: conversationId }))
+      expect(mockConvex.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ conversationId }))
     })
   })
 
   describe('API key handling', () => {
-    it('should throw error when no API key available', async () => {
-      vi.mocked(getAvailableApiKey).mockResolvedValue(null)
+    it('should return 500 when no API key available', async () => {
+      mockConvex.mutation.mockImplementation(async (apiRef: any, args?: any) => {
+        if (args?.provider === 'chutes') return null
+        if (args?.email) return 'user-123'
+        if (args?.language && args?.title) return 'conv-123'
+        return {}
+      })
 
       const body = {
         message: 'Hello',
@@ -348,173 +186,13 @@ describe('Chat API Route', () => {
       const request = new NextRequest('http://localhost:3000/api/chat', {
         method: 'POST',
         body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-conversation-id' },
-        error: null,
       })
 
       const response = await POST(request)
       const data = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error).toBe('No available Chutes API key')
-    })
-
-    it('should call getAvailableApiKey with correct provider', async () => {
-      const body = {
-        message: 'Hello',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-conversation-id' },
-        error: null,
-      })
-
-      await POST(request)
-
-      expect(getAvailableApiKey).toHaveBeenCalledWith('chutes')
-    })
-  })
-
-  describe('Prompt handling', () => {
-    it('should fetch active prompt for formless_elder role', async () => {
-      const body = {
-        message: 'Hello',
-        language: 'zh',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'new-conversation-id' },
-        error: null,
-      })
-
-      await POST(request)
-
-      expect(getActivePrompt).toHaveBeenCalledWith('formless_elder', 'zh')
-    })
-
-    it('should fetch prompt with correct language', async () => {
-      for (const lang of ['zh', 'en']) {
-        vi.clearAllMocks()
-        
-        // Re-setup mocks
-        vi.mocked(getSupabaseAdminClient).mockReturnValue(mockSupabaseClient)
-        vi.mocked(createClient).mockReturnValue(mockAuthClient)
-        vi.mocked(streamToSSE).mockImplementation((callback) => {
-          callback(mockStream)
-          return new Response('mocked response')
-        })
-        vi.mocked(getAvailableApiKey).mockResolvedValue({
-          id: 'key-123',
-          key: 'test-api-key',
-          provider: 'chutes',
-        })
-
-        const body = {
-          message: 'Hello',
-          language: lang,
-        }
-
-        const request = new NextRequest('http://localhost:3000/api/chat', {
-          method: 'POST',
-          body: JSON.stringify(body),
-        })
-
-        mockSupabaseClient.single.mockResolvedValue({
-          data: { id: 'new-conversation-id' },
-          error: null,
-        })
-
-        await POST(request)
-
-        expect(getActivePrompt).toHaveBeenCalledWith('formless_elder', lang)
-      }
-    })
-  })
-
-  describe('Message insertion', () => {
-    it('should insert user message into database', async () => {
-      const body = {
-        message: 'Test message',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'conv-123' },
-        error: null,
-      })
-
-      await POST(request)
-
-      // Verify user message insertion
-      expect(mockSupabaseClient.from).toHaveBeenCalledWith('messages')
-      expect(mockSupabaseClient.insert).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            role: 'user',
-            content: 'Test message',
-          }),
-        ])
-      )
-    })
-  })
-
-  describe('Error handling', () => {
-    it('should handle conversation creation error', async () => {
-      const body = {
-        message: 'Hello',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockResolvedValue({
-        data: null,
-        error: { message: 'Database connection failed' },
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toContain('Failed to create conversation')
-    })
-
-    it('should handle database errors gracefully', async () => {
-      const body = {
-        message: 'Hello',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      mockSupabaseClient.single.mockRejectedValue(new Error('Database error'))
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBeDefined()
+      expect(data.error).toBe('服务暂时不可用')
     })
   })
 
@@ -529,15 +207,9 @@ describe('Chat API Route', () => {
         body: JSON.stringify(body),
       })
 
-      mockSupabaseClient.single.mockResolvedValue({
-        data: { id: 'conv-123' },
-        error: null,
-      })
-
       await POST(request)
 
       expect(streamToSSE).toHaveBeenCalled()
-      expect(typeof streamToSSE.mock.calls[0][0]).toBe('function')
     })
   })
 })

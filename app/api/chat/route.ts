@@ -1,20 +1,24 @@
-import { NextRequest } from 'next/server';
-import { getAvailableApiKey } from '@/lib/api-keys/manager';
-import { getActivePrompt } from '@/lib/prompts/manager';
+import { NextRequest, NextResponse } from 'next/server';
 import { streamChatCompletion } from '@/lib/llm/chutes';
 import { streamToSSE } from '@/lib/llm/streaming';
 import { ChatSchema } from '@/lib/validation/schemas';
-import { requireClerkAuth } from '@/lib/api/clerk-middleware';
 import { validationErrorResponse, handleApiError } from '@/lib/api/responses';
 import { logger } from '@/lib/logger';
-import type { ChatMessage } from '@/lib/llm/chutes';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
+import { AppError, ExternalServiceError, NotFoundError, ForbiddenError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. 认证用户（使用 Clerk）
-    const { userId } = await requireClerkAuth();
+    const { userId: clerkId } = await auth();
+    const user = await currentUser();
 
-    // 2. 验证请求体
+    if (!clerkId || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const validationResult = ChatSchema.safeParse(body);
 
@@ -30,59 +34,106 @@ export async function POST(request: NextRequest) {
 
     const { message, conversationId, language = 'zh' } = validationResult.data;
 
-    // 3. 获取API密钥和系统Prompt
-    const apiKey = await getAvailableApiKey('chutes');
-    if (!apiKey) {
-      logger.error('没有可用的API密钥', { userId });
-      throw new Error('服务暂时不可用');
+    const email = user.emailAddresses[0]?.emailAddress;
+    if (!email) throw new AppError("User email required", "USER_EMAIL_REQUIRED", 400);
+
+    const convex = getConvexClient();
+    const convexUserId = await convex.mutation(api.users.ensure, {
+        email,
+        clerkId,
+        fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || undefined
+    });
+
+    let activeConversationId: Id<"conversations">;
+    let conversationHistory: any[] = [];
+
+    if (conversationId) {
+       const conv = await convex.query(api.conversations.get, { id: conversationId as Id<"conversations"> });
+       if (!conv) throw new NotFoundError('对话不存在');
+       if (conv.user_id !== convexUserId) throw new ForbiddenError('无权访问此对话');
+
+       activeConversationId = conversationId as Id<"conversations">;
+       conversationHistory = await convex.query(api.messages.list, { conversationId: activeConversationId });
+    } else {
+       activeConversationId = await convex.mutation(api.conversations.createInternal, {
+           userId: convexUserId,
+           language,
+           title: message.slice(0, 50)
+       });
     }
 
-    const systemPrompt = await getActivePrompt('formless_elder', language);
+    const apiKey = await convex.mutation(api.api_keys.getAvailable, { provider: 'chutes' });
+    if (!apiKey) {
+      logger.error('没有可用的API密钥', { userId: clerkId });
+      throw new AppError('服务暂时不可用', 'SERVICE_UNAVAILABLE', 500);
+    }
+
+    const systemPrompt = await convex.query(api.prompts.getActive, { role: 'formless_elder', language });
     if (!systemPrompt) {
       logger.error('没有找到系统Prompt', { language });
-      throw new Error('系统配置错误');
+      throw new AppError('系统配置错误', 'CONFIG_ERROR', 500);
     }
 
-    // 4. 构建消息列表
-    // 注意：对话历史现在由前端通过 Convex 管理
-    // 这里只需要系统 prompt + 当前用户消息
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
+    const messages = [
+      { role: 'system', content: systemPrompt.content },
+      ...conversationHistory.map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: message },
     ];
 
-    // 5. 流式响应
+    await convex.mutation(api.messages.insert, {
+        conversationId: activeConversationId,
+        role: 'user',
+        content: message
+    });
+
     return streamToSSE(async (stream) => {
+      let fullResponse = '';
       let tokenCount = 0;
 
-      // 发送对话ID（如果有的话）
-      if (conversationId) {
-        stream.sendEvent(
-          JSON.stringify({ conversationId }),
-          'metadata'
-        );
-      }
+      stream.sendEvent(
+        JSON.stringify({ conversationId: activeConversationId }),
+        'metadata'
+      );
 
       await streamChatCompletion(apiKey.api_key, {
-        messages,
+        messages: messages as any[],
         temperature: 0.7,
         max_tokens: 2000,
         onChunk: (chunk) => {
+          fullResponse += chunk;
           tokenCount++;
           stream.sendEvent(JSON.stringify({ content: chunk }), 'chunk');
         },
         onComplete: async () => {
-          // 消息保存由前端通过 Convex 处理
-          // 这里只发送完成信号
+          await convex.mutation(api.messages.insert, {
+             conversationId: activeConversationId,
+             role: 'assistant',
+             content: fullResponse,
+             tokens: tokenCount
+          });
+
+          await convex.mutation(api.api_usage.log, {
+              apiKeyId: apiKey._id,
+              provider: 'chutes',
+              userId: convexUserId,
+              tokensUsed: tokenCount,
+              success: true
+          });
+
+          await convex.mutation(api.api_keys.incrementUsage, {
+              keyId: apiKey._id,
+              tokenCount
+          });
+
           stream.sendEvent(JSON.stringify({ done: true }), 'complete');
-          logger.info('聊天完成', { userId, tokenCount });
         },
         onError: (error) => {
-          logger.error('聊天流式传输错误', { error, userId });
+          logger.error('聊天流式传输错误', { error, userId: clerkId });
           stream.sendError(error.message);
         },
       });
     });
+
   } catch (error) {
     return handleApiError(error, '聊天API错误');
   }
