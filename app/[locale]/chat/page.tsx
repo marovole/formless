@@ -8,7 +8,10 @@ import { useSessionTracking, useGuanzhaoTriggers } from '@/lib/hooks/useSessionT
 import { GuanzhaoTriggerContainer } from '@/components/guanzhao/GuanzhaoTriggerCard';
 import { useLocale } from 'next-intl';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
-import { createClient } from '@/lib/supabase/client';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { useAuth } from '@clerk/nextjs';
+import type { Id } from '@/convex/_generated/dataModel';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -21,28 +24,36 @@ export default function ChatPage() {
   useAuthGuard();
 
   const locale = useLocale();
-  const supabase = createClient();
+  const { userId } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<Id<'conversations'> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get user ID on mount
+  // Convex mutations
+  const createConversation = useMutation(api.conversations.create);
+  const appendMessage = useMutation(api.messages.append);
+
+  // Convex 实时消息查询（当有 conversationId 时）
+  const convexMessages = useQuery(
+    api.messages.listByConversation,
+    conversationId ? { conversationId } : 'skip'
+  );
+
+  // 当 Convex 消息更新时，同步到本地状态
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-      }
-    };
-    getUser();
-  }, [supabase]);
+    if (convexMessages && !isLoading) {
+      setMessages(convexMessages.map((m: { role: 'user' | 'assistant'; content: string }) => ({
+        role: m.role,
+        content: m.content,
+      })));
+    }
+  }, [convexMessages, isLoading]);
 
   // 观照会话追踪
-  const { isActive: sessionTrackingActive } = useSessionTracking(conversationId, {
+  const { isActive: sessionTrackingActive } = useSessionTracking(conversationId as string | null, {
     enabled: true,
     heartbeatInterval: 60000,
     pauseWhenHidden: true,
@@ -125,12 +136,30 @@ export default function ChatPage() {
     setIsLoading(true);
 
     try {
+      // 1. 如果没有对话，先创建一个
+      let currentConvId = conversationId;
+      if (!currentConvId) {
+        currentConvId = await createConversation({
+          title: userMessage.slice(0, 30),
+          language: locale,
+        });
+        setConversationId(currentConvId);
+      }
+
+      // 2. 保存用户消息到 Convex
+      await appendMessage({
+        conversationId: currentConvId,
+        role: 'user',
+        content: userMessage,
+      });
+
+      // 3. 调用 LLM API 获取流式响应
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          conversationId,
+          conversationId: currentConvId,
           language: locale,
         }),
       });
@@ -216,6 +245,15 @@ export default function ChatPage() {
 
       if (!assistantMessage.trim()) {
         throw new Error('Empty response from assistant');
+      }
+
+      // 4. 流式完成后，保存助手消息到 Convex
+      if (currentConvId && assistantMessage.trim()) {
+        await appendMessage({
+          conversationId: currentConvId,
+          role: 'assistant',
+          content: assistantMessage,
+        });
       }
     } catch (error) {
       console.error('Chat error:', error);

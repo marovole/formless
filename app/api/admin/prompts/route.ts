@@ -115,10 +115,10 @@ export async function POST(request: NextRequest) {
       version: 1,
     };
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
-    const { data: newPrompt, error } = await supabase
-      .from('prompts')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newPrompt, error } = await (supabase.from('prompts') as any)
       .insert([insertData])
       .select()
       .single();
@@ -160,13 +160,13 @@ export async function PUT(request: NextRequest) {
       return validationErrorResponse('没有提供任何要更新的字段');
     }
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
     // 如果内容改变，版本号递增
     let version: number | undefined;
     if (updates.content) {
-      const { data: existing, error: fetchError } = await supabase
-        .from('prompts')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existing, error: fetchError } = await (supabase.from('prompts') as any)
         .select('version')
         .eq('id', id)
         .single();
@@ -184,8 +184,8 @@ export async function PUT(request: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    const { data: updatedPrompt, error } = await supabase
-      .from('prompts')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedPrompt, error } = await (supabase.from('prompts') as any)
       .update(updateData)
       .eq('id', id)
       .select()
@@ -227,16 +227,17 @@ export async function DELETE(request: NextRequest) {
       return validationErrorResponse('id 是必填项');
     }
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
     // 先获取要删除的Prompt信息（用于日志）
-    const { data: promptToDelete } = await supabase
-      .from('prompts')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: promptToDelete } = await (supabase.from('prompts') as any)
       .select('name, role, language')
       .eq('id', id)
       .single();
 
-    const { error } = await supabase.from('prompts').delete().eq('id', id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('prompts') as any).delete().eq('id', id);
 
     if (error) {
       logger.error('删除Prompt失败', { error, id });

@@ -79,10 +79,11 @@ export async function PUT(
       return validationErrorResponse('没有提供任何要更新的字段');
     }
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
-    const { data: updatedApiKey, error } = await supabase
-      .from('api_keys')
+    // Note: Type assertion needed due to Supabase type generation issue - this file will be removed in Convex migration
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedApiKey, error } = await (supabase.from('api_keys') as any)
       .update(updateObj)
       .eq('id', id)
       .select()
@@ -125,16 +126,17 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
     // 先获取要删除的密钥信息（用于日志）
-    const { data: apiKeyToDelete } = await supabase
-      .from('api_keys')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: apiKeyToDelete } = await (supabase.from('api_keys') as any)
       .select('provider, model_name')
       .eq('id', id)
       .single();
 
-    const { error } = await supabase.from('api_keys').delete().eq('id', id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('api_keys') as any).delete().eq('id', id);
 
     if (error) {
       logger.error('删除API密钥失败', { error, id });

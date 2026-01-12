@@ -3,7 +3,7 @@ import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { GeistSans } from 'geist/font/sans'
-import { AuthProvider } from '@/lib/auth/AuthProvider'
+import { ConvexClientProvider } from '@/app/ConvexClientProvider'
 import type { Metadata } from 'next'
 import '@/app/globals.css'
 
@@ -51,9 +51,9 @@ export default async function LocaleLayout({
       </head>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <AuthProvider>
+          <ConvexClientProvider>
             {children}
-          </AuthProvider>
+          </ConvexClientProvider>
         </NextIntlClientProvider>
       </body>
     </html>

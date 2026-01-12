@@ -1,29 +1,31 @@
 'use client';
 
 import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthProvider';
+import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuthGuard } from '@/lib/hooks/useAuth';
 
 export default function SettingsPage() {
+  useAuthGuard();
+
   const router = useRouter();
   const params = useParams();
   const locale = params.locale as string || 'zh';
-  const { user, signOut } = useAuth();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
 
   const handleLanguageChange = (newLocale: string) => {
     router.replace(`/${newLocale}/settings`);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push(`/${locale}/auth`);
-  };
-
-  if (!user) {
-    router.push(`/${locale}/auth`);
-    return null;
+  if (!isSignedIn || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
@@ -36,7 +38,7 @@ export default function SettingsPage() {
             <h2 className="text-xl font-semibold text-stone-800 mb-4">Account</h2>
             <div className="space-y-2">
               <p className="text-sm text-stone-600">Email</p>
-              <p className="text-stone-800">{user.email}</p>
+              <p className="text-stone-800">{user.primaryEmailAddress?.emailAddress}</p>
             </div>
           </Card>
 
@@ -63,13 +65,11 @@ export default function SettingsPage() {
               >
                 View Conversation History
               </Button>
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </Button>
+              <SignOutButton>
+                <Button variant="destructive" className="w-full">
+                  Sign Out
+                </Button>
+              </SignOutButton>
             </div>
           </Card>
         </div>

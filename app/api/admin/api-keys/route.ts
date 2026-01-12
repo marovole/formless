@@ -84,17 +84,17 @@ export async function POST(request: NextRequest) {
     // 构建插入数据
     const insertData: ApiKeyInsert = {
       provider: provider as 'chutes' | 'openrouter',
-      key: api_key,
+      api_key: api_key,
       model_name: model_name || null,
       daily_limit: daily_limit || 1000,
       priority: priority || 1,
       is_active: true,
     };
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
-    const { data: newApiKey, error } = await supabase
-      .from('api_keys')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: newApiKey, error } = await (supabase.from('api_keys') as any)
       .insert([insertData])
       .select()
       .single();
