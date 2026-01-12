@@ -2,40 +2,29 @@
 
 import { useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth as useClerkAuth } from "@clerk/nextjs";
 
 export function useAuthGuard() {
   const router = useRouter();
-  const supabase = createClient();
+  const { isLoaded, userId } = useClerkAuth();
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push('/auth');
-      }
-    };
-
-    checkAuth();
-  }, [router, supabase]);
+    if (isLoaded && !userId) {
+      router.push('/auth');
+    }
+  }, [isLoaded, userId, router]);
 }
 
 export function useAuth() {
-  const supabase = createClient();
+  const { userId, signOut } = useClerkAuth();
 
   const getSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session;
+    // Return mock session if compatible, or just null/true
+    return userId ? { user: { id: userId } } : null;
   };
 
   const getUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    return user;
-  };
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
+    return userId ? { id: userId } : null;
   };
 
   return {

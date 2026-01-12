@@ -1,131 +1,37 @@
-/**
- * API Route: Guanzhao Session Events
- * 处理用户会话事件（开始、活动、结束）
- * 转发请求到 Supabase Edge Function
- */
-
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@/lib/supabase/server';
-
-// =============================================
-// Types
-// =============================================
-
-interface SessionStartRequest {
-  eventType: 'session_start';
-  userId: string;
-  timezone?: string;
-}
-
-interface SessionEndRequest {
-  eventType: 'session_end';
-  userId: string;
-  sessionId: string;
-}
-
-interface InSessionRequest {
-  eventType: 'in_session';
-  userId: string;
-  sessionId: string;
-  messagesCount?: number;
-}
-
-type SessionRequest = SessionStartRequest | SessionEndRequest | InSessionRequest;
-
-// =============================================
-// Supabase Edge Function URL
-// =============================================
-
-function getEdgeFunctionUrl(functionName: string): string {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined');
-  }
-
-  // 提取项目引用
-  const match = supabaseUrl.match(/https:\/\/([^.]+)\.supabase\.co/);
-  if (!match) {
-    throw new Error('Invalid SUPABASE_URL format');
-  }
-
-  const projectRef = match[1];
-  return `https://${projectRef}.supabase.co/functions/v1/${functionName}`;
-}
-
-// =============================================
-// POST Handler
-// =============================================
+import { auth } from '@clerk/nextjs/server';
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. 验证用户身份
-    const supabase = await getSupabaseServerClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. 解析请求体
-    const body: SessionRequest = await req.json();
-    const { eventType } = body;
+    const body = await req.json();
+    const { eventType, sessionId, timezone, messagesCount } = body;
 
     if (!eventType) {
-      return NextResponse.json(
-        { error: 'Missing eventType' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing eventType' }, { status: 400 });
     }
 
-    // 3. 验证用户 ID 匹配
-    if (body.userId !== user.id) {
-      return NextResponse.json(
-        { error: 'User ID mismatch' },
-        { status: 403 }
-      );
-    }
-
-    // 4. 转发请求到 Edge Function
-    const edgeFunctionUrl = getEdgeFunctionUrl('guanzhao/session-tracker');
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!serviceRoleKey) {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY is not defined');
-    }
-
-    const response = await fetch(edgeFunctionUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${serviceRoleKey}`,
-      },
-      body: JSON.stringify(body),
+    const convex = getConvexClient();
+    const result: any = await convex.mutation(api.guanzhao.handleSessionEvent, {
+      eventType,
+      clerkId,
+      sessionId: sessionId ? (sessionId as Id<"user_sessions">) : undefined,
+      timezone,
+      messagesCount,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      return NextResponse.json(
-        { error: 'Edge function error', details: errorData },
-        { status: response.status }
-      );
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    const data = await response.json();
-
-    // 5. 如果有触发器响应，返回触发器信息
-    if (data.shouldTrigger) {
-      // 这里可以添加额外的处理逻辑，比如调用触发引擎获取模板
-      return NextResponse.json({
-        success: true,
-        sessionId: data.sessionId,
-        shouldTrigger: data.shouldTrigger,
-      });
-    }
-
-    return NextResponse.json(data);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error in session API:', error);
     return NextResponse.json(
