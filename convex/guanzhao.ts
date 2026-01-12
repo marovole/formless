@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
@@ -10,7 +10,7 @@ export const handleSessionEvent = mutation({
     timezone: v.optional(v.string()),
     messagesCount: v.optional(v.number())
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
     const userId = user._id;
@@ -79,7 +79,7 @@ export const processAction = mutation({
     triggerId: v.optional(v.string()),
     triggerHistoryId: v.optional(v.string())
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
     const userId = user._id;
@@ -176,7 +176,7 @@ export const evaluateTrigger = mutation({
     channel: v.string(), // 'in_app' | 'push'
     clerkId: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) return { allowed: false, reason: 'Unauthorized' };
     const userId = user._id;
@@ -251,7 +251,7 @@ export const recordTriggerAndConsumeBudget = mutation({
     budgetCost: v.number(),
     cooldownDays: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     // 1. 消耗预算
     const settings = await ctx.db.query("guanzhao_budget_tracking")
       .withIndex("by_user_id", q => q.eq("user_id", args.userId))
@@ -307,7 +307,7 @@ export const getRecentTriggerHistory = query({
     triggerId: v.string(),
     limit: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     return await ctx.db.query("guanzhao_trigger_history")
       .withIndex("by_user_trigger", q => q.eq("user_id", args.userId).eq("trigger_id", args.triggerId))
       .order("desc")
@@ -317,7 +317,7 @@ export const getRecentTriggerHistory = query({
 
 export const getGuanzhaoSettings = query({
   args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) return null;
 
@@ -332,7 +332,7 @@ export const updateGuanzhaoSettings = mutation({
     clerkId: v.string(),
     updates: v.any(), // Partial<GuanzhaoSettings> + budget fields
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
 
@@ -361,7 +361,7 @@ export const registerPushToken = mutation({
     platform: v.string(),
     deviceId: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
 
@@ -405,7 +405,7 @@ export const deactivatePushToken = mutation({
     clerkId: v.string(),
     token: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
 
@@ -424,7 +424,7 @@ export const deactivatePushToken = mutation({
 
 export const getPushTokens = query({
   args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) return [];
 
@@ -451,7 +451,7 @@ function parseTime(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
-async function shouldTriggerDailyCheckinNow(ctx: any, userId: Id<"users">) {
+async function shouldTriggerDailyCheckinNow(ctx: MutationCtx, userId: Id<"users">) {
     const now = Date.now();
     const dayStart = new Date(now).setHours(0,0,0,0);
 
@@ -471,7 +471,7 @@ async function shouldTriggerDailyCheckinNow(ctx: any, userId: Id<"users">) {
     return sessionsToday.length === 1;
 }
 
-async function shouldTriggerNightlyWrapupNow(ctx: any, userId: Id<"users">) {
+async function shouldTriggerNightlyWrapupNow(ctx: MutationCtx, userId: Id<"users">) {
     const now = new Date();
     const hour = now.getHours();
     if (hour < 20 || hour >= 23) return false;
@@ -489,7 +489,7 @@ async function shouldTriggerNightlyWrapupNow(ctx: any, userId: Id<"users">) {
     return true;
 }
 
-async function shouldTriggerOverloadProtectionNow(ctx: any, userId: Id<"users">, session: any) {
+async function shouldTriggerOverloadProtectionNow(ctx: MutationCtx, userId: Id<"users">, session: any) {
     const now = new Date();
     const hour = now.getHours();
 

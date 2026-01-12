@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const convex = getConvexClient();
     const users = await convex.query(api.admin.listUsers, { limit: 100 });
 
-    const sanitizedUsers = users.map(u => ({
+    const sanitizedUsers = users.map((u: any) => ({
       id: u._id,
       email: u.email,
       created_at: new Date(u._creationTime).toISOString(),

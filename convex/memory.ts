@@ -1,16 +1,20 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // 获取用户所有关键引用
 export const getQuotes = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: QueryCtx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
+
     return await ctx.db
-      .query("keyQuotes")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .query("key_quotes")
+      .withIndex("by_user_id", (q) => q.eq("user_id", user._id))
       .collect();
   },
 });
@@ -18,32 +22,36 @@ export const getQuotes = query({
 // 按主题筛选引用
 export const getByTopic = query({
   args: { topic: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const quotes = await ctx.db
-      .query("keyQuotes")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .collect();
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
 
-    return quotes.filter((q) => q.topic === args.topic);
+    return await ctx.db
+      .query("key_quotes")
+      .withIndex("by_user_id", (q) => q.eq("user_id", user._id))
+      .filter((q) => q.eq(q.field("topic"), args.topic))
+      .collect();
   },
 });
 
 // 按情感筛选引用
 export const getByEmotion = query({
   args: { emotion: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    const quotes = await ctx.db
-      .query("keyQuotes")
-      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
-      .collect();
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
 
-    return quotes.filter((q) => q.emotion === args.emotion);
+    return await ctx.db
+      .query("key_quotes")
+      .withIndex("by_user_id", (q) => q.eq("user_id", user._id))
+      .filter((q) => q.eq(q.field("emotion"), args.emotion))
+      .collect();
   },
 });
 
@@ -54,18 +62,22 @@ export const addQuote = mutation({
     context: v.optional(v.string()),
     emotion: v.optional(v.string()),
     topic: v.optional(v.string()),
+    conversationId: v.optional(v.id("conversations")),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
-    return await ctx.db.insert("keyQuotes", {
-      userId: identity.subject,
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
+
+    return await ctx.db.insert("key_quotes", {
+      user_id: user._id,
+      conversation_id: args.conversationId,
       quote: args.quote,
       context: args.context,
       emotion: args.emotion,
       topic: args.topic,
-      createdAt: Date.now(),
     });
   },
 });
@@ -73,21 +85,24 @@ export const addQuote = mutation({
 // 更新引用
 export const updateQuote = mutation({
   args: {
-    quoteId: v.id("keyQuotes"),
+    quoteId: v.id("key_quotes"),
     quote: v.optional(v.string()),
     context: v.optional(v.string()),
     emotion: v.optional(v.string()),
     topic: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
+
     const existing = await ctx.db.get(args.quoteId);
     if (!existing) throw new Error("Quote not found");
-    if (existing.userId !== identity.subject) throw new Error("Forbidden");
+    if (existing.user_id !== user._id) throw new Error("Forbidden");
 
-    const updates: Record<string, unknown> = {};
+    const updates: any = {};
     if (args.quote !== undefined) updates.quote = args.quote;
     if (args.context !== undefined) updates.context = args.context;
     if (args.emotion !== undefined) updates.emotion = args.emotion;
@@ -99,14 +114,17 @@ export const updateQuote = mutation({
 
 // 删除引用
 export const removeQuote = mutation({
-  args: { quoteId: v.id("keyQuotes") },
-  handler: async (ctx, args) => {
+  args: { quoteId: v.id("key_quotes") },
+  handler: async (ctx: MutationCtx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
 
+    const user = await ctx.db.query("users").withIndex("by_token", q => q.eq("tokenIdentifier", identity.tokenIdentifier)).first();
+    if (!user) throw new Error("User not found");
+
     const existing = await ctx.db.get(args.quoteId);
     if (!existing) throw new Error("Quote not found");
-    if (existing.userId !== identity.subject) throw new Error("Forbidden");
+    if (existing.user_id !== user._id) throw new Error("Forbidden");
 
     await ctx.db.delete(args.quoteId);
   },

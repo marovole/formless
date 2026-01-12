@@ -1,6 +1,6 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Id, Doc } from "./_generated/dataModel";
 
 export const listInternal = query({
   args: {
@@ -8,11 +8,11 @@ export const listInternal = query({
       conversationId: v.optional(v.id("conversations")),
       limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("User not found");
 
-    let quotes;
+    let quotes: Doc<"key_quotes">[] = [];
     if (args.conversationId) {
         const conv = await ctx.db.get(args.conversationId);
         if (conv && conv.user_id === user._id) {
@@ -50,7 +50,7 @@ export const prepareExtraction = mutation({
     clerkId: v.string(),
     conversationId: v.id("conversations"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
     if (!user) throw new Error("Unauthorized");
 
@@ -82,7 +82,7 @@ export const saveExtractedMemories = mutation({
     })),
     context: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args) => {
     // 1. 保存引用
     for (const quote of args.quotes) {
         // 检查是否已存在
