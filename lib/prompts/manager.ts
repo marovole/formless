@@ -17,8 +17,8 @@ export async function getActivePrompt(
 ): Promise<string | null> {
   const supabase = getSupabaseAdminClient();
 
-  const { data, error } = await supabase
-    .from('prompts')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase.from('prompts') as any)
     .select('content')
     .eq('role', role)
     .eq('language', language)

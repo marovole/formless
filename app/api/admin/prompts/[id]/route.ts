@@ -72,12 +72,12 @@ export async function PUT(
       return validationErrorResponse('没有提供任何要更新的字段');
     }
 
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const supabase = getSupabaseAdminClient();
 
     // 如果内容改变，版本号递增
     if (updateObj.content) {
-      const { data: existing, error: fetchError } = await supabase
-        .from('prompts')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existing, error: fetchError } = await (supabase.from('prompts') as any)
         .select('version')
         .eq('id', id)
         .single();
@@ -89,8 +89,8 @@ export async function PUT(
       }
     }
 
-    const { data: updatedPrompt, error } = await supabase
-      .from('prompts')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedPrompt, error } = await (supabase.from('prompts') as any)
       .update(updateObj)
       .eq('id', id)
       .select()

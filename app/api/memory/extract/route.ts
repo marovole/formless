@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAvailableApiKey } from '@/lib/api-keys/manager';
 import { streamChatCompletion } from '@/lib/llm/chutes';
 import { requireAuth } from '@/lib/api/middleware';
-import { handleApiError, validationErrorResponse, forbiddenResponse, notFoundResponse } from '@/lib/api/responses';
+import { handleApiError, validationErrorResponse } from '@/lib/api/responses';
 import { logger } from '@/lib/logger';
-import type { TypedSupabaseClient, Conversation, Message } from '@/lib/supabase/types';
+import { getSupabaseAdminClient } from '@/lib/supabase/server';
 
 interface ExtractRequest {
   conversationId: string;
@@ -33,7 +33,8 @@ interface UserProfile {
  * 验证对话所有权
  */
 async function verifyConversationOwnership(
-  supabase: TypedSupabaseClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   conversationId: string,
   userId: string
 ): Promise<void> {
@@ -56,7 +57,8 @@ async function verifyConversationOwnership(
  * 获取对话消息
  */
 async function getConversationMessages(
-  supabase: TypedSupabaseClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   conversationId: string
 ): Promise<string> {
   const { data: messages, error } = await supabase
@@ -74,14 +76,15 @@ async function getConversationMessages(
     throw new Error('对话没有消息');
   }
 
-  return messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+  return messages.map((m: { role: string; content: string }) => `${m.role}: ${m.content}`).join('\n');
 }
 
 /**
  * 存储提取的记忆
  */
 async function storeExtractedQuotes(
-  supabase: TypedSupabaseClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   userId: string,
   conversationId: string,
   quotes: string[],
@@ -111,7 +114,8 @@ async function storeExtractedQuotes(
  * 更新用户档案洞察
  */
 async function updateUserInsights(
-  supabase: TypedSupabaseClient,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
   userId: string,
   insights: NonNullable<ExtractedMemory['insights']>
 ): Promise<void> {

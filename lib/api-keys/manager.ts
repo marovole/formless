@@ -17,8 +17,8 @@ export async function getAvailableApiKey(
   // 获取当前日期用于每日重置检查
   const today = new Date().toISOString().split('T')[0];
 
-  const { data: keys, error } = await supabase
-    .from('api_keys')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: keys, error } = await (supabase.from('api_keys') as any)
     .select('*')
     .eq('provider', provider)
     .eq('is_active', true)
@@ -39,8 +39,8 @@ export async function getAvailableApiKey(
     // 如果是新的一天,重置 daily_used
     const keyDate = key.reset_at ? key.reset_at.split('T')[0] : null;
     if (keyDate !== today) {
-      const { error: updateError } = await supabase
-        .from('api_keys')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase.from('api_keys') as any)
         .update({ daily_used: 0, reset_at: new Date().toISOString() })
         .eq('id', key.id);
 
@@ -79,10 +79,10 @@ export async function incrementApiKeyUsage(
   const supabase = getSupabaseAdminClient();
 
   // 直接使用原子增量更新
-  const { error } = await supabase
-    .from('api_keys')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('api_keys') as any)
     .update({
-      daily_used: supabase.rpc('increment', { amount: tokenCount, row_id: keyId }),
+      daily_used: (supabase as any).rpc('increment', { amount: tokenCount, row_id: keyId }),
       last_used_at: new Date().toISOString(),
     })
     .eq('id', keyId);
@@ -101,7 +101,8 @@ export async function incrementApiKeyUsage(
 export async function logApiUsage(params: ApiUsageInsert): Promise<void> {
   const supabase = getSupabaseAdminClient();
 
-  const { error } = await supabase.from('api_usage').insert([params]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase.from('api_usage') as any).insert([params]);
 
   if (error) {
     // 记录失败但不抛出错误,避免影响主流程
