@@ -8,6 +8,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { AppError, ExternalServiceError, NotFoundError, ForbiddenError } from '@/lib/errors';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     const { message, conversationId, language = 'zh' } = validationResult.data;
 
     const email = user.emailAddresses[0]?.emailAddress;
-    if (!email) throw new Error("User email required");
+    if (!email) throw new AppError("User email required", "USER_EMAIL_REQUIRED", 400);
 
     const convex = getConvexClient();
     const convexUserId = await convex.mutation(api.users.ensure, {
@@ -48,8 +49,8 @@ export async function POST(request: NextRequest) {
 
     if (conversationId) {
        const conv = await convex.query(api.conversations.get, { id: conversationId as Id<"conversations"> });
-       if (!conv) throw new Error('对话不存在');
-       if (conv.user_id !== convexUserId) throw new Error('无权访问此对话');
+       if (!conv) throw new NotFoundError('对话不存在');
+       if (conv.user_id !== convexUserId) throw new ForbiddenError('无权访问此对话');
 
        activeConversationId = conversationId as Id<"conversations">;
        conversationHistory = await convex.query(api.messages.list, { conversationId: activeConversationId });
@@ -64,13 +65,13 @@ export async function POST(request: NextRequest) {
     const apiKey = await convex.mutation(api.api_keys.getAvailable, { provider: 'chutes' });
     if (!apiKey) {
       logger.error('没有可用的API密钥', { userId: clerkId });
-      throw new Error('服务暂时不可用');
+      throw new AppError('服务暂时不可用', 'SERVICE_UNAVAILABLE', 500);
     }
 
     const systemPrompt = await convex.query(api.prompts.getActive, { role: 'formless_elder', language });
     if (!systemPrompt) {
       logger.error('没有找到系统Prompt', { language });
-      throw new Error('系统配置错误');
+      throw new AppError('系统配置错误', 'CONFIG_ERROR', 500);
     }
 
     const messages = [
