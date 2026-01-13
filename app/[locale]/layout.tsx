@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import { routing } from '@/i18n/routing'
 import { GeistSans } from 'geist/font/sans'
 import ConvexClientProvider from '@/components/ConvexClientProvider'
+import { EnsureCurrentUser } from '@/components/EnsureCurrentUser'
 import type { Metadata } from 'next'
 import '@/app/globals.css'
 
@@ -54,6 +55,7 @@ export default async function LocaleLayout({
         <ClerkProvider>
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider>
+              <EnsureCurrentUser preferredLanguage={locale} />
               {children}
             </ConvexClientProvider>
           </NextIntlClientProvider>

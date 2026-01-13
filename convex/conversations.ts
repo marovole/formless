@@ -1,31 +1,28 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { requireCurrentUser } from "./_lib/auth";
 
-/**
- * Conversation defaults
- * Note: Duplicated from lib/constants since Convex runs in separate environment
- */
 const CONVERSATION_DEFAULTS = {
   LIST_LIMIT: 20,
   PREVIEW_LENGTH: 100,
 } as const;
 
-// Internal mutation called by server action/API
-export const createInternal = mutation({
+export const create = mutation({
   args: {
-    userId: v.id("users"),
-    language: v.optional(v.string()),
     title: v.optional(v.string()),
+    language: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const user = await requireCurrentUser(ctx);
+    const now = Date.now();
+
     return await ctx.db.insert("conversations", {
-      user_id: args.userId,
-      language: args.language,
+      user_id: user._id,
       title: args.title,
+      language: args.language,
       message_count: 0,
-      updated_at: Date.now(),
-      last_message_at: Date.now(),
+      last_message_at: now,
+      updated_at: now,
     });
   },
 });
@@ -33,24 +30,21 @@ export const createInternal = mutation({
 export const get = query({
   args: { id: v.id("conversations") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const user = await requireCurrentUser(ctx);
+    const conversation = await ctx.db.get(args.id);
+    if (!conversation) return null;
+    if (conversation.user_id !== user._id) {
+      throw new Error("Forbidden");
+    }
+    return conversation;
   },
 });
 
 export const list = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthorized");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) return [];
-
-    const limit = args.limit || CONVERSATION_DEFAULTS.LIST_LIMIT;
+    const user = await requireCurrentUser(ctx);
+    const limit = args.limit ?? CONVERSATION_DEFAULTS.LIST_LIMIT;
 
     const conversations = await ctx.db
       .query("conversations")
@@ -58,91 +52,80 @@ export const list = query({
       .order("desc")
       .take(limit);
 
-    return await Promise.all(conversations.map(async (conv) => {
-        const lastMsg = await ctx.db.query("messages")
-            .withIndex("by_conversation_id", q => q.eq("conversation_id", conv._id))
-            .order("desc")
-            .first();
+    return await Promise.all(
+      conversations.map(async (conv) => {
+        const lastMsg = await ctx.db
+          .query("messages")
+          .withIndex("by_conversation_id", (q) =>
+            q.eq("conversation_id", conv._id),
+          )
+          .order("desc")
+          .first();
 
         return {
-            ...conv,
-            preview: lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) || conv.title || "",
+          ...conv,
+          preview:
+            lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) ||
+            conv.title ||
+            "",
         };
-    }));
+      }),
+    );
   },
 });
 
-export const listInternal = query({
-  args: { clerkId: v.string(), limit: v.optional(v.number()) },
+export const remove = mutation({
+  args: { id: v.id("conversations") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .first();
-
-    if (!user) return [];
-
-    const limit = args.limit || CONVERSATION_DEFAULTS.LIST_LIMIT;
-
-    const conversations = await ctx.db
-      .query("conversations")
-      .withIndex("by_user_last_message", (q) => q.eq("user_id", user._id))
-      .order("desc")
-      .take(limit);
-
-    return await Promise.all(conversations.map(async (conv) => {
-        const lastMsg = await ctx.db.query("messages")
-            .withIndex("by_conversation_id", q => q.eq("conversation_id", conv._id))
-            .order("desc")
-            .first();
-
-        return {
-            ...conv,
-            preview: lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) || conv.title || "",
-        };
-    }));
-  }
-});
-
-export const deleteConversation = mutation({
-  args: { id: v.id("conversations"), clerkId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    let userId: Id<"users">;
-
-    if (args.clerkId) {
-         const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId!)).first();
-         if (!user) throw new Error("User not found");
-         userId = user._id;
-    } else {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error("Unauthorized");
-        const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject)).first();
-        if (!user) throw new Error("User not found");
-        userId = user._id;
-    }
-
+    const user = await requireCurrentUser(ctx);
     const conversation = await ctx.db.get(args.id);
-    if (!conversation) throw new Error("Conversation not found");
-    if (conversation.user_id !== userId) throw new Error("Forbidden");
+    if (!conversation) {
+      return;
+    }
+    if (conversation.user_id !== user._id) {
+      throw new Error("Forbidden");
+    }
 
-    // Delete messages
-    const messages = await ctx.db.query("messages").withIndex("by_conversation_id", (q) => q.eq("conversation_id", args.id)).collect();
+    const messages = await ctx.db
+      .query("messages")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversation_id", args.id),
+      )
+      .collect();
     for (const msg of messages) {
-        await ctx.db.delete(msg._id);
+      await ctx.db.delete(msg._id);
     }
 
-    // Delete api_usage
-    const apiUsages = await ctx.db.query("api_usage").withIndex("by_conversation_id", (q) => q.eq("conversation_id", args.id)).collect();
-    for (const u of apiUsages) {
-        await ctx.db.delete(u._id);
+    const apiUsages = await ctx.db
+      .query("api_usage")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversation_id", args.id),
+      )
+      .collect();
+    for (const usage of apiUsages) {
+      await ctx.db.delete(usage._id);
     }
 
-    // key_quotes
-    const quotes = await ctx.db.query("key_quotes").withIndex("by_conversation_id", (q) => q.eq("conversation_id", args.id)).collect();
-    for (const q of quotes) {
-        await ctx.db.delete(q._id);
+    const quotes = await ctx.db
+      .query("key_quotes")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversation_id", args.id),
+      )
+      .collect();
+    for (const quote of quotes) {
+      await ctx.db.delete(quote._id);
+    }
+
+    const triggerHistory = await ctx.db
+      .query("guanzhao_trigger_history")
+      .withIndex("by_conversation_id", (q) =>
+        q.eq("conversation_id", args.id),
+      )
+      .collect();
+    for (const history of triggerHistory) {
+      await ctx.db.delete(history._id);
     }
 
     await ctx.db.delete(args.id);
-  }
+  },
 });

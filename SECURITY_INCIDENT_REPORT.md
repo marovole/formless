@@ -1,199 +1,54 @@
-# 🔐 Formless 安全修复报告
+# 🔐 Formless Security Incident Report
 
-## ⚠️ 安全事件概述
+## 事件概述
 
-**发现时间：** 2026-01-03
-**严重程度：** 🔴 高危
-**影响范围：** API 密钥泄露
+**发现时间：** 2026-01-03  
+**严重程度：** 高  
+**影响范围：** 第三方 LLM API key 泄露（OpenRouter / Chutes）
 
-### 暴露的密钥
+该事件发生于早期使用 SQL 初始化脚本的阶段；当前运行时架构已迁移为 **Clerk + Convex**，不再使用 Supabase。
 
-1. **OpenRouter API Key**
-   - 结尾：`...8d47`
-   - 状态：✅ 已被 OpenRouter 自动禁用
-   - 位置：`scripts/init-api-keys.sql:53`
+## 已完成的修复
 
-2. **Chutes API Key**
-   - 位置：`scripts/init-api-keys.sql:63`
-   - 状态：⚠️ **需要立即作废并重新生成**
+1. 移除仓库中的明文密钥与相关初始化脚本（避免再次泄露）。
+2. 将 API key 管理迁移到后台 `/admin`（写入 Convex `api_keys` 表），并由 `ADMIN_EMAILS` + Convex `requireAdmin` 保护。
 
----
+## 仍需人工完成的操作（必须）
 
-## ✅ 已完成的修复措施
+1. **作废所有已泄露的 API keys**（OpenRouter / Chutes）。
+2. **重新生成新的 keys**。
+3. 使用 allowlisted 管理员账号登录 `/admin`，在后台重新录入新 keys。
 
-### 1. 从 Git 历史中彻底移除密钥
-```bash
-# 使用 git filter-branch 从所有分支和历史中移除文件
-git filter-branch --force --index-filter \
-  "git rm --cached --ignore-unmatch scripts/init-api-keys.sql" \
-  --prune-empty --tag-name-filter cat -- --all
-```
+## 建议的长期措施
 
-✅ **状态：** 已完成 - 该文件已从 270 个提交中被移除
+### 1) 禁止在仓库中存放任何 secret
 
-### 2. 更新 .gitignore
-新增以下规则防止未来泄露：
-```gitignore
-# API keys and secrets
-scripts/init-api-keys.sql
-scripts/*-keys.sql
-**/api-keys*.sql
-**/*secret*.sql
-```
+- 只通过运行环境注入（Cloudflare Pages / Convex env vars / Clerk dashboard）。
+- 严禁将 key 写入 `.sql`、`.ts`、`.md` 等任何可被提交的文件。
 
-### 3. 创建安全的密钥管理系统
-
-**新文件：**
-- ✅ `.env.example` - 环境变量模板
-- ✅ `scripts/init-api-keys-template.sql` - 安全的 SQL 模板（不含实际密钥）
-- ✅ `SECURITY_INCIDENT_REPORT.md` - 本文档
-
----
-
-## 🚨 立即需要执行的操作
-
-### 步骤 1: 作废暴露的密钥 ⚠️ 必须
-
-1. **OpenRouter**
-   - ✅ 已自动禁用
-   - 访问 https://openrouter.ai/keys 创建新密钥
-
-2. **Chutes** ⚠️ **立即执行**
-   - 访问 Chutes 控制台
-   - 作废密钥：`cpk_527e360e...`
-   - 生成新的 API 密钥
-
-### 步骤 2: 配置新密钥
-
-1. 复制环境变量模板：
-```bash
-cp .env.example .env.local
-```
-
-2. 编辑 `.env.local`，填入新的密钥：
-```env
-OPENROUTER_API_KEY=sk-or-v1-新的密钥
-CHUTES_API_KEY=cpk_新的密钥
-```
-
-3. **切勿提交 `.env.local` 文件！**
-
-### 步骤 3: 更新 Supabase 数据库
-
-1. 打开 `scripts/init-api-keys-template.sql`
-2. 将模板中的占位符替换为新密钥
-3. 在 Supabase Dashboard SQL Editor 中执行
-4. **执行后立即删除包含实际密钥的临时文件**
-
-### 步骤 4: 强制推送清理后的历史
-
-⚠️ **警告：这将重写 Git 历史！请通知所有协作者**
+### 2) 提交前快速扫描
 
 ```bash
-# 强制推送到远程仓库（清理历史）
-git push origin --force --all
-git push origin --force --tags
-
-# 清理本地引用
-rm -rf .git/refs/original/
-git reflog expire --expire=now --all
-git gc --prune=now --aggressive
+git diff --cached | rg -n "(api[_-]?key|secret|password|token)\\s*[=:]"
 ```
 
-### 步骤 5: 通知协作者
+### 3) 使用 pre-commit hook（可选）
 
-所有协作者需要执行：
 ```bash
-# 删除本地仓库
-cd ..
-rm -rf seoul
-
-# 重新克隆
-git clone <repository-url>
-cd seoul
-```
-
----
-
-## 🛡️ 安全最佳实践
-
-### 1. 环境变量管理
-
-✅ **正确做法：**
-```env
-# .env.local (已在 .gitignore 中)
-API_KEY=actual_secret_value
-```
-
-❌ **错误做法：**
-```sql
--- 切勿在代码中硬编码密钥
-INSERT INTO api_keys VALUES ('sk-or-v1-actual-key');
-```
-
-### 2. Git 提交前检查
-
-在每次提交前运行：
-```bash
-# 检查是否包含敏感信息
-git diff --cached | grep -iE '(api[_-]?key|secret|password|token)'
-```
-
-### 3. 使用 pre-commit hook
-
-创建 `.git/hooks/pre-commit`：
-```bash
-#!/bin/bash
-if git diff --cached | grep -iE 'sk-or-v1-|cpk_[a-f0-9]{32}'; then
-  echo "❌ 检测到 API 密钥！提交已阻止。"
+cat > .git/hooks/pre-commit <<'SH'
+#!/bin/sh
+set -e
+git diff --cached | rg -n "(sk-or-v1-|cpk_[a-f0-9]{16,})" && {
+  echo "Potential secret detected. Commit aborted."
   exit 1
-fi
+}
+SH
+chmod +x .git/hooks/pre-commit
 ```
 
-### 4. 定期审计
+## 备注：当前需要保护的关键 secret
 
-每月检查：
-```bash
-# 扫描所有文件中的潜在密钥
-grep -r -iE "(api[_-]?key|secret|password|token).*=.*['\"].*['\"]" \
-  --exclude-dir=node_modules --exclude-dir=.git .
-```
+- `CLERK_SECRET_KEY`（Cloudflare Pages env）
+- `CONVEX_ADMIN_TOKEN`（Cloudflare Pages env，server-only）
+- Convex env vars（`npx convex env set --prod ...`）
 
----
-
-## 📋 检查清单
-
-- [x] 从 Git 历史中移除密钥文件
-- [x] 更新 .gitignore
-- [x] 创建安全的环境变量模板
-- [x] 创建安全的 SQL 模板
-- [ ] **作废 Chutes API 密钥** ⚠️
-- [ ] **生成新的 OpenRouter API 密钥** ⚠️
-- [ ] **生成新的 Chutes API 密钥** ⚠️
-- [ ] 配置 .env.local
-- [ ] 更新 Supabase 数据库密钥
-- [ ] 强制推送清理后的历史
-- [ ] 通知所有协作者
-- [ ] 设置 pre-commit hook
-- [ ] 审查其他可能的安全问题
-
----
-
-## 📞 支持联系
-
-- **OpenRouter 支持：** support@openrouter.ai
-- **Chutes 支持：** 查看 Chutes 文档
-- **GitHub 安全团队：** 如果需要进一步帮助
-
----
-
-## 📚 参考资料
-
-- [GitHub: Removing sensitive data](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
-- [OWASP: API Security Top 10](https://owasp.org/www-project-api-security/)
-- [OpenRouter 安全最佳实践](https://openrouter.ai/docs/security)
-
----
-
-**最后更新：** 2026-01-03
-**修复状态：** 🟡 部分完成 - 需要用户操作完成密钥轮换

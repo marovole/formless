@@ -2,24 +2,14 @@ import { POST } from './route'
 import { NextRequest } from 'next/server'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 
-// Mock Clerk auth
 vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn().mockResolvedValue({ userId: 'user_clerk_123' }),
-  currentUser: vi.fn().mockResolvedValue({
-    id: 'user_clerk_123',
-    emailAddresses: [{ emailAddress: 'test@example.com' }],
-    firstName: 'Test',
-    lastName: 'User'
-  }),
+  auth: vi.fn(),
+  currentUser: vi.fn(),
 }))
 
-// Mock Convex client
 vi.mock('@/lib/convex', () => ({
-  getConvexClient: vi.fn(),
-}))
-
-vi.mock('@/lib/api-keys/manager', () => ({
-  getAvailableApiKey: vi.fn(),
+  getConvexClientWithAuth: vi.fn(),
+  getConvexAdminClient: vi.fn(),
 }))
 
 vi.mock('@/lib/llm/chutes', () => ({
@@ -30,187 +20,115 @@ vi.mock('@/lib/llm/streaming', () => ({
   streamToSSE: vi.fn(),
 }))
 
-// Mock env
 process.env.NEXT_PUBLIC_CONVEX_URL = 'https://mock.convex.cloud'
+process.env.CONVEX_ADMIN_TOKEN = 'admin-token'
 
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { getConvexClient } from '@/lib/convex'
-import { getAvailableApiKey } from '@/lib/api-keys/manager'
+import { getConvexClientWithAuth, getConvexAdminClient } from '@/lib/convex'
 import { streamToSSE } from '@/lib/llm/streaming'
-import { api } from '@/convex/_generated/api'
+import { streamChatCompletion } from '@/lib/llm/chutes'
 
 describe('Chat API Route', () => {
-  let mockConvex: any
+  let mockUserClient: any
+  let mockAdminClient: any
   let mockStream: any
 
   beforeEach(() => {
-    vi.mocked(auth).mockResolvedValue({ userId: 'user_clerk_123' } as any)
-    vi.mocked(currentUser).mockResolvedValue({
-      id: 'user_clerk_123',
-      emailAddresses: [{ emailAddress: 'test@example.com' }],
-      firstName: 'Test',
-      lastName: 'User'
+    vi.clearAllMocks()
+
+    vi.mocked(auth).mockResolvedValue({
+      userId: 'user_clerk_123',
+      getToken: vi.fn().mockResolvedValue('convex-token'),
     } as any)
 
-    // Setup mock Convex client
-    mockConvex = {
-      mutation: vi.fn(),
+    vi.mocked(currentUser).mockResolvedValue({
+      fullName: 'Test User',
+      imageUrl: 'https://example.com/avatar.png',
+    } as any)
+
+    mockUserClient = {
       query: vi.fn(),
+      mutation: vi.fn(),
     }
 
-    vi.mocked(getConvexClient).mockReturnValue(mockConvex)
+    mockAdminClient = {
+      query: vi.fn(),
+      mutation: vi.fn(),
+    }
 
-    // Setup mock stream
+    vi.mocked(getConvexClientWithAuth).mockReturnValue(mockUserClient)
+    vi.mocked(getConvexAdminClient).mockReturnValue(mockAdminClient)
+
     mockStream = {
       sendEvent: vi.fn(),
       sendError: vi.fn(),
       close: vi.fn(),
     }
 
-    vi.mocked(streamToSSE).mockImplementation((callback) => {
+    vi.mocked(streamToSSE).mockImplementation((callback: any) => {
       callback(mockStream)
       return new Response('mocked response')
     })
 
-    // Setup default mock responses
-    vi.mocked(getAvailableApiKey).mockResolvedValue({
-      id: 'key-123' as any,
-      _id: 'key-123' as any,
-      api_key: 'test-api-key',
-      provider: 'chutes',
+    vi.mocked(streamChatCompletion).mockImplementation(async (_apiKey: string, options: any) => {
+      options.onChunk?.('Hello')
+      await options.onComplete?.('Hello')
     })
 
-    mockConvex.mutation.mockImplementation(async (apiRef: any, args?: any) => {
-      if (args?.email) return 'user-123' // users.ensure
-      if (args?.language && args?.title) return 'conv-123' // conversations.createInternal
-      if (args?.provider === 'chutes') return { _id: 'key-123', api_key: 'test-key', provider: 'chutes' } // api_keys.getAvailable
-      if (args?.conversationId && args?.role) return 'msg-123' // messages.insert
-      return 'mock-id'
-    })
-
-    mockConvex.query.mockImplementation(async (apiRef: any, args?: any) => {
-      if (args?.role === 'formless_elder') return { content: 'System prompt' }
-      if (args?.id) return { user_id: 'user-123' }
-      if (args?.conversationId) return []
+    mockUserClient.query.mockResolvedValue([])
+    mockUserClient.mutation.mockImplementation(async (_ref: any, args?: any) => {
+      if (args?.preferredLanguage !== undefined) return 'user-123'
+      if (args?.title !== undefined) return 'conv-123'
       return null
     })
+
+    mockAdminClient.query.mockResolvedValue({ content: 'System prompt' })
+    mockAdminClient.mutation
+      .mockResolvedValueOnce({ _id: 'key-123', api_key: 'test-key', model_name: 'model' })
+      .mockResolvedValue(undefined)
   })
 
-  describe('Request validation', () => {
-    it('should accept valid request body', async () => {
-      const body = {
-        message: 'Hello',
-        conversationId: '123e4567-e89b-12d3-a456-426614174000',
-        language: 'zh',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      await POST(request)
-
-      expect(mockConvex.mutation).toHaveBeenCalled()
+  it('rejects request with missing message', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({}),
     })
 
-    it('should reject request with missing message', async () => {
-      const body = {
-        conversationId: '123e4567-e89b-12d3-a456-426614174000',
-      }
+    const response = await POST(request)
+    expect(response.status).toBe(400)
 
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('数据验证失败')
-    })
+    const data = await response.json()
+    expect(data.error).toBe('Validation failed')
   })
 
-  describe('Conversation handling', () => {
-    it('should create new conversation when conversationId not provided', async () => {
-      const body = {
-        message: 'Hello',
-        language: 'zh',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      await POST(request)
-
-      expect(mockConvex.mutation).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
-        userId: 'user-123',
-        language: 'zh'
-      }))
+  it('creates a new conversation when conversationId is not provided', async () => {
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', language: 'zh' }),
     })
 
-    it('should use existing conversation when conversationId provided', async () => {
-      const conversationId = '123e4567-e89b-12d3-a456-426614174000'
-      const body = {
-        message: 'Hello',
-        conversationId,
-      }
+    await POST(request)
 
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      await POST(request)
-
-      expect(mockConvex.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: conversationId }))
-      expect(mockConvex.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ conversationId }))
-    })
+    expect(mockUserClient.mutation).toHaveBeenCalled()
+    expect(mockAdminClient.mutation).toHaveBeenCalled()
+    expect(streamToSSE).toHaveBeenCalled()
   })
 
-  describe('API key handling', () => {
-    it('should return 500 when no API key available', async () => {
-      mockConvex.mutation.mockImplementation(async (apiRef: any, args?: any) => {
-        if (args?.provider === 'chutes') return null
-        if (args?.email) return 'user-123'
-        if (args?.language && args?.title) return 'conv-123'
-        return {}
-      })
-
-      const body = {
-        message: 'Hello',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      const response = await POST(request)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('服务暂时不可用')
+  it('loads conversation history when conversationId is provided', async () => {
+    mockUserClient.query.mockImplementation(async (_ref: any, args?: any) => {
+      if (args?.id) return { _id: args.id }
+      return []
     })
-  })
 
-  describe('SSE streaming', () => {
-    it('should call streamToSSE with stream callback', async () => {
-      const body = {
-        message: 'Hello',
-      }
-
-      const request = new NextRequest('http://localhost:3000/api/chat', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      })
-
-      await POST(request)
-
-      expect(streamToSSE).toHaveBeenCalled()
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', conversationId: 'conv-123', language: 'zh' }),
     })
+
+    await POST(request)
+
+    expect(mockUserClient.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ id: 'conv-123' }))
+    expect(mockUserClient.query).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ conversationId: 'conv-123' }))
   })
 })
+

@@ -5,6 +5,14 @@
 - `docs/guanzhao/guanzhao-bundle.yaml`：可读性优先（建议作为源文件）
 - `docs/guanzhao/guanzhao-bundle.json`：机器消费版（由 YAML 生成）
 
+## 架构
+
+当前观照系统基于 **Convex + Clerk**：
+
+- **Convex 函数**: `convex/guanzhao.ts`
+- **认证辅助**: `convex/_lib/auth.ts`
+- **配置包**: `docs/guanzhao/guanzhao-bundle.json`
+
 ## 结构概览
 
 - `defaults`：默认开关/频率/风格/渠道/免打扰
@@ -47,41 +55,30 @@ Path('docs/guanzhao/guanzhao-bundle.json').write_text(json.dumps(data, ensure_as
 PY
 ```
 
-## 部署与实现
+## 部署指南
 
-完整的实现代码和部署指南请参考：
-
-- **部署指南**：[DEPLOYMENT.md](./DEPLOYMENT.md) - 详细的部署步骤和配置说明
-- **实施计划**：`/Users/marovole/.claude/plans/idempotent-sauteeing-blum.md` - 完整的实施计划
+详见 [DEPLOYMENT.md](./DEPLOYMENT.md)
 
 ## 已实现的组件
 
-### 数据库
-- `supabase/migrations/20250102000001_guanzhao_system.sql` - 数据库架构（6 个新表）
+### Convex 函数 (`convex/guanzhao.ts`)
 
-### 核心库 (`lib/guanzhao/`)
-- `config.ts` - 配置加载器
-- `budget.ts` - 预算管理系统
-- `safetyKeywords.ts` - 风险检测关键词库
-- `types.ts` - TypeScript 类型定义
-
-### Edge Functions (`supabase/functions/guanzhao/`)
-- `session-tracker/` - 会话追踪
-- `trigger-engine/` - 触发引擎
+- `handleSessionEvent` - 会话事件处理
+- `processAction` - 用户动作处理
+- `evaluateTrigger` - 触发条件评估
+- `fireTrigger` - 触发执行
+- `recordTriggerAndConsumeBudget` - 记录触发并消耗预算
+- `getRecentTriggerHistory` - 获取触发历史
+- `getGuanzhaoSettings` / `updateGuanzhaoSettings` - 设置管理
+- `registerPushToken` / `deactivatePushToken` / `getPushTokens` - 推送令牌管理
 
 ### 前端组件
+
 - `lib/hooks/useSessionTracking.ts` - 会话追踪 Hook
 - `components/guanzhao/GuanzhaoTriggerCard.tsx` - 触发器卡片组件
 - `app/[locale]/settings/guanzhao/page.tsx` - 观照设置页面
-- `app/[locale]/chat/page.tsx` - 集成了会话追踪的聊天页面
-
-### API Routes (`app/api/guanzhao/`)
-- `session/` - 会话事件处理
-- `settings/` - 设置管理
-- `actions/` - 用户动作处理
-- `trigger/` - 触发器评估
-- `push-token/` - Push 令牌管理
 
 ### UI 组件 (`components/ui/`)
+
 - `switch.tsx` - Switch 组件
 - `radio-group.tsx` - RadioGroup 组件

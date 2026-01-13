@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useQuery } from 'convex/react'
 import {
   Card,
   CardContent,
@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Skeleton } from '@/components/ui/skeleton'
+import { api } from '@/convex/_generated/api'
 
 type UsageStats = {
   total_calls_today: number
@@ -40,20 +41,9 @@ type UsageStats = {
 }
 
 export default function UsagePage() {
-  const [stats, setStats] = useState<UsageStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const stats = useQuery(api.api_keys.getUsageStats, {}) as UsageStats | undefined
 
-  useEffect(() => {
-    fetch('/api/admin/usage')
-      .then((res) => res.json())
-      .then((data) => {
-        setStats(data.data)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
-
-  if (loading) {
+  if (stats === undefined) {
     return (
       <div className="min-h-screen bg-zinc-50 p-8">
         <div className="mx-auto max-w-7xl space-y-8">

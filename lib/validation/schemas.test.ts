@@ -70,7 +70,7 @@ describe('ChatSchema', () => {
   it('should validate valid message with optional fields', () => {
     const result = ChatSchema.safeParse({
       message: 'Hello',
-      conversationId: '123e4567-e89b-12d3-a456-426614174000',
+      conversationId: 'convex-conversation-id',
       language: 'zh'
     })
     expect(result.success).toBe(true)
@@ -109,10 +109,10 @@ describe('ChatSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('should reject invalid conversationId (non-UUID)', () => {
+  it('should reject empty conversationId', () => {
     const result = ChatSchema.safeParse({
       message: 'Hello',
-      conversationId: 'invalid-uuid'
+      conversationId: ''
     })
     expect(result.success).toBe(false)
     if (!result.success) {
@@ -408,7 +408,7 @@ describe('validateRequestBody', () => {
     const mockRequest = {
       json: async () => ({
         message: 'Test message',
-        conversationId: '123e4567-e89b-12d3-a456-426614174000',
+        conversationId: 'convex-conversation-id',
         language: 'zh'
       })
     } as unknown as Request
@@ -416,7 +416,7 @@ describe('validateRequestBody', () => {
     const result = await validateRequestBody(mockRequest, ChatSchema)
     expect(result).toEqual({
       message: 'Test message',
-      conversationId: '123e4567-e89b-12d3-a456-426614174000',
+      conversationId: 'convex-conversation-id',
       language: 'zh'
     })
   })
