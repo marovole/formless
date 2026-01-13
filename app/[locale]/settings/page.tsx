@@ -4,7 +4,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
 
@@ -17,9 +17,6 @@ export default function SettingsPage() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
 
-  const handleLanguageChange = (newLocale: string) => {
-    router.replace(`/${newLocale}/settings`);
-  };
 
   if (!isSignedIn || !user) {
     return (
@@ -52,15 +49,7 @@ export default function SettingsPage() {
 
           <Card className="p-6">
             <h2 className="text-xl font-semibold text-stone-800 mb-4">Language</h2>
-            <Select value={locale} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="zh">中文</SelectItem>
-                <SelectItem value="en">English</SelectItem>
-              </SelectContent>
-            </Select>
+            <LanguageSwitcher className="w-full" />
           </Card>
 
           <Card className="p-6">

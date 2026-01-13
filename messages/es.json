@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Formless",
+    "tagline": "Caminar con sabiduría, buscar en el interior"
+  },
+  "nav": {
+    "home": "Inicio",
+    "chat": "Diálogo",
+    "history": "Historial",
+    "settings": "Configuración"
+  },
+  "chat": {
+    "title": "Dialogar con el Anciano Formless",
+    "placeholder": "Comparte tus inquietudes...",
+    "send": "Enviar",
+    "newChat": "Nueva conversación",
+    "thinking": "El Anciano está meditando...",
+    "empty": "Inicia una conversación"
+  },
+  "history": {
+    "title": "Historial de conversaciones",
+    "empty": "Sin conversaciones",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar esta conversación?"
+  },
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "theme": "Tema",
+    "profile": "Perfil"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "signup": "Registrarse",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?"
+  },
+  "admin": {
+    "dashboard": "Panel de control",
+    "users": "Gestión de usuarios",
+    "apiKeys": "Claves API",
+    "prompts": "Gestión de prompts",
+    "usage": "Estadísticas de uso"
+  },
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "confirm": "Confirmar",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito"
+  }
+}

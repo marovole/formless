@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "無相",
+    "tagline": "智慧と共に歩み、内なる心を探る"
+  },
+  "nav": {
+    "home": "ホーム",
+    "chat": "対話",
+    "history": "履歴",
+    "settings": "設定"
+  },
+  "chat": {
+    "title": "無相長老との対話",
+    "placeholder": "あなたの悩みを教えてください...",
+    "send": "送信",
+    "newChat": "新しい対話",
+    "thinking": "長老が熟考中...",
+    "empty": "対話を始めましょう"
+  },
+  "history": {
+    "title": "対話履歴",
+    "empty": "対話記録がありません",
+    "delete": "削除",
+    "confirmDelete": "この対話を削除しますか？"
+  },
+  "settings": {
+    "title": "設定",
+    "language": "言語",
+    "theme": "テーマ",
+    "profile": "プロフィール"
+  },
+  "auth": {
+    "login": "ログイン",
+    "logout": "ログアウト",
+    "signup": "登録",
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "forgotPassword": "パスワードをお忘れですか？"
+  },
+  "admin": {
+    "dashboard": "ダッシュボード",
+    "users": "ユーザー管理",
+    "apiKeys": "APIキー",
+    "prompts": "プロンプト管理",
+    "usage": "使用統計"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "edit": "編集",
+    "confirm": "確認",
+    "loading": "読み込み中...",
+    "error": "エラー",
+    "success": "成功"
+  }
+}

@@ -1,12 +1,20 @@
+'use client'
+
 import { useTranslations } from 'next-intl'
 import { Link } from '@/i18n/routing'
 import { Button } from '@/components/ui/button'
+import { LanguageSwitcher } from '@/components/ui/language-switcher'
 
 export default function HomePage() {
   const t = useTranslations('app')
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-stone-50 via-amber-50/30 to-stone-100 px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-stone-50 via-amber-50/30 to-stone-100 px-4 relative">
+      {/* Language Switcher */}
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher className="w-32" />
+      </div>
+
       <div className="text-center max-w-4xl">
         <h1 className="font-serif text-7xl md:text-8xl text-stone-900 mb-6 tracking-tight">
           {t('name')}
