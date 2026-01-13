@@ -4,8 +4,8 @@ import { v } from "convex/values";
 export default defineSchema({
   users: defineTable({
     email: v.string(),
-    tokenIdentifier: v.optional(v.string()), // Full token identifier
-    clerkId: v.optional(v.string()), // Just the Clerk User ID (subject)
+    tokenIdentifier: v.string(),
+    clerkId: v.string(),
     full_name: v.optional(v.string()),
     avatar_url: v.optional(v.string()),
     preferred_language: v.optional(v.string()), // 'zh' or 'en'
@@ -78,17 +78,6 @@ export default defineSchema({
   .index("by_conversation_id", ["conversation_id"])
   .index("by_created_at", ["created_at"]),
 
-  admin_users: defineTable({
-    email: v.string(),
-    password_hash: v.string(),
-    full_name: v.optional(v.string()),
-    role: v.optional(v.string()),
-    is_active: v.optional(v.boolean()),
-    last_login_at: v.optional(v.number()),
-    updated_at: v.optional(v.number()),
-  })
-  .index("by_email", ["email"]),
-
   prompts: defineTable({
     name: v.string(),
     role: v.string(),
@@ -98,7 +87,7 @@ export default defineSchema({
     is_active: v.optional(v.boolean()),
     variables: v.optional(v.any()),
     description: v.optional(v.string()),
-    created_by: v.optional(v.id("admin_users")),
+    created_by: v.optional(v.id("users")),
     updated_at: v.optional(v.number()),
   })
   .index("by_name", ["name"])
@@ -107,15 +96,21 @@ export default defineSchema({
   user_sessions: defineTable({
     user_id: v.id("users"),
     timezone: v.optional(v.string()),
+    day_key: v.optional(v.string()),
+    week_key: v.optional(v.string()),
     // started_at handled by _creationTime
     ended_at: v.optional(v.number()),
     last_activity_at: v.optional(v.number()),
     messages_count: v.optional(v.number())
   })
-  .index("by_user_id", ["user_id"]),
+  .index("by_user_id", ["user_id"])
+  .index("by_user_day", ["user_id", "day_key"]),
 
   guanzhao_budget_tracking: defineTable({
     user_id: v.id("users"),
+    timezone: v.optional(v.string()),
+    day_key: v.optional(v.string()),
+    week_key: v.optional(v.string()),
     snoozed_until: v.optional(v.string()),
     enabled: v.optional(v.boolean()),
     frequency_level: v.optional(v.string()),
@@ -143,10 +138,13 @@ export default defineSchema({
     status: v.optional(v.string()),
     reason: v.optional(v.string()),
     feedback: v.optional(v.string()),
+    day_key: v.optional(v.string()),
+    week_key: v.optional(v.string()),
     conversation_id: v.optional(v.id("conversations"))
   })
   .index("by_user_id", ["user_id"])
   .index("by_user_trigger", ["user_id", "trigger_id"])
+  .index("by_user_trigger_day", ["user_id", "trigger_id", "day_key"])
   .index("by_conversation_id", ["conversation_id"]),
 
   guanzhao_cooldowns: defineTable({

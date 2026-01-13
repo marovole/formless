@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -35,23 +35,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useMutation, useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 
 type ApiKey = {
   id: string
   provider: 'chutes' | 'openrouter'
-  api_key: string
+  api_key_preview: string | null
   model_name: string | null
   daily_limit: number
   daily_used: number
   priority: number
   is_active: boolean
-  last_used_at: string | null
-  created_at: string
+  last_used_at: number | null
+  created_at: string | number
 }
 
 export default function ApiKeysPage() {
-  const [keys, setKeys] = useState<ApiKey[]>([])
-  const [loading, setLoading] = useState(true)
+  const keys = useQuery(api.api_keys.list, {}) as ApiKey[] | undefined
+  const createKey = useMutation(api.api_keys.create)
+  const updateKey = useMutation(api.api_keys.update)
+  const removeKey = useMutation(api.api_keys.remove)
+
   const [dialogOpen, setDialogOpen] = useState(false)
   const [formData, setFormData] = useState({
     provider: 'chutes' as 'chutes' | 'openrouter',
@@ -61,42 +66,26 @@ export default function ApiKeysPage() {
     priority: 1,
   })
 
-  const fetchKeys = async () => {
-    try {
-      const response = await fetch('/api/admin/api-keys')
-      const data = await response.json()
-      setKeys(data.data?.api_keys || [])
-    } catch (error) {
-      console.error('Failed to fetch API keys:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchKeys()
-  }, [])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
-      const response = await fetch('/api/admin/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      await createKey({
+        provider: formData.provider,
+        api_key: formData.api_key,
+        model_name: formData.model_name.trim() || undefined,
+        daily_limit: formData.daily_limit,
+        priority: formData.priority,
+        is_active: true,
       })
 
-      if (response.ok) {
-        setDialogOpen(false)
-        setFormData({
-          provider: 'chutes',
-          api_key: '',
-          model_name: '',
-          daily_limit: 1000,
-          priority: 1,
-        })
-        fetchKeys()
-      }
+      setDialogOpen(false)
+      setFormData({
+        provider: 'chutes',
+        api_key: '',
+        model_name: '',
+        daily_limit: 1000,
+        priority: 1,
+      })
     } catch (error) {
       console.error('Failed to create API key:', error)
     }
@@ -106,8 +95,7 @@ export default function ApiKeysPage() {
     if (!confirm('Are you sure you want to delete this API key?')) return
 
     try {
-      await fetch(`/api/admin/api-keys/${id}`, { method: 'DELETE' })
-      fetchKeys()
+      await removeKey({ id: id as any })
     } catch (error) {
       console.error('Failed to delete API key:', error)
     }
@@ -115,20 +103,10 @@ export default function ApiKeysPage() {
 
   const handleToggleActive = async (key: ApiKey) => {
     try {
-      await fetch(`/api/admin/api-keys/${key.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !key.is_active }),
-      })
-      fetchKeys()
+      await updateKey({ id: key.id as any, is_active: !key.is_active })
     } catch (error) {
       console.error('Failed to update API key:', error)
     }
-  }
-
-  const maskApiKey = (key: string) => {
-    if (key.length <= 8) return key
-    return key.slice(0, 4) + '...' + key.slice(-4)
   }
 
   return (
@@ -241,7 +219,7 @@ export default function ApiKeysPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {keys === undefined ? (
               <p className="text-center text-zinc-500">Loading...</p>
             ) : keys.length === 0 ? (
               <p className="text-center text-zinc-500">No API keys configured</p>
@@ -267,7 +245,7 @@ export default function ApiKeysPage() {
                         </TableCell>
                         <TableCell>{key.model_name || '-'}</TableCell>
                         <TableCell className="font-mono text-sm">
-                          {maskApiKey(key.api_key)}
+                          {key.api_key_preview || '-'}
                         </TableCell>
                         <TableCell>{key.priority}</TableCell>
                         <TableCell>

@@ -9,6 +9,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -124,42 +126,44 @@ export default function GuanzhaoSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  // 加载用户设置
+  const existingSettings = useQuery(
+    api.guanzhao.getGuanzhaoSettings,
+    userId ? {} : 'skip'
+  ) as any;
+
+  const updateGuanzhaoSettings = useMutation(api.guanzhao.updateGuanzhaoSettings);
+  const processAction = useMutation(api.guanzhao.processAction);
+
+  // Load settings from Convex (or fall back to defaults).
   useEffect(() => {
     if (!userId) return;
+    if (existingSettings === undefined) return;
 
-    loadSettings();
-  }, [userId]);
-
-  const loadSettings = async () => {
-    try {
-      const response = await fetch('/api/guanzhao/settings');
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    } finally {
+    if (!existingSettings) {
+      setSettings(DEFAULT_SETTINGS);
       setLoading(false);
+      return;
     }
-  };
+
+    setSettings({
+      enabled: existingSettings.enabled ?? DEFAULT_SETTINGS.enabled,
+      frequency_level: existingSettings.frequency_level ?? DEFAULT_SETTINGS.frequency_level,
+      style: existingSettings.style ?? DEFAULT_SETTINGS.style,
+      push_enabled: existingSettings.push_enabled ?? DEFAULT_SETTINGS.push_enabled,
+      dnd_start: existingSettings.dnd_start ?? DEFAULT_SETTINGS.dnd_start,
+      dnd_end: existingSettings.dnd_end ?? DEFAULT_SETTINGS.dnd_end,
+    });
+    setLoading(false);
+  }, [userId, existingSettings]);
 
   const saveSettings = async () => {
     setSaving(true);
     setSaveSuccess(false);
 
     try {
-      const response = await fetch('/api/guanzhao/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-
-      if (response.ok) {
-        setSaveSuccess(true);
-        setTimeout(() => setSaveSuccess(false), 3000);
-      }
+      await updateGuanzhaoSettings({ updates: settings });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       console.error('Error saving settings:', error);
     } finally {
@@ -389,11 +393,7 @@ export default function GuanzhaoSettingsPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={async () => {
-                    await fetch('/api/guanzhao/actions', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'snooze.24h' }),
-                    });
+                    await processAction({ action: 'snooze.24h' });
                     alert('已开启 24 小时静默');
                   }}
                 >
@@ -404,11 +404,7 @@ export default function GuanzhaoSettingsPage() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={async () => {
-                    await fetch('/api/guanzhao/actions', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'snooze.7d' }),
-                    });
+                    await processAction({ action: 'snooze.7d' });
                     alert('已开启 7 天静默');
                   }}
                 >

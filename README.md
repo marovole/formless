@@ -25,10 +25,10 @@
 - 删除对话时联动清理记忆
 
 **3. 用户系统**
-- 邮箱注册/登录（Supabase Auth）
+- Clerk 登录/注册
 - 强制登录访问控制
 - 用户设置页面
-- RLS 权限隔离
+- Convex 权限隔离（基于 Clerk JWT）
 
 **4. 后台管理系统**
 - API Key 管理（CRUD + 轮询策略）
@@ -51,7 +51,7 @@
 - 完整的测试框架（Vitest + Playwright）
 - 国际化路由（next-intl）
 - Cloudflare Pages 部署配置
-- Supabase 数据库架构（8 张表）
+- Convex 数据库 Schema + Functions
 
 ---
 
@@ -73,17 +73,25 @@ npm install
 复制 `.env.example` 到 `.env.local` 并配置：
 
 ```bash
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+# Convex (required)
+NEXT_PUBLIC_CONVEX_URL=https://your-convex-project.convex.cloud
+CONVEX_ADMIN_TOKEN=your_convex_admin_token_here
 
-# API Keys（可选 - 用于开发测试）
-OPENROUTER_API_KEY=your_openrouter_key
-CHUTES_API_KEY=your_chutes_key
+# Clerk (required)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_key_here
+CLERK_SECRET_KEY=sk_test_your_key_here
+
+# Admin allowlist (required)
+ADMIN_EMAILS=admin@example.com
 ```
 
 ### 本地开发
+
+```bash
+npx convex dev
+```
+
+在另一个终端运行：
 
 ```bash
 npm run dev
@@ -118,18 +126,10 @@ npm run pages:build
 npm run deploy
 ```
 
-### Supabase 数据库设置
+### Convex 后端部署
 
 ```bash
-# 链接 Supabase 项目
-supabase link --project-ref YOUR_PROJECT_REF
-
-# 推送数据库迁移
-supabase db push
-
-# 部署 Edge Functions（观照系统）
-supabase functions deploy guanzhao/session-tracker
-supabase functions deploy guanzhao/trigger-engine
+npx convex deploy
 ```
 
 详细部署文档请参考：
@@ -153,17 +153,13 @@ accra/
 ├── components/                # React 组件
 │   ├── ui/                   # shadcn/ui 组件
 │   └── guanzhao/             # 观照系统组件
+├── convex/                    # Convex schema + functions
 ├── docs/                      # 项目文档
 │   ├── prd.md                # 产品需求文档
 │   ├── iteration-plan.md     # 迭代计划
 │   └── guanzhao/             # 观照系统文档
 ├── lib/                       # 核心库
-│   ├── supabase/             # Supabase 客户端
-│   ├── guanzhao/             # 观照系统核心
 │   └── hooks/                # React Hooks
-├── supabase/                  # Supabase 配置
-│   ├── functions/            # Edge Functions
-│   └── migrations/           # 数据库迁移
 ├── e2e/                       # E2E 测试
 └── __tests__/                 # 单元测试
 ```
@@ -174,9 +170,10 @@ accra/
 
 | 层级 | 技术选型 |
 |------|----------|
-| 框架 | Next.js 14 (App Router) |
+| 框架 | Next.js 15 (App Router) |
 | 部署 | Cloudflare Pages + Workers |
-| 数据库 | Supabase (PostgreSQL) |
+| 数据库 | Convex |
+| 认证 | Clerk |
 | 国际化 | next-intl |
 | 样式 | Tailwind CSS |
 | 后台 UI | shadcn/ui |
@@ -228,12 +225,12 @@ accra/
 
 ### 观照系统部署（P0）
 
-观照系统代码已 100% 完成，需要部署：
+观照系统已迁移至 Convex（无需 Supabase/pg_cron/Edge Functions），部署清单：
 
-- [ ] 链接 Supabase 项目
-- [ ] 执行数据库迁移（包括 pg_cron 配置）
-- [ ] 部署 Edge Functions
-- [ ] 配置环境变量
+- [ ] Convex：设置 `CLERK_JWT_ISSUER_DOMAIN` / `ADMIN_EMAILS` 并 `npx convex deploy`
+- [ ] Clerk：创建 JWT template `convex`（`applicationID/aud = convex`，包含 `email` claim）
+- [ ] Cloudflare Pages：配置 Clerk keys / `NEXT_PUBLIC_CONVEX_URL` / `CONVEX_ADMIN_TOKEN` / `ADMIN_EMAILS`
+- [ ] Admin 初始化：访问 `/admin` 创建 API keys 与 prompts
 - [ ] 功能测试
 
 详见：[观照系统部署清单](./docs/guanzhao/IMPLEMENTATION_CHECKLIST.md)

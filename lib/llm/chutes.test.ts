@@ -33,7 +33,9 @@ describe('streamChatCompletion', () => {
     await streamChatCompletion(apiKey, {
       messages,
       onChunk: (chunk) => receivedChunks.push(chunk),
-      onComplete: (text) => completedText = text
+      onComplete: (text) => {
+        completedText = text
+      }
     })
 
     // Assert

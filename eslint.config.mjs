@@ -31,12 +31,6 @@ const eslintConfig = [
     ],
   },
   {
-    files: ["lib/supabase/database.types.ts"],
-    rules: {
-      '@typescript-eslint/no-empty-object-type': 'off',
-    },
-  },
-  {
     rules: {
       '@typescript-eslint/ban-ts-comment': [
         'error',

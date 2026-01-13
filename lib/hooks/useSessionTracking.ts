@@ -5,6 +5,8 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@clerk/nextjs';
+import { useMutation } from 'convex/react';
+import { api } from '@/convex/_generated/api';
 import type { Template } from '@/lib/guanzhao/types';
 
 // =============================================
@@ -70,7 +72,6 @@ interface TriggerResponse {
 // =============================================
 
 const DEFAULT_HEARTBEAT_INTERVAL = 60000; // 1 分钟
-const SESSION_TRACKING_API = '/api/guanzhao/session';
 
 // =============================================
 // Main Hook
@@ -87,6 +88,7 @@ export function useSessionTracking(
   } = options;
 
   const { userId } = useAuth();
+  const handleSessionEvent = useMutation(api.guanzhao.handleSessionEvent);
   const sessionIdRef = useRef<string | null>(null);
   const heartbeatTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isPageVisibleRef = useRef(true);
@@ -136,28 +138,18 @@ export function useSessionTracking(
     }
 
     try {
-      const response = await fetch(SESSION_TRACKING_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'in_session',
-          userId: userId,
-          sessionId: sessionIdRef.current,
-        }),
+      const data = await handleSessionEvent({
+        eventType: 'in_session',
+        sessionId: sessionIdRef.current as any,
       });
 
-      if (response.ok) {
-        const data = await response.json() as { shouldTrigger?: TriggerResponse };
-
-        // 如果有触发器响应，处理它
-        if (data.shouldTrigger) {
-          handleTriggerResponse(data.shouldTrigger);
-        }
+      if (data?.shouldTrigger) {
+        handleTriggerResponse(data.shouldTrigger);
       }
     } catch (error) {
       console.error('Error sending heartbeat:', error);
     }
-  }, [userId, isActive, pauseWhenHidden, handleTriggerResponse]);
+  }, [handleSessionEvent, userId, isActive, pauseWhenHidden, handleTriggerResponse]);
 
   /**
    * 启动心跳定时器
@@ -177,26 +169,14 @@ export function useSessionTracking(
     if (!userId || !enabled) return;
 
     try {
-      const response = await fetch(SESSION_TRACKING_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'session_start',
-          userId: userId,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        }),
+      const data = await handleSessionEvent({
+        eventType: 'session_start',
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
 
-      if (!response.ok) {
-        console.error('Failed to start session:', await response.text());
-        return;
-      }
-
-      const data = await response.json() as { success?: boolean; sessionId?: string; shouldTrigger?: TriggerResponse };
-
-      if (data.success && data.sessionId) {
-        sessionIdRef.current = data.sessionId;
-        setSessionId(data.sessionId);
+      if (data?.success && data.sessionId) {
+        sessionIdRef.current = String(data.sessionId);
+        setSessionId(String(data.sessionId));
         setIsActive(true);
 
         // 如果有触发器响应，处理它
@@ -210,7 +190,7 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error starting session:', error);
     }
-  }, [userId, enabled, handleTriggerResponse, startHeartbeat]);
+  }, [handleSessionEvent, userId, enabled, handleTriggerResponse, startHeartbeat]);
 
   /**
    * 结束会话
@@ -222,14 +202,9 @@ export function useSessionTracking(
     stopHeartbeat();
 
     try {
-      await fetch(SESSION_TRACKING_API, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventType: 'session_end',
-          userId: userId,
-          sessionId: sessionIdRef.current,
-        }),
+      await handleSessionEvent({
+        eventType: 'session_end',
+        sessionId: sessionIdRef.current as any,
       });
 
       sessionIdRef.current = null;
@@ -238,7 +213,7 @@ export function useSessionTracking(
     } catch (error) {
       console.error('Error ending session:', error);
     }
-  }, [userId, stopHeartbeat]);
+  }, [handleSessionEvent, userId, stopHeartbeat]);
 
   // =============================================
   // Lifecycle
@@ -282,26 +257,16 @@ export function useSessionTracking(
   // 页面卸载时结束会话
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (sessionIdRef.current) {
-        // 使用 sendBeacon 以确保请求能够发送
-        navigator.sendBeacon(
-          SESSION_TRACKING_API,
-          JSON.stringify({
-            eventType: 'session_end',
-            userId: userId,
-            sessionId: sessionIdRef.current,
-          })
-        );
-      }
+      void endSession();
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      endSession();
+      void endSession();
     };
-  }, [userId, endSession]);
+  }, [endSession]);
 
   return {
     sessionId,
@@ -329,24 +294,6 @@ export function useGuanzhaoTriggers() {
   const [dismissedTriggers, setDismissedTriggers] = useState<Set<string>>(new Set());
 
   /**
-   * 记录触发器动作
-   */
-  const recordTriggerAction = useCallback(async (triggerId: string, action: string) => {
-    try {
-      await fetch('/api/guanzhao/actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          triggerId,
-          action,
-        }),
-      });
-    } catch (error) {
-      console.error('Error recording trigger action:', error);
-    }
-  }, []);
-
-  /**
    * 显示触发器
    */
   const showTrigger = useCallback((triggerId: string, template: Template) => {
@@ -358,16 +305,9 @@ export function useGuanzhaoTriggers() {
   /**
    * 关闭触发器
    */
-  const dismissTrigger = useCallback((action?: string) => {
-    if (pendingTrigger) {
-      // 记录用户动作
-      if (action) {
-        recordTriggerAction(pendingTrigger.triggerId, action);
-      }
-
-      setPendingTrigger(null);
-    }
-  }, [pendingTrigger, recordTriggerAction]);
+  const dismissTrigger = useCallback((_triggerId?: string) => {
+    setPendingTrigger(null);
+  }, []);
 
   /**
    * 永久关闭某个触发器（本次会话）
@@ -395,6 +335,7 @@ export function useGuanzhaoTriggers() {
 export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [token, setToken] = useState<string | null>(null);
+  const registerPushToken = useMutation(api.guanzhao.registerPushToken);
 
   /**
    * 请求推送权限
@@ -415,26 +356,17 @@ export function usePushNotifications() {
    */
   const registerToken = useCallback(async (expoToken: string) => {
     try {
-      const response = await fetch('/api/guanzhao/push-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token: expoToken,
-          platform: 'web', // 或从设备信息检测
-        }),
+      await registerPushToken({
+        token: expoToken,
+        platform: 'web',
       });
-
-      if (response.ok) {
-        setToken(expoToken);
-        return true;
-      }
-
-      return false;
+      setToken(expoToken);
+      return true;
     } catch (error) {
       console.error('Error registering push token:', error);
       return false;
     }
-  }, []);
+  }, [registerPushToken]);
 
   /**
    * 显示本地通知

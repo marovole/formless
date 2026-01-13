@@ -15,7 +15,7 @@ export type LoginInput = z.infer<typeof LoginSchema>
  */
 export const ChatSchema = z.object({
   message: z.string().min(1, 'Message is required').max(5000, 'Message too long'),
-  conversationId: z.string().optional(),
+  conversationId: z.string().trim().min(1, 'Invalid conversation ID').optional(),
   language: z.enum(['zh', 'en']).optional(),
 })
 

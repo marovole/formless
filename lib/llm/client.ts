@@ -70,7 +70,7 @@ export async function streamChatCompletionWithProvider(
     }
 
     if (!response.body) {
-      throw new Error('Response body is null');
+      throw new Error('No response body');
     }
 
     const reader = response.body.getReader();
@@ -108,9 +108,13 @@ export async function streamChatCompletionWithProvider(
       }
     }
 
-    if (onComplete) onComplete(fullText);
+    if (onComplete) {
+      await onComplete(fullText);
+    }
   } catch (error) {
-    if (onError) onError(error as Error);
+    if (onError) {
+      await onError(error as Error);
+    }
   }
 }
 

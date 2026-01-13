@@ -1,123 +1,87 @@
-# Supabase → Convex.dev 迁移完成
+# Supabase → Convex + Clerk Migration (Completed)
 
-## 已完成的工作
+This project has migrated to:
 
-### 1. 依赖安装
-- `convex` - Convex 数据库和函数
-- `@clerk/nextjs` - Clerk 认证
+- **Auth**: Clerk
+- **Backend/DB**: Convex (schema + functions)
+- **Frontend**: Next.js (App Router)
 
-### 2. Convex 项目配置
-- `convex.json` - Convex 项目配置
-- `convex/schema.ts` - 数据库 Schema 定义（11张表）
+Supabase has been removed from the runtime architecture.
 
-### 3. Convex 函数实现
-| 文件 | 功能 |
-|------|------|
-| `convex/conversations.ts` | 对话 CRUD |
-| `convex/messages.ts` | 消息 CRUD |
-| `convex/memory.ts` | 记忆系统 |
-| `convex/users.ts` | 用户管理 |
-| `convex/admin.ts` | 后台管理（API Keys, Prompts） |
-| `convex/guanzhao/settings.ts` | 观照设置 |
-| `convex/guanzhao/budget.ts` | 预算管理 |
-| `convex/guanzhao/triggers.ts` | 触发器管理 |
-| `convex/guanzhao/actions.ts` | 观照操作 |
+## What Changed
 
-### 4. 前端集成
-- `app/ConvexClientProvider.tsx` - Convex + Clerk Provider
-- `lib/convex/client.ts` - Convex 客户端
-- `lib/clerk.ts` - Clerk 工具函数
-- `lib/hooks/useAuth.ts` - 更新为使用 Clerk
-- `middleware.ts` - 添加 Clerk 中间件
-- `app/[locale]/layout.tsx` - 使用 ConvexClientProvider
+- Removed Supabase client, SQL migrations, and Edge Functions.
+- Moved business logic and persistence to Convex (`convex/*`).
+- Standardized authentication via Clerk JWTs in Convex (`convex/auth.config.ts`).
+- Admin is now Clerk-authenticated + email allowlist (`ADMIN_EMAILS`).
 
-### 5. 环境变量
-- `.env.example` - 已添加 Convex 和 Clerk 配置项
+## Required Manual Setup
 
----
+### 1) Convex
 
-## 下一步（手动操作）
+Start a dev deployment:
 
-### 1. 创建 Convex 项目
 ```bash
 npx convex dev
 ```
-这会：
-- 要求登录 Convex 账户
-- 创建新的 Convex 项目
-- 生成 `NEXT_PUBLIC_CONVEX_URL` 环境变量
 
-### 2. 创建 Clerk 应用
-1. 访问 https://clerk.com
-2. 创建新的 Clerk 应用
-3. 获取 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 和 `CLERK_SECRET_KEY`
+Deploy to production:
 
-### 3. 配置 Clerk 重定向
-在 Clerk Dashboard 中配置：
-- Sign-in: `/sign-in`
-- Sign-up: `/sign-up`
-- After sign-in: `/chat`
-- After sign-out: `/`
-
-### 4. 创建登录/注册页面
-需要创建以下页面（目前缺失）：
-- `app/sign-in/page.tsx`
-- `app/sign-up/page.tsx`
-
-参考 Clerk Next.js 文档创建这些页面。
-
-### 5. 部署 Convex
 ```bash
 npx convex deploy
 ```
 
----
+Set Convex environment variables (dev):
 
-## 文件清单
-
-### 新建文件
-```
-convex/
-├── schema.ts
-├── conversations.ts
-├── messages.ts
-├── memory.ts
-├── users.ts
-├── admin.ts
-└── guanzhao/
-    ├── settings.ts
-    ├── budget.ts
-    ├── triggers.ts
-    └── actions.ts
-
-app/
-├── ConvexClientProvider.tsx
-└── api/convex/           # 可选（Convex 直接连接）
-
-lib/
-├── convex/client.ts
-└── clerk.ts
-
-middleware.ts             # 已修改
-.env.example              # 已修改
+```bash
+npx convex env set CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer-domain.clerk.accounts.dev
+npx convex env set ADMIN_EMAILS admin@example.com
 ```
 
-### 待创建（未包含在迁移中）
+Set Convex environment variables (prod):
+
+```bash
+npx convex env set --prod CLERK_JWT_ISSUER_DOMAIN https://your-clerk-issuer-domain.clerk.accounts.dev
+npx convex env set --prod ADMIN_EMAILS admin@example.com
 ```
-app/sign-in/page.tsx
-app/sign-up/page.tsx
+
+### 2) Clerk
+
+- Create a Clerk application.
+- Create a JWT template named `convex`:
+  - `applicationID` / `aud` should be `convex` (must match `convex/auth.config.ts`).
+  - Include an `email` claim (required by `api.users.ensureCurrent`).
+
+### 3) Next.js / Cloudflare Pages
+
+Copy `.env.example` to `.env.local` and set at least:
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://your-convex-project.convex.cloud
+CONVEX_ADMIN_TOKEN=your_convex_admin_token_here
+
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_your_key_here
+CLERK_SECRET_KEY=sk_test_your_key_here
+
+ADMIN_EMAILS=admin@example.com
 ```
 
----
+Notes:
 
-## 迁移状态检查清单
+- `CONVEX_ADMIN_TOKEN` is **server-only** and used to call Convex `internal.*` functions from `/api/chat`.
+- `ADMIN_EMAILS` must be set in **both** Next.js and Convex.
 
-- [ ] Convex 项目已创建
-- [ ] Clerk 应用已配置
-- [ ] 环境变量已设置
-- [ ] 登录/注册页面已创建
-- [ ] `npx convex dev` 运行正常
-- [ ] Clerk 登录/登出正常
-- [ ] 对话功能测试通过
-- [ ] 记忆功能测试通过
-- [ ] 观照系统测试通过
+### 4) Bootstrap Data
+
+After signing in with an allowlisted email, visit `/admin` to:
+
+- Create API keys (`chutes`, `openrouter`).
+- Create at least one active prompt for role `formless_elder` in `zh` (and optionally `en`).
+
+## Verification
+
+```bash
+npm run type-check
+npm run test:run
+```
+

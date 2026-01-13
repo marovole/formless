@@ -1,7 +1,7 @@
-import { mutation } from "./_generated/server";
+import { internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
-export const log = mutation({
+export const logInternal = internalMutation({
   args: {
     apiKeyId: v.optional(v.id("api_keys")),
     provider: v.string(),
@@ -26,5 +26,6 @@ export const log = mutation({
       response_time_ms: args.responseTimeMs,
       created_at: Date.now(),
     });
-  }
+  },
 });
+

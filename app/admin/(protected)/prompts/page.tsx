@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Card,
   CardContent,
@@ -27,6 +27,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { useMutation, useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 
 type Prompt = {
   id: string
@@ -40,26 +42,10 @@ type Prompt = {
 }
 
 export default function PromptsPage() {
-  const [prompts, setPrompts] = useState<Prompt[]>([])
-  const [loading, setLoading] = useState(true)
+  const prompts = useQuery(api.prompts.list, {}) as Prompt[] | undefined
+  const updatePrompt = useMutation(api.prompts.update)
   const [editingPrompt, setEditingPrompt] = useState<Prompt | null>(null)
   const [editContent, setEditContent] = useState('')
-
-  const fetchPrompts = async () => {
-    try {
-      const response = await fetch('/api/admin/prompts')
-      const data = await response.json()
-      setPrompts(data.data?.prompts || [])
-    } catch (error) {
-      console.error('Failed to fetch prompts:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchPrompts()
-  }, [])
 
   const handleEdit = (prompt: Prompt) => {
     setEditingPrompt(prompt)
@@ -70,17 +56,12 @@ export default function PromptsPage() {
     if (!editingPrompt) return
 
     try {
-      await fetch(`/api/admin/prompts/${editingPrompt.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: editContent,
-          version: editingPrompt.version,
-        }),
+      await updatePrompt({
+        id: editingPrompt.id as any,
+        content: editContent,
       })
 
       setEditingPrompt(null)
-      fetchPrompts()
     } catch (error) {
       console.error('Failed to update prompt:', error)
     }
@@ -88,12 +69,7 @@ export default function PromptsPage() {
 
   const handleToggleActive = async (prompt: Prompt) => {
     try {
-      await fetch(`/api/admin/prompts/${prompt.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !prompt.is_active }),
-      })
-      fetchPrompts()
+      await updatePrompt({ id: prompt.id as any, is_active: !prompt.is_active })
     } catch (error) {
       console.error('Failed to update prompt:', error)
     }
@@ -117,7 +93,7 @@ export default function PromptsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loading ? (
+            {prompts === undefined ? (
               <p className="text-center text-zinc-500">Loading...</p>
             ) : prompts.length === 0 ? (
               <p className="text-center text-zinc-500">No prompts configured</p>

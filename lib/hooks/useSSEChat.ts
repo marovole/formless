@@ -40,64 +40,76 @@ async function parseSSEStream(
   onContentUpdate: (content: string) => void
 ): Promise<string> {
   const decoder = new TextDecoder();
+  let buffer = '';
   let fullContent = '';
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
-    const chunk = decoder.decode(value, { stream: true });
-    const lines = chunk.split('\n');
+    buffer += decoder.decode(value, { stream: true });
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    while (true) {
+      const boundary = buffer.indexOf('\n\n');
+      if (boundary === -1) break;
 
-      if (line.startsWith('event: metadata')) {
-        const dataLine = lines[i + 1];
-        if (dataLine?.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(dataLine.slice(6));
-            handlers.onMetadata?.(data);
-          } catch {
-            // Skip invalid JSON
-          }
-          i++;
+      const rawEvent = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+
+      const lines = rawEvent.split('\n');
+      let eventType: string | undefined;
+      const dataLines: string[] = [];
+
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          eventType = line.slice('event:'.length).trim();
+          continue;
+        }
+        if (line.startsWith('data:')) {
+          dataLines.push(line.slice('data:'.length).trimStart());
         }
       }
 
-      if (line.startsWith('event: chunk')) {
-        const dataLine = lines[i + 1];
-        if (dataLine?.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(dataLine.slice(6));
-            if (data.content) {
-              fullContent += data.content;
-              onContentUpdate(fullContent);
-              handlers.onChunk?.(data.content, fullContent);
-            }
-          } catch {
-            // Skip invalid JSON
-          }
-          i++;
+      const data = dataLines.join('\n');
+      if (!eventType) continue;
+
+      if (eventType === 'metadata') {
+        try {
+          handlers.onMetadata?.(JSON.parse(data));
+        } catch {
+          // Ignore invalid metadata payloads.
         }
+        continue;
       }
 
-      if (line.startsWith('event: complete')) {
+      if (eventType === 'chunk') {
+        try {
+          const payload = JSON.parse(data) as { content?: string };
+          if (payload.content) {
+            fullContent += payload.content;
+            onContentUpdate(fullContent);
+            handlers.onChunk?.(payload.content, fullContent);
+          }
+        } catch {
+          // Ignore invalid chunk payloads.
+        }
+        continue;
+      }
+
+      if (eventType === 'complete') {
         handlers.onComplete?.();
+        continue;
       }
 
-      if (line.startsWith('event: error')) {
-        const dataLine = lines[i + 1];
-        if (dataLine?.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(dataLine.slice(6));
-            throw new Error(data.error || 'Stream error');
-          } catch (e) {
-            if (e instanceof Error && e.message !== 'Stream error') {
-              throw e;
-            }
-            throw new Error('Unknown stream error');
+      if (eventType === 'error') {
+        try {
+          const payload = JSON.parse(data) as { error?: string };
+          throw new Error(payload.error || 'Stream error');
+        } catch (e) {
+          if (e instanceof Error && e.message !== 'Stream error') {
+            throw e;
           }
+          throw new Error('Unknown stream error');
         }
       }
     }

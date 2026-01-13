@@ -19,8 +19,8 @@ export interface LLMStreamOptions {
   temperature?: number;
   max_tokens?: number;
   onChunk?: (chunk: string) => void;
-  onComplete?: (fullText: string) => void;
-  onError?: (error: Error) => void;
+  onComplete?: (fullText: string) => void | Promise<void>;
+  onError?: (error: Error) => void | Promise<void>;
 }
 
 /**

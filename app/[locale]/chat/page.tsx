@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useSessionTracking, useGuanzhaoTriggers } from '@/lib/hooks/useSessionTracking';
@@ -9,9 +10,8 @@ import { MessageList, type ChatMessage } from '@/components/chat/MessageBubble';
 import { useSSEChat } from '@/lib/hooks/useSSEChat';
 import { useLocale } from 'next-intl';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
-import { useQuery, useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useAuth } from '@clerk/nextjs';
 import type { Id } from '@/convex/_generated/dataModel';
 
 export default function ChatPage() {
@@ -19,7 +19,8 @@ export default function ChatPage() {
   useAuthGuard();
 
   const locale = useLocale();
-  const { userId } = useAuth();
+  const searchParams = useSearchParams();
+  const conversationIdParam = searchParams.get('conversationId');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<Id<'conversations'> | null>(null);
@@ -29,9 +30,8 @@ export default function ChatPage() {
   // SSE Chat hook for streaming
   const { isStreaming, currentContent, sendMessage } = useSSEChat();
 
-  // Convex mutations
-  const createConversation = useMutation(api.conversations.create);
-  const appendMessage = useMutation(api.messages.append);
+  const fireTrigger = useMutation(api.guanzhao.fireTrigger);
+  const processAction = useMutation(api.guanzhao.processAction);
 
   // Real-time Convex message query (when conversationId exists)
   const convexMessages = useQuery(
@@ -63,6 +63,11 @@ export default function ChatPage() {
     }
   }, [isStreaming, currentContent]);
 
+  useEffect(() => {
+    if (!conversationIdParam) return;
+    setConversationId(conversationIdParam as Id<'conversations'>);
+  }, [conversationIdParam]);
+
   // Guanzhao session tracking
   const { isActive: sessionTrackingActive } = useSessionTracking(conversationId as string | null, {
     enabled: true,
@@ -80,45 +85,26 @@ export default function ChatPage() {
   // Handle trigger action
   const handleTriggerAction = useCallback(async (action: string, triggerId: string) => {
     try {
-      const response = await fetch('/api/guanzhao/actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action,
-          triggerId,
-        }),
-      });
-
-      if (response.ok) {
-        dismissTrigger();
-      }
+      await processAction({ action, triggerId });
+      dismissTrigger();
     } catch (error) {
       console.error('Error handling trigger action:', error);
     }
-  }, [dismissTrigger]);
+  }, [dismissTrigger, processAction]);
 
   // Listen for trigger events
   useEffect(() => {
     const handleTriggerEvent = (event: CustomEvent) => {
       const { triggerId } = event.detail;
 
-      // Call trigger engine to get template
-      fetch('/api/guanzhao/trigger', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          triggerId,
-          channel: 'in_app',
-        }),
-      })
-        .then(res => res.json())
-        .then(data => {
+      fireTrigger({ triggerId, channel: 'in_app' })
+        .then((data: any) => {
           if (data.allowed && data.template) {
             showTrigger(triggerId, data.template);
           }
         })
-        .catch(error => {
-          console.error('Error fetching trigger template:', error);
+        .catch((error: unknown) => {
+          console.error('Error firing trigger:', error);
         });
     };
 
@@ -127,7 +113,7 @@ export default function ChatPage() {
     return () => {
       window.removeEventListener('guanzhao:trigger', handleTriggerEvent as EventListener);
     };
-  }, [showTrigger]);
+  }, [fireTrigger, showTrigger]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -146,30 +132,13 @@ export default function ChatPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
-      // 1. Create conversation if not exists
-      let currentConvId = conversationId;
-      if (!currentConvId) {
-        currentConvId = await createConversation({
-          title: userMessage.slice(0, 30),
-          language: locale,
-        });
-        setConversationId(currentConvId);
-      }
-
-      // 2. Save user message to Convex
-      await appendMessage({
-        conversationId: currentConvId,
-        role: 'user',
-        content: userMessage,
-      });
-
-      // 3. Add placeholder for assistant message
+      // Add placeholder for assistant message (server persists the assistant message).
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
 
-      // 4. Call LLM API with streaming
-      const assistantMessage = await sendMessage(
+      // Stream response from the server. Server persists both user and assistant messages.
+      await sendMessage(
         userMessage,
-        currentConvId,
+        conversationId,
         locale,
         {
           onMetadata: (data) => {
@@ -182,15 +151,6 @@ export default function ChatPage() {
           },
         }
       );
-
-      // 5. Save assistant message to Convex after streaming completes
-      if (currentConvId && assistantMessage.trim()) {
-        await appendMessage({
-          conversationId: currentConvId,
-          role: 'assistant',
-          content: assistantMessage,
-        });
-      }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMsg = error instanceof Error ? error.message : 'An unexpected error occurred';

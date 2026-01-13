@@ -1,17 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
-
-interface Conversation {
-  id: string;
-  created_at: string;
-  preview: string;
-}
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import type { Id } from '@/convex/_generated/dataModel';
 
 export default function HistoryPage() {
   // Auth guard - redirect to login if not authenticated
@@ -20,48 +16,26 @@ export default function HistoryPage() {
   const router = useRouter();
   const params = useParams();
   const locale = params.locale as string || 'zh';
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const conversations = useQuery(api.conversations.list, { limit: 50 });
+  const removeConversation = useMutation(api.conversations.remove);
 
-  useEffect(() => {
-    fetchConversations();
-  }, []);
-
-  const fetchConversations = async () => {
-    try {
-      const response = await fetch('/api/conversations');
-      const data = await response.json();
-      setConversations(data.conversations || []);
-    } catch (error) {
-      console.error('Failed to fetch conversations:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: Id<'conversations'>) => {
     if (!confirm('Are you sure you want to delete this conversation?')) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/conversations/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setConversations(prev => prev.filter(c => c.id !== id));
-      }
+      await removeConversation({ id });
     } catch (error) {
       console.error('Failed to delete conversation:', error);
     }
   };
 
-  const handleContinue = (id: string) => {
+  const handleContinue = (id: Id<'conversations'>) => {
     router.push(`/${locale}/chat?conversationId=${id}`);
   };
 
-  if (loading) {
+  if (conversations === undefined) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
         <div className="max-w-4xl mx-auto">
@@ -87,12 +61,12 @@ export default function HistoryPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {conversations.map((conv) => (
-              <Card key={conv.id} className="p-6">
+            {conversations.map((conv: any) => (
+              <Card key={String(conv._id)} className="p-6">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <p className="text-sm text-stone-500 mb-2">
-                      {new Date(conv.created_at).toLocaleDateString()}
+                      {new Date(conv._creationTime).toLocaleDateString()}
                     </p>
                     <p className="text-stone-700">{conv.preview}...</p>
                   </div>
@@ -100,14 +74,14 @@ export default function HistoryPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleContinue(conv.id)}
+                      onClick={() => handleContinue(conv._id)}
                     >
                       Continue
                     </Button>
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(conv.id)}
+                      onClick={() => handleDelete(conv._id)}
                     >
                       Delete
                     </Button>
