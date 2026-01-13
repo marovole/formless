@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/lib/api/middleware';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import {
   successResponse,
   validationErrorResponse,
-  notFoundResponse,
   handleApiError,
 } from '@/lib/api/responses';
 import { logger } from '@/lib/logger';
-import type { TypedSupabaseClient, PromptUpdate } from '@/lib/supabase/types';
 
 /**
  * 更新请求体接口
@@ -17,37 +17,40 @@ interface UpdatePromptRequest {
   content?: string;
   is_active?: boolean;
   description?: string | null;
-  version?: number;
 }
 
 /**
  * 验证并构建更新对象
  */
-function buildUpdateObject(body: UpdatePromptRequest): PromptUpdate {
-  const updateObj: PromptUpdate = {};
+function buildUpdateObject(body: UpdatePromptRequest) {
+  const updates: {
+    content?: string;
+    is_active?: boolean;
+    description?: string | null;
+  } = {};
 
   if ('content' in body) {
     if (typeof body.content !== 'string' || body.content.trim() === '') {
       throw new Error('content 必须是非空字符串');
     }
-    updateObj.content = body.content;
+    updates.content = body.content;
   }
 
   if ('is_active' in body) {
     if (typeof body.is_active !== 'boolean') {
       throw new Error('is_active 必须是布尔值');
     }
-    updateObj.is_active = body.is_active;
+    updates.is_active = body.is_active;
   }
 
   if ('description' in body) {
     if (body.description !== null && typeof body.description !== 'string') {
       throw new Error('description 必须是字符串或null');
     }
-    updateObj.description = body.description;
+    updates.description = body.description;
   }
 
-  return updateObj;
+  return updates;
 }
 
 /**
@@ -65,58 +68,38 @@ export async function PUT(
     const body = (await request.json()) as UpdatePromptRequest;
 
     // 验证并构建更新对象
-    const updateObj = buildUpdateObject(body);
+    const updates = buildUpdateObject(body);
 
     // 检查是否有更新内容
-    if (Object.keys(updateObj).length === 0) {
+    if (Object.keys(updates).length === 0) {
       return validationErrorResponse('没有提供任何要更新的字段');
     }
 
-    const supabase = getSupabaseAdminClient();
+    const convex = getConvexClient();
 
-    // 如果内容改变，版本号递增
-    if (updateObj.content) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing, error: fetchError } = await (supabase.from('prompts') as any)
-        .select('version')
-        .eq('id', id)
-        .single();
-
-      if (fetchError) {
-        logger.error('获取Prompt版本失败', { error: fetchError, id });
-      } else if (existing) {
-        updateObj.version = (existing.version || 0) + 1;
-      }
+    // 检查是否存在
+    const existing = await convex.query(api.prompts.getById, { id: id as Id<"prompts"> });
+    if (!existing) {
+      return NextResponse.json({ error: 'Prompt不存在' }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updatedPrompt, error } = await (supabase.from('prompts') as any)
-      .update(updateObj)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('更新Prompt失败', { error, id });
-      throw new Error('更新Prompt失败');
-    }
-
-    if (!updatedPrompt) {
-      return notFoundResponse('Prompt');
-    }
-
-    logger.info('Prompt更新成功', {
-      id: updatedPrompt.id,
-      name: updatedPrompt.name,
-      version: updatedPrompt.version,
-      updates: Object.keys(updateObj),
+    await convex.mutation(api.prompts.update, {
+      id: id as Id<"prompts">,
+      ...updates,
     });
 
-    return successResponse({ prompt: updatedPrompt });
+    logger.info('Prompt更新成功', {
+      id,
+      name: existing.name,
+      updates: Object.keys(updates),
+    });
+
+    return successResponse({ id, ...updates });
   } catch (error) {
     if (error instanceof Error && error.message.includes('必须')) {
       return validationErrorResponse(error.message);
     }
+    logger.error('更新Prompt失败', { error });
     return handleApiError(error, '更新Prompt API错误');
   }
 }

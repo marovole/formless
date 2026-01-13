@@ -74,7 +74,8 @@ describe('Chat API Route', () => {
 
     // Setup default mock responses
     vi.mocked(getAvailableApiKey).mockResolvedValue({
-      id: 'key-123',
+      id: 'key-123' as any,
+      _id: 'key-123' as any,
       api_key: 'test-api-key',
       provider: 'chutes',
     })

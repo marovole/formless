@@ -79,6 +79,7 @@ export async function logApiUsage(params: LogApiUsageParams): Promise<void> {
       apiKeyId: params.api_key_id as Id<"api_keys">,
       provider: params.provider,
       userId: params.user_id as Id<"users">,
+      conversationId: params.conversation_id as Id<"conversations"> | undefined,
       tokensUsed: params.tokens_used,
       success: params.success,
       errorMessage: params.error_message

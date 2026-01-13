@@ -71,10 +71,12 @@ export default defineSchema({
     success: v.optional(v.boolean()),
     error_message: v.optional(v.string()),
     response_time_ms: v.optional(v.number()),
+    created_at: v.optional(v.number()), // Explicit timestamp for time-range queries
   })
   .index("by_user_id", ["user_id"])
   .index("by_api_key_id", ["api_key_id"])
-  .index("by_conversation_id", ["conversation_id"]),
+  .index("by_conversation_id", ["conversation_id"])
+  .index("by_created_at", ["created_at"]),
 
   admin_users: defineTable({
     email: v.string(),

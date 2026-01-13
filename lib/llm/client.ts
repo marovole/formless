@@ -17,7 +17,7 @@ const PROVIDER_CONFIGS: Record<LLMProvider, LLMProviderConfig> = {
   },
   openrouter: {
     apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-    defaultModel: 'deepseek/deepseek-r1',
+    defaultModel: 'mistralai/devstral-2512:free',
     providerName: 'openrouter',
   },
 };

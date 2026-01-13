@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { requireAuth } from '@/lib/api/middleware';
-import { getSupabaseAdminClient } from '@/lib/supabase/server';
+import { getConvexClient } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
+import { Doc } from '@/convex/_generated/dataModel';
 import {
   successResponse,
   validationErrorResponse,
   handleApiError,
 } from '@/lib/api/responses';
 import { logger } from '@/lib/logger';
-import type { TypedSupabaseClient, ApiKey, ApiKeyInsert } from '@/lib/supabase/types';
 
 /**
  * 请求体接口
@@ -28,21 +29,26 @@ export async function GET(request: NextRequest) {
     // 认证检查
     await requireAuth(request);
 
-    // 使用管理员客户端获取所有密钥
-    const supabase = getSupabaseAdminClient() as TypedSupabaseClient;
+    const convex = getConvexClient();
+    const apiKeys = await convex.query(api.api_keys.list, {});
 
-    const { data: apiKeys, error } = await supabase
-      .from('api_keys')
-      .select('*')
-      .order('priority', { ascending: true });
+    // 返回时掩码 API 密钥
+    const maskedApiKeys = apiKeys.map((key: Doc<"api_keys">) => ({
+      id: key._id,
+      provider: key.provider,
+      api_key: key.api_key ? `${key.api_key.slice(0, 8)}...` : null,
+      model_name: key.model_name,
+      daily_limit: key.daily_limit,
+      daily_used: key.daily_used,
+      priority: key.priority,
+      is_active: key.is_active,
+      last_used_at: key.last_used_at,
+      created_at: key._creationTime,
+    }));
 
-    if (error) {
-      logger.error('获取API密钥列表失败', { error });
-      throw new Error('获取API密钥列表失败');
-    }
-
-    return successResponse({ api_keys: apiKeys || [] });
+    return successResponse({ api_keys: maskedApiKeys });
   } catch (error) {
+    logger.error('获取API密钥列表失败', { error });
     return handleApiError(error, '获取API密钥列表API错误');
   }
 }
@@ -81,37 +87,24 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse('priority 必须是非负整数');
     }
 
-    // 构建插入数据
-    const insertData: ApiKeyInsert = {
-      provider: provider as 'chutes' | 'openrouter',
-      api_key: api_key,
-      model_name: model_name || null,
-      daily_limit: daily_limit || 1000,
-      priority: priority || 1,
-      is_active: true,
-    };
-
-    const supabase = getSupabaseAdminClient();
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: newApiKey, error } = await (supabase.from('api_keys') as any)
-      .insert([insertData])
-      .select()
-      .single();
-
-    if (error) {
-      logger.error('创建API密钥失败', { error, provider });
-      throw new Error('创建API密钥失败');
-    }
-
-    logger.info('API密钥创建成功', {
-      id: newApiKey.id,
-      provider: newApiKey.provider,
-      priority: newApiKey.priority,
+    const convex = getConvexClient();
+    const newId = await convex.mutation(api.api_keys.create, {
+      provider,
+      api_key,
+      model_name: model_name ?? undefined,
+      daily_limit: daily_limit ?? undefined,
+      priority: priority ?? undefined,
     });
 
-    return successResponse({ api_key: newApiKey }, 201);
+    logger.info('API密钥创建成功', {
+      id: newId,
+      provider,
+      priority: priority || 1,
+    });
+
+    return successResponse({ id: newId }, 201);
   } catch (error) {
+    logger.error('创建API密钥失败', { error });
     return handleApiError(error, '创建API密钥API错误');
   }
 }
