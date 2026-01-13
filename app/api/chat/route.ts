@@ -14,6 +14,7 @@ import type { ChatMessage } from '@/lib/llm/types';
 import type { MessageDoc } from '@/lib/types/convex-helpers';
 
 export async function POST(request: NextRequest) {
+  const requestStartTime = Date.now();
   try {
     const { userId: clerkId } = await auth();
     const user = await currentUser();
@@ -118,9 +119,12 @@ export async function POST(request: NextRequest) {
           await convex.mutation(api.api_usage.log, {
               apiKeyId: apiKey._id,
               provider: 'chutes',
+              modelName: apiKey.model_name,
               userId: convexUserId,
+              conversationId: activeConversationId,
               tokensUsed: tokenCount,
-              success: true
+              success: true,
+              responseTimeMs: Date.now() - requestStartTime
           });
 
           await convex.mutation(api.api_keys.incrementUsage, {

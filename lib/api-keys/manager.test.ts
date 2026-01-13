@@ -31,7 +31,8 @@ describe('API Key Manager', () => {
       const result = await getAvailableApiKey('chutes')
 
       // Assert
-      expect(result.id).toBe('key-1')
+      expect(result).not.toBeNull()
+      expect(result?.id).toBe('key-1')
       expect(mockConvex.mutation).toHaveBeenCalledWith(api.api_keys.getAvailable, { provider: 'chutes' })
     })
 

@@ -4,6 +4,7 @@ import { createSession } from '@/lib/auth/session';
 import { LoginSchema } from '@/lib/validation/schemas';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
+import { logger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,9 +57,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('Login error:', error);
-    }
+    logger.error('Login error', { error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -65,7 +65,7 @@ export default function ApiKeysPage() {
     try {
       const response = await fetch('/api/admin/api-keys')
       const data = await response.json()
-      setKeys(data.data || [])
+      setKeys(data.data?.api_keys || [])
     } catch (error) {
       console.error('Failed to fetch API keys:', error)
     } finally {
@@ -246,65 +246,67 @@ export default function ApiKeysPage() {
             ) : keys.length === 0 ? (
               <p className="text-center text-zinc-500">No API keys configured</p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Provider</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>API Key</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {keys.map((key) => (
-                    <TableRow key={key.id}>
-                      <TableCell className="font-medium">
-                        {key.provider}
-                      </TableCell>
-                      <TableCell>{key.model_name || '-'}</TableCell>
-                      <TableCell className="font-mono text-sm">
-                        {maskApiKey(key.api_key)}
-                      </TableCell>
-                      <TableCell>{key.priority}</TableCell>
-                      <TableCell>
-                        {key.daily_used} / {key.daily_limit}
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                            key.is_active
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-zinc-100 text-zinc-700'
-                          }`}
-                        >
-                          {key.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleToggleActive(key)}
-                          >
-                            {key.is_active ? 'Disable' : 'Enable'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(key.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Provider</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>API Key</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Usage</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {keys.map((key) => (
+                      <TableRow key={key.id}>
+                        <TableCell className="font-medium">
+                          {key.provider}
+                        </TableCell>
+                        <TableCell>{key.model_name || '-'}</TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {maskApiKey(key.api_key)}
+                        </TableCell>
+                        <TableCell>{key.priority}</TableCell>
+                        <TableCell>
+                          {key.daily_used} / {key.daily_limit}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                              key.is_active
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-zinc-100 text-zinc-700'
+                            }`}
+                          >
+                            {key.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleToggleActive(key)}
+                            >
+                              {key.is_active ? 'Disable' : 'Enable'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(key.id)}
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>

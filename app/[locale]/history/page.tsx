@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
 
 interface Conversation {
@@ -62,8 +63,15 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-serif text-stone-800 mb-8">Conversation History</h1>
+          <div className="space-y-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        </div>
       </div>
     );
   }

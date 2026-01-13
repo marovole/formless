@@ -5,6 +5,7 @@ import { useAuth, useUser, SignOutButton } from '@clerk/nextjs';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
 
 export default function SettingsPage() {
@@ -22,8 +23,15 @@ export default function SettingsPage() {
 
   if (!isSignedIn || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
+        <div className="max-w-2xl mx-auto">
+          <Skeleton className="h-10 w-48 mb-8" />
+          <div className="space-y-6">
+            <Skeleton className="h-32 w-full rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
