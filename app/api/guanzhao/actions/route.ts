@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
+import type { ActionResponse } from '@/lib/types/api-responses';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,12 +19,12 @@ export async function POST(req: NextRequest) {
     }
 
     const convex = getConvexClient();
-    const result: any = await convex.mutation(api.guanzhao.processAction, {
+    const result = await convex.mutation(api.guanzhao.processAction, {
       clerkId,
       action,
       triggerId,
       triggerHistoryId,
-    });
+    }) as ActionResponse;
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });

@@ -1,6 +1,6 @@
 /**
  * API Route: Guanzhao Trigger Evaluation
- * 评估是否应该触发某个触发器，并返回模板
+ * Evaluates whether a trigger should fire and returns the template
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -8,6 +8,8 @@ import { auth } from '@clerk/nextjs/server';
 import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { getGuanzhaoConfig } from '@/lib/guanzhao/config';
+import type { Trigger, Template, UserBudgetInfo } from '@/lib/guanzhao/types';
+import type { Id } from '@/convex/_generated/dataModel';
 
 // =============================================
 // Types
@@ -19,13 +21,24 @@ interface EvaluateTriggerRequest {
   userConfig?: Record<string, unknown>;
 }
 
+interface EvaluateTriggerResult {
+  allowed: boolean;
+  reason?: string;
+  userId?: Id<'users'>;
+  userSettings?: UserBudgetInfo;
+}
+
+interface TriggerHistoryItem {
+  template_id: string;
+}
+
 // =============================================
 // POST Handler
 // =============================================
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. 验证用户身份 (Clerk)
+    // 1. Verify user identity (Clerk)
     const { userId: clerkId } = await auth();
 
     if (!clerkId) {
@@ -35,7 +48,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. 解析请求
+    // 2. Parse request
     const body: EvaluateTriggerRequest = await req.json();
     const { triggerId, channel } = body;
 
@@ -46,9 +59,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 3. 加载配置
+    // 3. Load configuration
     const config = getGuanzhaoConfig();
-    const trigger = config.triggers.find((t: any) => t.id === triggerId);
+    const trigger = config.triggers.find((t: Trigger) => t.id === triggerId);
 
     if (!trigger) {
       return NextResponse.json(
@@ -59,13 +72,12 @@ export async function POST(req: NextRequest) {
 
     const convex = getConvexClient();
 
-    // 4. 在 Convex 中评估触发条件 (Enabled, Snoozed, DND, Cooldown)
-    // 注意：Convex Mutation 在 HTTP Client 中通过 mutation 调用
-    const evaluation: any = await convex.mutation(api.guanzhao.evaluateTrigger, {
+    // 4. Evaluate trigger conditions in Convex (Enabled, Snoozed, DND, Cooldown)
+    const evaluation = await convex.mutation(api.guanzhao.evaluateTrigger, {
       triggerId,
       channel,
       clerkId,
-    });
+    }) as EvaluateTriggerResult;
 
     if (!evaluation.allowed) {
       return NextResponse.json(evaluation);
@@ -73,10 +85,10 @@ export async function POST(req: NextRequest) {
 
     const { userId, userSettings } = evaluation;
 
-    // 5. 检查预算
+    // 5. Check budget
     const budgetCost = trigger.budget_cost?.[channel] || 0;
 
-    if (budgetCost > 0) {
+    if (budgetCost > 0 && userSettings) {
       const hasBudget = checkUserBudget(channel, budgetCost, userSettings);
 
       if (!hasBudget) {
@@ -91,8 +103,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 6. 选择模板
-    const userStyle = userSettings.style || 'qingming';
+    // 6. Select template
+    const userStyle = userSettings?.style || 'qingming';
     const templateIds = trigger.template_sets?.by_style?.[userStyle] ||
                         trigger.template_sets?.by_style?.[trigger.template_sets?.fallback_style || 'qingming'];
 
@@ -103,22 +115,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 获取最近使用的模板 (Convex Query)
+    // Get recently used templates (Convex Query)
     const recentHistory = await convex.query(api.guanzhao.getRecentTriggerHistory, {
       userId,
       triggerId,
       limit: templateIds.length,
-    });
+    }) as TriggerHistoryItem[];
 
-    const recentlyUsed = recentHistory.map((t: any) => t.template_id);
+    const recentlyUsed = recentHistory.map((t: TriggerHistoryItem) => t.template_id);
 
-    // 选择一个未使用的模板
+    // Select an unused template
     const availableTemplateIds = templateIds.filter((id: string) => !recentlyUsed.includes(id));
     const selectedTemplateId = availableTemplateIds.length > 0
       ? availableTemplateIds[Math.floor(Math.random() * availableTemplateIds.length)]
       : templateIds[Math.floor(Math.random() * templateIds.length)];
 
-    const template = config.templates.find((t: any) => t.id === selectedTemplateId);
+    const template = config.templates.find((t: Template) => t.id === selectedTemplateId);
 
     if (!template) {
       return NextResponse.json({
@@ -127,7 +139,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 7. 消耗预算并记录历史
+    // 7. Consume budget and record history
     const cooldownDays = trigger[channel]?.constraints?.cooldown_days;
     await convex.mutation(api.guanzhao.recordTriggerAndConsumeBudget, {
       userId,
@@ -138,7 +150,7 @@ export async function POST(req: NextRequest) {
       cooldownDays,
     });
 
-    // 8. 返回成功
+    // 8. Return success
     return NextResponse.json({
       allowed: true,
       triggerId: triggerId,
@@ -158,12 +170,12 @@ export async function POST(req: NextRequest) {
 // =============================================
 
 /**
- * 检查用户是否有足够预算
+ * Check if user has sufficient budget
  */
 function checkUserBudget(
   channel: 'in_app' | 'push',
   cost: number,
-  settings: any
+  settings: UserBudgetInfo
 ): boolean {
   if (cost === 0) return true;
 

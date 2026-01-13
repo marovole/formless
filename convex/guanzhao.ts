@@ -1,74 +1,276 @@
+/**
+ * Guanzhao (Mindfulness) Convex Functions
+ * Proactive engagement system for user wellbeing
+ */
+
 import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
+
+// ============================================================================
+// Constants (duplicated from lib/constants/guanzhao.ts for Convex compatibility)
+// ============================================================================
+
+const GUANZHAO_DURATIONS = {
+  SNOOZE_24H: 24 * 60 * 60 * 1000,
+  SNOOZE_7D: 7 * 24 * 60 * 60 * 1000,
+  SESSION_OVERLOAD_MINUTES: 45,
+  SESSION_COOLDOWN_MINUTES: 30,
+  COOLDOWN_DAY_MS: 24 * 60 * 60 * 1000,
+} as const;
+
+const GUANZHAO_HOUR_RANGES = {
+  NIGHTLY_WRAPUP_START: 20,
+  NIGHTLY_WRAPUP_END: 23,
+  LATE_NIGHT_START: 0,
+  LATE_NIGHT_END: 1,
+} as const;
+
+const GUANZHAO_DND_DEFAULTS = {
+  START: '23:30',
+  END: '08:00',
+} as const;
+
+const FREQUENCY_LEVELS = ['jingjin', 'zhongdao', 'qingjian', 'silent'] as const;
+
+const TRIGGER_IDS = {
+  DAILY_CHECKIN: 'daily_checkin',
+  NIGHTLY_WRAPUP: 'nightly_wrapup',
+  OVERLOAD_PROTECTION: 'overload_protection',
+} as const;
+
+const CHANNELS = {
+  IN_APP: 'in_app',
+  PUSH: 'push',
+} as const;
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface SessionEventResponse {
+  success?: boolean;
+  sessionId?: Id<'user_sessions'>;
+  shouldTrigger?: {
+    triggerId: string;
+    reason: string;
+  };
+  error?: string;
+}
+
+interface ActionResponse {
+  success?: boolean;
+  message?: string;
+  redirectUrl?: string;
+  error?: string;
+}
+
+type UserSessionUpdate = Partial<Pick<Doc<'user_sessions'>, 'last_activity_at' | 'ended_at' | 'messages_count'>>;
+
+interface BudgetUpdate {
+  updated_at?: number;
+  used_in_app_day?: number;
+  used_in_app_week?: number;
+  used_push_day?: number;
+  used_push_week?: number;
+}
+
+// ============================================================================
+// Session Event Handlers (Split from handleSessionEvent)
+// ============================================================================
+
+async function handleSessionStart(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  timezone: string
+): Promise<SessionEventResponse> {
+  const sessionId = await ctx.db.insert("user_sessions", {
+    user_id: userId,
+    timezone,
+    last_activity_at: Date.now()
+  });
+
+  const shouldTrigger = await shouldTriggerDailyCheckinNow(ctx, userId);
+
+  return {
+    success: true,
+    sessionId,
+    shouldTrigger: shouldTrigger ? {
+      triggerId: TRIGGER_IDS.DAILY_CHECKIN,
+      reason: 'First session of the day'
+    } : undefined
+  };
+}
+
+async function handleSessionEnd(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  sessionId: Id<'user_sessions'>
+): Promise<SessionEventResponse> {
+  await ctx.db.patch(sessionId, { ended_at: Date.now() });
+
+  const shouldTrigger = await shouldTriggerNightlyWrapupNow(ctx, userId);
+  return {
+    success: true,
+    shouldTrigger: shouldTrigger ? {
+      triggerId: TRIGGER_IDS.NIGHTLY_WRAPUP,
+      reason: 'Session ended in evening hours'
+    } : undefined
+  };
+}
+
+async function handleInSession(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  sessionId: Id<'user_sessions'>,
+  messagesCount?: number
+): Promise<SessionEventResponse> {
+  const updates: UserSessionUpdate = { last_activity_at: Date.now() };
+  if (messagesCount !== undefined) updates.messages_count = messagesCount;
+
+  await ctx.db.patch(sessionId, updates);
+
+  const session = await ctx.db.get(sessionId);
+  if (!session) throw new Error("Session not found");
+
+  const shouldTrigger = await shouldTriggerOverloadProtectionNow(ctx, userId, session);
+  return {
+    success: true,
+    shouldTrigger: shouldTrigger ? {
+      triggerId: TRIGGER_IDS.OVERLOAD_PROTECTION,
+      reason: 'Long session detected or late hour'
+    } : undefined
+  };
+}
+
+// ============================================================================
+// Action Handlers (Refactored from processAction)
+// ============================================================================
+
+async function handleSnoozeAction(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  action: string
+): Promise<ActionResponse> {
+  let snoozedUntil: Date;
+
+  if (action === 'snooze.24h') {
+    snoozedUntil = new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_24H);
+  } else if (action === 'snooze.7d') {
+    snoozedUntil = new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_7D);
+  } else if (action === 'snooze.today') {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    snoozedUntil = tomorrow;
+  } else {
+    return { error: 'Unknown snooze action' };
+  }
+
+  await upsertBudgetTracking(ctx, userId, { snoozed_until: snoozedUntil.toISOString() });
+  return { success: true, message: `Snoozed until ${snoozedUntil.toLocaleString()}` };
+}
+
+async function handleDisableAction(
+  ctx: MutationCtx,
+  userId: Id<'users'>
+): Promise<ActionResponse> {
+  await upsertBudgetTracking(ctx, userId, { enabled: false });
+  return { success: true, message: 'Guanzhao disabled' };
+}
+
+async function handleKeepWeeklyOnlyAction(
+  ctx: MutationCtx,
+  userId: Id<'users'>
+): Promise<ActionResponse> {
+  await upsertBudgetTracking(ctx, userId, { frequency_level: 'silent', push_enabled: false });
+  return { success: true, message: 'Switched to weekly review only mode' };
+}
+
+async function handleFeedbackAction(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  action: string,
+  triggerHistoryId?: string
+): Promise<ActionResponse> {
+  if (!triggerHistoryId) return { error: 'Missing triggerHistoryId' };
+
+  const feedback = action.replace('feedback.', '');
+  await ctx.db.patch(triggerHistoryId as Id<"guanzhao_trigger_history">, { feedback });
+
+  // Auto-downgrade frequency if user complains about frequency
+  if (feedback === 'too_frequent') {
+    const budget = await ctx.db.query("guanzhao_budget_tracking")
+      .withIndex("by_user_id", q => q.eq("user_id", userId))
+      .first();
+
+    if (budget && budget.frequency_level) {
+      const idx = FREQUENCY_LEVELS.indexOf(budget.frequency_level as typeof FREQUENCY_LEVELS[number]);
+      if (idx >= 0 && idx < FREQUENCY_LEVELS.length - 1) {
+        await ctx.db.patch(budget._id, { frequency_level: FREQUENCY_LEVELS[idx + 1] });
+      }
+    }
+  }
+
+  return { success: true, message: 'Thanks for your feedback' };
+}
+
+async function handleSafetyAction(action: string): Promise<ActionResponse> {
+  if (action === 'safety.open_resources') return { redirectUrl: '/resources/crisis' };
+  if (action === 'safety.confirm_safe') return { success: true, message: 'Recorded' };
+  return { error: 'Unknown safety action' };
+}
+
+// ============================================================================
+// Helper: Upsert Budget Tracking
+// ============================================================================
+
+async function upsertBudgetTracking(
+  ctx: MutationCtx,
+  userId: Id<'users'>,
+  updates: Record<string, unknown>
+): Promise<void> {
+  const budget = await ctx.db.query("guanzhao_budget_tracking")
+    .withIndex("by_user_id", q => q.eq("user_id", userId))
+    .first();
+
+  if (budget) {
+    await ctx.db.patch(budget._id, updates);
+  } else {
+    await ctx.db.insert("guanzhao_budget_tracking", { user_id: userId, ...updates });
+  }
+}
+
+// ============================================================================
+// Exported Mutations
+// ============================================================================
 
 export const handleSessionEvent = mutation({
   args: {
-    eventType: v.string(), // session_start, session_end, in_session
+    eventType: v.string(),
     clerkId: v.string(),
     sessionId: v.optional(v.id("user_sessions")),
     timezone: v.optional(v.string()),
     messagesCount: v.optional(v.number())
   },
-  handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+  handler: async (ctx: MutationCtx, args): Promise<SessionEventResponse> => {
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) throw new Error("User not found");
-    const userId = user._id;
 
-    if (args.eventType === 'session_start') {
-        const sessionId = await ctx.db.insert("user_sessions", {
-            user_id: userId,
-            timezone: args.timezone || 'UTC',
-            last_activity_at: Date.now()
-        });
-
-        const shouldTrigger = await shouldTriggerDailyCheckinNow(ctx, userId);
-
-        return {
-            success: true,
-            sessionId,
-            shouldTrigger: shouldTrigger ? {
-                triggerId: 'daily_checkin',
-                reason: 'First session of the day'
-            } : undefined
-        };
-    }
-
-    if (args.eventType === 'session_end') {
+    switch (args.eventType) {
+      case 'session_start':
+        return handleSessionStart(ctx, user._id, args.timezone || 'UTC');
+      case 'session_end':
         if (!args.sessionId) throw new Error("Missing sessionId");
-        await ctx.db.patch(args.sessionId, { ended_at: Date.now() });
-
-        const shouldTrigger = await shouldTriggerNightlyWrapupNow(ctx, userId);
-        return {
-            success: true,
-            shouldTrigger: shouldTrigger ? {
-                triggerId: 'nightly_wrapup',
-                reason: 'Session ended in evening hours'
-            } : undefined
-        };
-    }
-
-    if (args.eventType === 'in_session') {
+        return handleSessionEnd(ctx, user._id, args.sessionId);
+      case 'in_session':
         if (!args.sessionId) throw new Error("Missing sessionId");
-        const updates: any = { last_activity_at: Date.now() };
-        if (args.messagesCount !== undefined) updates.messages_count = args.messagesCount;
-
-        await ctx.db.patch(args.sessionId, updates);
-
-        const session = await ctx.db.get(args.sessionId);
-        if (!session) throw new Error("Session not found");
-
-        const shouldTrigger = await shouldTriggerOverloadProtectionNow(ctx, userId, session);
-         return {
-            success: true,
-            shouldTrigger: shouldTrigger ? {
-                triggerId: 'overload_protection',
-                reason: 'Long session detected or late hour'
-            } : undefined
-        };
+        return handleInSession(ctx, user._id, args.sessionId, args.messagesCount);
+      default:
+        return { error: "Invalid eventType" };
     }
-
-    return { error: "Invalid eventType" };
   }
 });
 
@@ -79,91 +281,38 @@ export const processAction = mutation({
     triggerId: v.optional(v.string()),
     triggerHistoryId: v.optional(v.string())
   },
-  handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+  handler: async (ctx: MutationCtx, args): Promise<ActionResponse> => {
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) throw new Error("User not found");
-    const userId = user._id;
 
     const { action } = args;
 
+    // Prefix-based handlers
     if (action.startsWith('snooze')) {
-        let snoozedUntil: Date;
-        if (action === 'snooze.24h') {
-            snoozedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        } else if (action === 'snooze.7d') {
-            snoozedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        } else if (action === 'snooze.today') {
-            const tomorrow = new Date();
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            tomorrow.setHours(0, 0, 0, 0);
-            snoozedUntil = tomorrow;
-        } else {
-            return { error: 'Unknown snooze action' };
-        }
-
-        const budget = await ctx.db.query("guanzhao_budget_tracking").withIndex("by_user_id", q => q.eq("user_id", userId)).first();
-        if (budget) {
-            await ctx.db.patch(budget._id, { snoozed_until: snoozedUntil.toISOString() });
-        } else {
-            await ctx.db.insert("guanzhao_budget_tracking", {
-                user_id: userId,
-                snoozed_until: snoozedUntil.toISOString()
-            });
-        }
-
-        return { success: true, message: `已静默至 ${snoozedUntil.toLocaleString()}` };
+      return handleSnoozeAction(ctx, user._id, action);
     }
-
-    if (action === 'disable_guanzhao') {
-        const budget = await ctx.db.query("guanzhao_budget_tracking").withIndex("by_user_id", q => q.eq("user_id", userId)).first();
-        if (budget) {
-            await ctx.db.patch(budget._id, { enabled: false });
-        } else {
-            await ctx.db.insert("guanzhao_budget_tracking", { user_id: userId, enabled: false });
-        }
-        return { success: true, message: '观照已关闭' };
-    }
-
-    if (action === 'keep_weekly_only') {
-        const budget = await ctx.db.query("guanzhao_budget_tracking").withIndex("by_user_id", q => q.eq("user_id", userId)).first();
-        if (budget) {
-            await ctx.db.patch(budget._id, { frequency_level: 'silent', push_enabled: false });
-        } else {
-            await ctx.db.insert("guanzhao_budget_tracking", { user_id: userId, frequency_level: 'silent', push_enabled: false });
-        }
-        return { success: true, message: '已切换至仅保留周回顾模式' };
-    }
-
-    if (action === 'open_settings_guanzhao') {
-        return { redirectUrl: '/settings/guanzhao' };
-    }
-
     if (action.startsWith('feedback.')) {
-        if (!args.triggerHistoryId) return { error: 'Missing triggerHistoryId' };
-        const feedback = action.replace('feedback.', '');
-        await ctx.db.patch(args.triggerHistoryId as Id<"guanzhao_trigger_history">, { feedback });
-
-        if (feedback === 'too_frequent') {
-             const budget = await ctx.db.query("guanzhao_budget_tracking").withIndex("by_user_id", q => q.eq("user_id", userId)).first();
-             if (budget && budget.frequency_level) {
-                 const levels = ['jingjin', 'zhongdao', 'qingjian', 'silent'];
-                 const idx = levels.indexOf(budget.frequency_level);
-                 if (idx >= 0 && idx < levels.length - 1) {
-                     await ctx.db.patch(budget._id, { frequency_level: levels[idx + 1] });
-                 }
-             }
-        }
-        return { success: true, message: '感谢你的反馈' };
+      return handleFeedbackAction(ctx, user._id, action, args.triggerHistoryId);
     }
-
     if (action.startsWith('open_flow.')) {
-        const flowId = action.replace('open_flow.', '');
-        return { redirectUrl: `/flow/${flowId}` };
+      const flowId = action.replace('open_flow.', '');
+      return { redirectUrl: `/flow/${flowId}` };
+    }
+    if (action.startsWith('safety.')) {
+      return handleSafetyAction(action);
     }
 
-    if (action.startsWith('safety.')) {
-        if (action === 'safety.open_resources') return { redirectUrl: '/resources/crisis' };
-        if (action === 'safety.confirm_safe') return { success: true, message: '已记录' };
+    // Exact match handlers
+    if (action === 'disable_guanzhao') {
+      return handleDisableAction(ctx, user._id);
+    }
+    if (action === 'keep_weekly_only') {
+      return handleKeepWeeklyOnlyAction(ctx, user._id);
+    }
+    if (action === 'open_settings_guanzhao') {
+      return { redirectUrl: '/settings/guanzhao' };
     }
 
     return { error: 'Unknown action' };
@@ -173,25 +322,26 @@ export const processAction = mutation({
 export const evaluateTrigger = mutation({
   args: {
     triggerId: v.string(),
-    channel: v.string(), // 'in_app' | 'push'
+    channel: v.string(),
     clerkId: v.string(),
   },
   handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) return { allowed: false, reason: 'Unauthorized' };
-    const userId = user._id;
 
-    // 1. 检查用户设置
+    // 1. Check user settings
     const userSettings = await ctx.db.query("guanzhao_budget_tracking")
-      .withIndex("by_user_id", q => q.eq("user_id", userId))
+      .withIndex("by_user_id", q => q.eq("user_id", user._id))
       .first();
 
     if (!userSettings) return { allowed: false, reason: 'User settings not found' };
 
-    // 2. 检查是否启用
+    // 2. Check if enabled
     if (!userSettings.enabled) return { allowed: false, reason: 'Guanzhao is disabled' };
 
-    // 3. 检查静默状态
+    // 3. Check snooze status
     if (userSettings.snoozed_until) {
       const snoozedUntil = new Date(userSettings.snoozed_until);
       if (snoozedUntil > new Date()) {
@@ -203,24 +353,25 @@ export const evaluateTrigger = mutation({
       }
     }
 
-    // 4. 检查 DND (仅 push)
-    if (args.channel === 'push') {
+    // 4. Check DND (push only)
+    if (args.channel === CHANNELS.PUSH) {
       const now = new Date();
       const currentHour = now.getHours();
       const currentMinute = now.getMinutes();
       const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
 
-      const dndStart = userSettings.dnd_start || '23:30';
-      const dndEnd = userSettings.dnd_end || '08:00';
+      const dndStart = userSettings.dnd_start || GUANZHAO_DND_DEFAULTS.START;
+      const dndEnd = userSettings.dnd_end || GUANZHAO_DND_DEFAULTS.END;
 
       if (isTimeInRange(currentTime, dndStart, dndEnd)) {
         return { allowed: false, reason: 'User is in DND period' };
       }
     }
 
-    // 5. 检查冷却时间
+    // 5. Check cooldown
     const cooldown = await ctx.db.query("guanzhao_cooldowns")
-      .withIndex("by_user_trigger_channel", q => q.eq("user_id", userId).eq("trigger_id", args.triggerId).eq("channel", args.channel))
+      .withIndex("by_user_trigger_channel", q =>
+        q.eq("user_id", user._id).eq("trigger_id", args.triggerId).eq("channel", args.channel))
       .filter(q => q.gt(q.field("cooldown_until"), new Date().toISOString()))
       .first();
 
@@ -232,11 +383,9 @@ export const evaluateTrigger = mutation({
       };
     }
 
-    // 6. 逻辑返回：目前还缺预算检查和模板选择，但这部分通常在 API 层通过 Config 加载。
-    // 为了保持一致，我们将预算和历史记录也移入 Convex。
     return {
       allowed: true,
-      userId,
+      userId: user._id,
       userSettings,
     };
   }
@@ -252,14 +401,14 @@ export const recordTriggerAndConsumeBudget = mutation({
     cooldownDays: v.optional(v.number()),
   },
   handler: async (ctx: MutationCtx, args) => {
-    // 1. 消耗预算
+    // 1. Consume budget
     const settings = await ctx.db.query("guanzhao_budget_tracking")
       .withIndex("by_user_id", q => q.eq("user_id", args.userId))
       .first();
 
     if (settings && args.budgetCost > 0) {
-      const updates: any = { updated_at: Date.now() };
-      if (args.channel === 'in_app') {
+      const updates: BudgetUpdate = { updated_at: Date.now() };
+      if (args.channel === CHANNELS.IN_APP) {
         updates.used_in_app_day = (settings.used_in_app_day || 0) + args.budgetCost;
         updates.used_in_app_week = (settings.used_in_app_week || 0) + args.budgetCost;
       } else {
@@ -269,7 +418,7 @@ export const recordTriggerAndConsumeBudget = mutation({
       await ctx.db.patch(settings._id, updates);
     }
 
-    // 2. 记录历史
+    // 2. Record history
     const historyId = await ctx.db.insert("guanzhao_trigger_history", {
       user_id: args.userId,
       trigger_id: args.triggerId,
@@ -278,11 +427,12 @@ export const recordTriggerAndConsumeBudget = mutation({
       status: 'shown',
     });
 
-    // 3. 设置冷却时间
+    // 3. Set cooldown
     if (args.cooldownDays) {
-      const until = new Date(Date.now() + args.cooldownDays * 24 * 60 * 60 * 1000).toISOString();
+      const until = new Date(Date.now() + args.cooldownDays * GUANZHAO_DURATIONS.COOLDOWN_DAY_MS).toISOString();
       const existing = await ctx.db.query("guanzhao_cooldowns")
-        .withIndex("by_user_trigger_channel", q => q.eq("user_id", args.userId).eq("trigger_id", args.triggerId).eq("channel", args.channel))
+        .withIndex("by_user_trigger_channel", q =>
+          q.eq("user_id", args.userId).eq("trigger_id", args.triggerId).eq("channel", args.channel))
         .first();
 
       if (existing) {
@@ -318,7 +468,9 @@ export const getRecentTriggerHistory = query({
 export const getGuanzhaoSettings = query({
   args: { clerkId: v.string() },
   handler: async (ctx: QueryCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) return null;
 
     return await ctx.db.query("guanzhao_budget_tracking")
@@ -330,10 +482,20 @@ export const getGuanzhaoSettings = query({
 export const updateGuanzhaoSettings = mutation({
   args: {
     clerkId: v.string(),
-    updates: v.any(), // Partial<GuanzhaoSettings> + budget fields
+    updates: v.object({
+      enabled: v.optional(v.boolean()),
+      frequency_level: v.optional(v.string()),
+      push_enabled: v.optional(v.boolean()),
+      dnd_start: v.optional(v.string()),
+      dnd_end: v.optional(v.string()),
+      style: v.optional(v.string()),
+      snoozed_until: v.optional(v.string()),
+    }),
   },
   handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) throw new Error("User not found");
 
     const existing = await ctx.db.query("guanzhao_budget_tracking")
@@ -362,7 +524,9 @@ export const registerPushToken = mutation({
     deviceId: v.optional(v.string()),
   },
   handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) throw new Error("User not found");
 
     const existing = await ctx.db.query("push_tokens")
@@ -388,13 +552,8 @@ export const registerPushToken = mutation({
       });
     }
 
-    // 同时启用推送通知设置
-    const budget = await ctx.db.query("guanzhao_budget_tracking").withIndex("by_user_id", q => q.eq("user_id", user._id)).first();
-    if (budget) {
-      await ctx.db.patch(budget._id, { push_enabled: true });
-    } else {
-      await ctx.db.insert("guanzhao_budget_tracking", { user_id: user._id, push_enabled: true, enabled: true });
-    }
+    // Also enable push notification settings
+    await upsertBudgetTracking(ctx, user._id, { push_enabled: true, enabled: true });
 
     return { success: true };
   }
@@ -406,7 +565,9 @@ export const deactivatePushToken = mutation({
     token: v.string(),
   },
   handler: async (ctx: MutationCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) throw new Error("User not found");
 
     const token = await ctx.db.query("push_tokens")
@@ -425,7 +586,9 @@ export const deactivatePushToken = mutation({
 export const getPushTokens = query({
   args: { clerkId: v.string() },
   handler: async (ctx: QueryCtx, args) => {
-    const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId)).first();
+    const user = await ctx.db.query("users")
+      .withIndex("by_clerk_id", q => q.eq("clerkId", args.clerkId))
+      .first();
     if (!user) return [];
 
     return await ctx.db.query("push_tokens")
@@ -436,12 +599,16 @@ export const getPushTokens = query({
   }
 });
 
+// ============================================================================
 // Helper Functions
+// ============================================================================
+
 function isTimeInRange(currentTime: string, startTime: string, endTime: string): boolean {
   const current = parseTime(currentTime);
   const start = parseTime(startTime);
   const end = parseTime(endTime);
 
+  // Handle overnight ranges (e.g., 23:30 to 08:00)
   if (start < end) return current >= start && current < end;
   return current >= start || current < end;
 }
@@ -451,68 +618,94 @@ function parseTime(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
-async function shouldTriggerDailyCheckinNow(ctx: MutationCtx, userId: Id<"users">) {
-    const now = Date.now();
-    const dayStart = new Date(now).setHours(0,0,0,0);
+async function shouldTriggerDailyCheckinNow(
+  ctx: MutationCtx,
+  userId: Id<"users">
+): Promise<boolean> {
+  const now = Date.now();
+  const dayStart = new Date(now).setHours(0, 0, 0, 0);
 
-    const existing = await ctx.db.query("guanzhao_trigger_history")
-        .withIndex("by_user_trigger", q => q.eq("user_id", userId).eq("trigger_id", "daily_checkin"))
-        .filter(q => q.eq(q.field("channel"), "in_app"))
-        .filter(q => q.gte(q.field("_creationTime"), dayStart))
-        .first();
+  const existing = await ctx.db.query("guanzhao_trigger_history")
+    .withIndex("by_user_trigger", q =>
+      q.eq("user_id", userId).eq("trigger_id", TRIGGER_IDS.DAILY_CHECKIN))
+    .filter(q => q.eq(q.field("channel"), CHANNELS.IN_APP))
+    .filter(q => q.gte(q.field("_creationTime"), dayStart))
+    .first();
 
-    if (existing) return false;
+  if (existing) return false;
 
-    const sessionsToday = await ctx.db.query("user_sessions")
-        .withIndex("by_user_id", q => q.eq("user_id", userId))
-        .filter(q => q.gte(q.field("_creationTime"), dayStart))
-        .collect();
+  const sessionsToday = await ctx.db.query("user_sessions")
+    .withIndex("by_user_id", q => q.eq("user_id", userId))
+    .filter(q => q.gte(q.field("_creationTime"), dayStart))
+    .collect();
 
-    return sessionsToday.length === 1;
+  return sessionsToday.length === 1;
 }
 
-async function shouldTriggerNightlyWrapupNow(ctx: MutationCtx, userId: Id<"users">) {
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour < 20 || hour >= 23) return false;
+async function shouldTriggerNightlyWrapupNow(
+  ctx: MutationCtx,
+  userId: Id<"users">
+): Promise<boolean> {
+  const now = new Date();
+  const hour = now.getHours();
 
-    const dayStart = new Date(now).setHours(0,0,0,0);
+  if (hour < GUANZHAO_HOUR_RANGES.NIGHTLY_WRAPUP_START ||
+      hour >= GUANZHAO_HOUR_RANGES.NIGHTLY_WRAPUP_END) {
+    return false;
+  }
 
-    const existing = await ctx.db.query("guanzhao_trigger_history")
-        .withIndex("by_user_trigger", q => q.eq("user_id", userId).eq("trigger_id", "nightly_wrapup"))
-        .filter(q => q.eq(q.field("channel"), "in_app"))
-        .filter(q => q.gte(q.field("_creationTime"), dayStart))
-        .first();
+  const dayStart = new Date(now).setHours(0, 0, 0, 0);
 
-    if (existing) return false;
+  const existing = await ctx.db.query("guanzhao_trigger_history")
+    .withIndex("by_user_trigger", q =>
+      q.eq("user_id", userId).eq("trigger_id", TRIGGER_IDS.NIGHTLY_WRAPUP))
+    .filter(q => q.eq(q.field("channel"), CHANNELS.IN_APP))
+    .filter(q => q.gte(q.field("_creationTime"), dayStart))
+    .first();
 
-    return true;
+  return !existing;
 }
 
-async function shouldTriggerOverloadProtectionNow(ctx: MutationCtx, userId: Id<"users">, session: any) {
-    const now = new Date();
-    const hour = now.getHours();
+async function shouldTriggerOverloadProtectionNow(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  session: Doc<'user_sessions'>
+): Promise<boolean> {
+  const now = new Date();
+  const hour = now.getHours();
 
-    let shouldTrigger = false;
-    if (hour >= 0 && hour < 1) shouldTrigger = true;
+  let shouldTrigger = false;
 
-    if (!shouldTrigger) {
-        const durationMinutes = (now.getTime() - session._creationTime) / (1000 * 60);
-        if (durationMinutes >= 45) shouldTrigger = true;
+  // Late night check
+  if (hour >= GUANZHAO_HOUR_RANGES.LATE_NIGHT_START &&
+      hour < GUANZHAO_HOUR_RANGES.LATE_NIGHT_END) {
+    shouldTrigger = true;
+  }
+
+  // Long session check
+  if (!shouldTrigger) {
+    const durationMinutes = (now.getTime() - session._creationTime) / (1000 * 60);
+    if (durationMinutes >= GUANZHAO_DURATIONS.SESSION_OVERLOAD_MINUTES) {
+      shouldTrigger = true;
     }
+  }
 
-    if (!shouldTrigger) return false;
+  if (!shouldTrigger) return false;
 
-    const recent = await ctx.db.query("guanzhao_trigger_history")
-        .withIndex("by_user_trigger", q => q.eq("user_id", userId).eq("trigger_id", "overload_protection"))
-        .filter(q => q.eq(q.field("channel"), "in_app"))
-        .order("desc")
-        .first();
+  // Check cooldown
+  const recent = await ctx.db.query("guanzhao_trigger_history")
+    .withIndex("by_user_trigger", q =>
+      q.eq("user_id", userId).eq("trigger_id", TRIGGER_IDS.OVERLOAD_PROTECTION))
+    .filter(q => q.eq(q.field("channel"), CHANNELS.IN_APP))
+    .order("desc")
+    .first();
 
-    if (recent) {
-        const minutesAgo = (now.getTime() - recent._creationTime) / (1000 * 60);
-        if (minutesAgo < 30) return false;
+  if (recent) {
+    const minutesAgo = (now.getTime() - recent._creationTime) / (1000 * 60);
+    if (minutesAgo < GUANZHAO_DURATIONS.SESSION_COOLDOWN_MINUTES) {
+      return false;
     }
+  }
 
-    return true;
+  return true;
 }

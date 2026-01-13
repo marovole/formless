@@ -2,25 +2,27 @@ import { getConvexClient } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { logger } from '@/lib/logger';
+import type { ApiKeyDoc, ApiKeyWithBackwardsCompat } from '@/lib/types/convex-helpers';
+import type { LogApiUsageParams } from '@/lib/types/api-responses';
 
 /**
- * 获取可用的API密钥
- * 按优先级返回有配额的密钥,如果都超限则返回优先级最高的
+ * Get an available API key
+ * Returns the highest priority key with remaining quota, or the top priority key if all are exhausted
  *
  * NOTE: This function now uses Convex instead of Supabase.
  *
- * @param provider - API提供商
- * @returns 可用的API密钥,如果没有则返回null
+ * @param provider - API provider ('chutes' or 'openrouter')
+ * @returns Available API key, or null if none exist
  */
 export async function getAvailableApiKey(
   provider: 'chutes' | 'openrouter'
-): Promise<any | null> {
+): Promise<ApiKeyWithBackwardsCompat | null> {
   try {
     const convex = getConvexClient();
     const key = await convex.mutation(api.api_keys.getAvailable, { provider });
 
     if (!key) {
-      logger.warn('没有可用的API密钥', { provider });
+      logger.warn('No available API key', { provider });
       return null;
     }
 
@@ -29,25 +31,25 @@ export async function getAvailableApiKey(
       id: key._id, // Backwards compatibility for code expecting .id
     };
   } catch (error) {
-    logger.error('获取API密钥失败', { error, provider });
+    logger.error('Failed to get API key', { error, provider });
     return null;
   }
 }
 
 /**
- * 增加API密钥的使用次数
+ * Increment API key usage count
  *
  * NOTE: This function now uses Convex instead of Supabase.
  *
- * @param keyId - API密钥ID
- * @param tokenCount - 使用的token数量
+ * @param keyId - API key ID
+ * @param tokenCount - Number of tokens used
  */
 export async function incrementApiKeyUsage(
   keyId: string,
   tokenCount: number = 1
 ): Promise<void> {
   if (!keyId) {
-    logger.warn('incrementApiKeyUsage: keyId为空');
+    logger.warn('incrementApiKeyUsage: keyId is empty');
     return;
   }
 
@@ -58,19 +60,19 @@ export async function incrementApiKeyUsage(
       tokenCount
     });
   } catch (error) {
-    logger.error('增加API密钥使用量失败', { error, keyId, tokenCount });
+    logger.error('Failed to increment API key usage', { error, keyId, tokenCount });
   }
 }
 
 /**
- * 记录API使用情况
- * 失败不抛出错误,只记录日志
+ * Log API usage
+ * Silently fails without throwing errors to avoid disrupting the main flow
  *
  * NOTE: This function now uses Convex instead of Supabase.
  *
- * @param params - API使用参数
+ * @param params - API usage parameters
  */
-export async function logApiUsage(params: any): Promise<void> {
+export async function logApiUsage(params: LogApiUsageParams): Promise<void> {
   try {
     const convex = getConvexClient();
     await convex.mutation(api.api_usage.log, {
@@ -82,8 +84,8 @@ export async function logApiUsage(params: any): Promise<void> {
       errorMessage: params.error_message
     });
   } catch (error) {
-    // 记录失败但不抛出错误,避免影响主流程
-    logger.error('记录API使用情况失败', {
+    // Log failure but don't throw to avoid disrupting the main flow
+    logger.error('Failed to log API usage', {
       error: error instanceof Error ? error.message : String(error),
       provider: params.provider,
     });

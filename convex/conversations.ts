@@ -2,6 +2,15 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 
+/**
+ * Conversation defaults
+ * Note: Duplicated from lib/constants since Convex runs in separate environment
+ */
+const CONVERSATION_DEFAULTS = {
+  LIST_LIMIT: 20,
+  PREVIEW_LENGTH: 100,
+} as const;
+
 // Internal mutation called by server action/API
 export const createInternal = mutation({
   args: {
@@ -41,7 +50,7 @@ export const list = query({
 
     if (!user) return [];
 
-    const limit = args.limit || 20;
+    const limit = args.limit || CONVERSATION_DEFAULTS.LIST_LIMIT;
 
     const conversations = await ctx.db
       .query("conversations")
@@ -57,7 +66,7 @@ export const list = query({
 
         return {
             ...conv,
-            preview: lastMsg?.content.slice(0, 100) || conv.title || "",
+            preview: lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) || conv.title || "",
         };
     }));
   },
@@ -73,7 +82,7 @@ export const listInternal = query({
 
     if (!user) return [];
 
-    const limit = args.limit || 20;
+    const limit = args.limit || CONVERSATION_DEFAULTS.LIST_LIMIT;
 
     const conversations = await ctx.db
       .query("conversations")
@@ -89,7 +98,7 @@ export const listInternal = query({
 
         return {
             ...conv,
-            preview: lastMsg?.content.slice(0, 100) || conv.title || "",
+            preview: lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) || conv.title || "",
         };
     }));
   }
