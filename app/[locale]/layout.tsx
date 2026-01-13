@@ -2,7 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { notFound } from 'next/navigation'
-import { routing } from '@/i18n/routing'
+import { routing, type Locale } from '@/i18n/routing'
 import { GeistSans } from 'geist/font/sans'
 import ConvexClientProvider from '@/components/ConvexClientProvider'
 import { EnsureCurrentUser } from '@/components/EnsureCurrentUser'
@@ -39,7 +39,7 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params
 
-  if (!routing.locales.includes(locale as 'zh' | 'en')) {
+  if (!routing.locales.includes(locale as Locale)) {
     notFound()
   }
 

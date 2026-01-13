@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Formless",
+    "tagline": "Marcher avec la sagesse, chercher en soi"
+  },
+  "nav": {
+    "home": "Accueil",
+    "chat": "Dialogue",
+    "history": "Historique",
+    "settings": "Paramètres"
+  },
+  "chat": {
+    "title": "Dialoguer avec l'Ancien Formless",
+    "placeholder": "Partagez vos préoccupations...",
+    "send": "Envoyer",
+    "newChat": "Nouvelle conversation",
+    "thinking": "L'Ancien médite...",
+    "empty": "Commencez une conversation"
+  },
+  "history": {
+    "title": "Historique des conversations",
+    "empty": "Aucune conversation",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer cette conversation ?"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "theme": "Thème",
+    "profile": "Profil"
+  },
+  "auth": {
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "signup": "Inscription",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?"
+  },
+  "admin": {
+    "dashboard": "Tableau de bord",
+    "users": "Gestion des utilisateurs",
+    "apiKeys": "Clés API",
+    "prompts": "Gestion des prompts",
+    "usage": "Statistiques d'utilisation"
+  },
+  "common": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès"
+  }
+}

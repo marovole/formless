@@ -1,0 +1,57 @@
+{
+  "app": {
+    "name": "Formless",
+    "tagline": "Mit Weisheit wandeln, im Inneren suchen"
+  },
+  "nav": {
+    "home": "Startseite",
+    "chat": "Dialog",
+    "history": "Verlauf",
+    "settings": "Einstellungen"
+  },
+  "chat": {
+    "title": "Dialog mit dem Formless-Ältesten",
+    "placeholder": "Teilen Sie Ihre Gedanken...",
+    "send": "Senden",
+    "newChat": "Neues Gespräch",
+    "thinking": "Der Älteste meditiert...",
+    "empty": "Beginnen Sie ein Gespräch"
+  },
+  "history": {
+    "title": "Gesprächsverlauf",
+    "empty": "Keine Gespräche",
+    "delete": "Löschen",
+    "confirmDelete": "Dieses Gespräch löschen?"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "theme": "Design",
+    "profile": "Profil"
+  },
+  "auth": {
+    "login": "Anmelden",
+    "logout": "Abmelden",
+    "signup": "Registrieren",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?"
+  },
+  "admin": {
+    "dashboard": "Dashboard",
+    "users": "Benutzerverwaltung",
+    "apiKeys": "API-Schlüssel",
+    "prompts": "Prompt-Verwaltung",
+    "usage": "Nutzungsstatistik"
+  },
+  "common": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "edit": "Bearbeiten",
+    "confirm": "Bestätigen",
+    "loading": "Laden...",
+    "error": "Fehler",
+    "success": "Erfolg"
+  }
+}
