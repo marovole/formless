@@ -47,6 +47,13 @@ const config: Config = {
       },
       fontFamily: {
         serif: ["ui-serif", "Georgia", "Cambria", "Times New Roman", "Times", "serif"],
+        handwriting: [
+          "Segoe Script",
+          "Apple Chancery",
+          "Snell Roundhand",
+          "Brush Script MT",
+          "cursive",
+        ],
       },
       animation: {
         "fade-in": "fadeIn 0.8s ease-in-out",

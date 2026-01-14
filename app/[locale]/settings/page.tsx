@@ -62,6 +62,13 @@ export default function SettingsPage() {
               >
                 View Conversation History
               </Button>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => router.push(`/${locale}/letters`)}
+              >
+                Open Letters Inbox
+              </Button>
               <SignOutButton>
                 <Button variant="destructive" className="w-full">
                   Sign Out

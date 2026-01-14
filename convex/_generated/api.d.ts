@@ -14,9 +14,12 @@ import type * as api_keys from "../api_keys.js";
 import type * as api_usage from "../api_usage.js";
 import type * as conversations from "../conversations.js";
 import type * as guanzhao from "../guanzhao.js";
+import type * as letter_threads from "../letter_threads.js";
+import type * as letters from "../letters.js";
 import type * as memories from "../memories.js";
 import type * as messages from "../messages.js";
 import type * as prompts from "../prompts.js";
+import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
 import type {
@@ -32,9 +35,12 @@ declare const fullApi: ApiFromModules<{
   api_usage: typeof api_usage;
   conversations: typeof conversations;
   guanzhao: typeof guanzhao;
+  letter_threads: typeof letter_threads;
+  letters: typeof letters;
   memories: typeof memories;
   messages: typeof messages;
   prompts: typeof prompts;
+  seed: typeof seed;
   users: typeof users;
 }>;
 

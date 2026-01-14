@@ -36,6 +36,32 @@ export default defineSchema({
   })
   .index("by_conversation_id", ["conversation_id"]),
 
+  letter_threads: defineTable({
+    user_a_id: v.id("users"),
+    user_b_id: v.id("users"),
+    pair_key: v.string(),
+    subject: v.optional(v.string()),
+    last_letter_at: v.number(),
+    last_sender_id: v.id("users"),
+    next_sender_id: v.id("users"),
+    last_letter_preview: v.optional(v.string()),
+    updated_at: v.number(),
+  })
+  .index("by_user_a_last_letter", ["user_a_id", "last_letter_at"])
+  .index("by_user_b_last_letter", ["user_b_id", "last_letter_at"])
+  .index("by_pair_key", ["pair_key"]),
+
+  letters: defineTable({
+    thread_id: v.id("letter_threads"),
+    sender_id: v.id("users"),
+    recipient_id: v.id("users"),
+    body: v.string(),
+    day_key: v.string(),
+    created_at: v.number(),
+  })
+  .index("by_thread_id", ["thread_id"])
+  .index("by_sender_day", ["sender_id", "day_key"]),
+
   key_quotes: defineTable({
     user_id: v.id("users"),
     conversation_id: v.optional(v.id("conversations")),
