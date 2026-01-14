@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next'
 const locales = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es', 'pt']
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.ai'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro'
   
   const routes = ['', '/chat', '/history', '/settings']
   
