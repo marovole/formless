@@ -148,7 +148,7 @@ export const extractFromConversation = internalAction({
     const { userId, conversationText } = (await ctx.runMutation(
       api.memories.prepareExtraction,
       { conversationId: args.conversationId },
-    )) as { userId: string; conversationText: string };
+    )) as { userId: any; conversationText: string };
 
     const prompt = buildExtractionPrompt(conversationText);
 

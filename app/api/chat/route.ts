@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const apiKey = await convexAdmin.mutation(internal.api_keys.getAvailableInternal, {
+    const apiKey = await (convexAdmin as any).mutation(internal.api_keys.getAvailableInternal, {
       provider: 'chutes',
     });
     if (!apiKey) {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       throw new AppError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 503);
     }
 
-    const systemPrompt = await convexAdmin.query(internal.prompts.getActiveInternal, {
+    const systemPrompt = await (convexAdmin as any).query(internal.prompts.getActiveInternal, {
       role: 'formless_elder',
       language,
     });
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
             tokens: tokenCount,
           });
 
-          await convexAdmin.mutation(internal.api_usage.logInternal, {
+          await (convexAdmin as any).mutation(internal.api_usage.logInternal, {
             apiKeyId: apiKey._id,
             provider: 'chutes',
             modelName: apiKey.model_name ?? undefined,
@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
             responseTimeMs: Date.now() - requestStartTime,
           });
 
-          await convexAdmin.mutation(internal.api_keys.incrementUsageInternal, {
+          await (convexAdmin as any).mutation(internal.api_keys.incrementUsageInternal, {
             keyId: apiKey._id,
             tokenCount,
           });
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
         onError: async (error) => {
           logger.error('Chat streaming error', { error, userId: clerkId });
           try {
-            await convexAdmin.mutation(internal.api_usage.logInternal, {
+            await (convexAdmin as any).mutation(internal.api_usage.logInternal, {
               apiKeyId: apiKey._id,
               provider: 'chutes',
               modelName: apiKey.model_name ?? undefined,

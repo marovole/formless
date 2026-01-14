@@ -42,8 +42,8 @@ export default function ChatPage() {
   // Sync Convex messages to local state when updated
   useEffect(() => {
     if (convexMessages && !isStreaming) {
-      setMessages(convexMessages.map((m: { role: 'user' | 'assistant'; content: string }) => ({
-        role: m.role,
+      setMessages(convexMessages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
         content: m.content,
       })));
     }
