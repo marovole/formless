@@ -156,15 +156,7 @@ GET    /api/conversations     对话列表
 DELETE /api/conversations/[id] 删除对话
 
 # 后台
-POST   /api/admin/login       管理员登录
-GET    /api/admin/api-keys    获取 Keys
-POST   /api/admin/api-keys    添加 Key
-PUT    /api/admin/api-keys/[id]  更新 Key
-DELETE /api/admin/api-keys/[id]  删除 Key
-GET    /api/admin/usage       用量统计
-GET    /api/admin/users       用户列表
-GET    /api/admin/prompts     Prompt 列表
-PUT    /api/admin/prompts/[id] 更新 Prompt
+（本次版本暂时移除，后续用 Convex 重新实现 ULW）
 ```
 
 ### 页面（12 个）
@@ -177,13 +169,7 @@ PUT    /api/admin/prompts/[id] 更新 Prompt
 /[locale]/settings       设置
 
 # 后台
-/admin                   Dashboard
-/admin/login             登录
-/admin/users             用户管理
-/admin/users/[id]        用户详情
-/admin/api-keys          API Key 管理
-/admin/usage             用量统计
-/admin/prompts           Prompt 管理
+（本次版本暂时移除，后续用 Convex 重新实现 ULW）
 ```
 
 ---
@@ -198,4 +184,4 @@ PUT    /api/admin/prompts/[id] 更新 Prompt
 
 **选项 C**：先出对话核心（/api/chat + UI），快速看到效果
 
-**选项 D**：先出 Supabase 建表 SQL，把数据库先建好
+**选项 D**：先出 Convex schema（表+索引），把数据库先建好

@@ -68,11 +68,6 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-stone-200">
-          <Link href="/admin" className="text-sm text-stone-400 hover:text-stone-600">
-            Admin Dashboard
-          </Link>
-        </div>
       </div>
     </div>
   )
