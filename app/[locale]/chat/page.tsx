@@ -179,7 +179,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex flex-col relative">
+    <div className="h-screen max-h-[100dvh] bg-gradient-to-b from-stone-50 to-stone-100 flex flex-col relative overflow-hidden">
       {/* Trigger container */}
       <GuanzhaoTriggerContainer
         pendingTrigger={pendingTrigger}

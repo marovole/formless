@@ -37,7 +37,7 @@ export default function HistoryPage() {
 
   if (conversations === undefined) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-4 sm:p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-serif text-stone-800 mb-8">Conversation History</h1>
           <div className="space-y-4">
@@ -51,7 +51,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-4 sm:p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-serif text-stone-800 mb-8">Conversation History</h1>
 
@@ -62,19 +62,20 @@ export default function HistoryPage() {
         ) : (
           <div className="space-y-4">
             {conversations.map((conv: any) => (
-              <Card key={String(conv._id)} className="p-6">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
+              <Card key={String(conv._id)} className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm text-stone-500 mb-2">
                       {new Date(conv._creationTime).toLocaleDateString()}
                     </p>
-                    <p className="text-stone-700">{conv.preview}...</p>
+                    <p className="text-stone-700 truncate sm:whitespace-normal">{conv.preview}...</p>
                   </div>
-                  <div className="flex gap-2 ml-4">
+                  <div className="flex gap-2 flex-shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => handleContinue(conv._id)}
+                      className="flex-1 sm:flex-none"
                     >
                       Continue
                     </Button>
@@ -82,6 +83,7 @@ export default function HistoryPage() {
                       size="sm"
                       variant="destructive"
                       onClick={() => handleDelete(conv._id)}
+                      className="flex-1 sm:flex-none"
                     >
                       Delete
                     </Button>

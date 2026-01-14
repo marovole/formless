@@ -20,7 +20,7 @@ export default function SettingsPage() {
 
   if (!isSignedIn || !user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-8">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 p-4 sm:p-8">
         <div className="max-w-2xl mx-auto">
           <Skeleton className="h-10 w-48 mb-8" />
           <div className="space-y-6">
