@@ -3,7 +3,7 @@
 import { useRouter, useParams } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
+import { SkeletonCard } from '@/components/ui/skeleton';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';

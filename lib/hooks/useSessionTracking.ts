@@ -103,8 +103,6 @@ export function useSessionTracking(
     // 这个函数应该调用触发引擎来获取模板
     // 然后显示触发器卡片
 
-    console.log('Trigger response:', response);
-
     // 触发自定义事件，让聊天页面处理
     window.dispatchEvent(
       new CustomEvent('guanzhao:trigger', {
@@ -146,8 +144,8 @@ export function useSessionTracking(
       if (data?.shouldTrigger) {
         handleTriggerResponse(data.shouldTrigger);
       }
-    } catch (error) {
-      console.error('Error sending heartbeat:', error);
+    } catch {
+      // Heartbeat errors are expected during normal operation (e.g., network issues)
     }
   }, [handleSessionEvent, userId, isActive, pauseWhenHidden, handleTriggerResponse]);
 
@@ -187,8 +185,8 @@ export function useSessionTracking(
         // 启动心跳
         startHeartbeat();
       }
-    } catch (error) {
-      console.error('Error starting session:', error);
+    } catch {
+      // Session start errors are non-critical
     }
   }, [handleSessionEvent, userId, enabled, handleTriggerResponse, startHeartbeat]);
 
@@ -210,8 +208,8 @@ export function useSessionTracking(
       sessionIdRef.current = null;
       setSessionId(null);
       setIsActive(false);
-    } catch (error) {
-      console.error('Error ending session:', error);
+    } catch {
+      // Session end errors are non-critical
     }
   }, [handleSessionEvent, userId, stopHeartbeat]);
 
@@ -342,7 +340,6 @@ export function usePushNotifications() {
    */
   const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
     if (!('Notification' in window)) {
-      console.warn('This browser does not support notifications');
       return 'denied';
     }
 
@@ -362,8 +359,7 @@ export function usePushNotifications() {
       });
       setToken(expoToken);
       return true;
-    } catch (error) {
-      console.error('Error registering push token:', error);
+    } catch {
       return false;
     }
   }, [registerPushToken]);

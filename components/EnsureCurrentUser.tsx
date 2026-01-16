@@ -20,9 +20,8 @@ export function EnsureCurrentUser({ preferredLanguage }: { preferredLanguage?: s
       preferredLanguage,
       fullName: user.fullName || undefined,
       avatarUrl: user.imageUrl || undefined,
-    }).catch((error) => {
+    }).catch(() => {
       ensuredForUserIdRef.current = null;
-      console.error('Failed to ensure current user', error);
     });
   }, [ensureCurrent, isLoaded, isSignedIn, preferredLanguage, user]);
 

@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { getConvexAdminClient, getConvexClientWithAuth } from '@/lib/convex';
-import { api, internal } from '@/convex/_generated/api';
+import { getConvexClientWithAuth } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
+import { logger } from '@/lib/logger';
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const { userId: clerkId, getToken } = await auth();
     const user = await currentUser();
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest) {
       message: 'Initialization complete',
     });
   } catch (error) {
-    console.error('Init error:', error);
+    logger.error('Init error', error);
     return NextResponse.json(
       { error: 'Initialization failed', details: String(error) },
       { status: 500 }

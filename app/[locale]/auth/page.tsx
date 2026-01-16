@@ -1,7 +1,6 @@
 'use client';
 
 import { SignIn } from "@clerk/nextjs";
-import { Card } from '@/components/ui/card';
 
 export default function AuthPage() {
   return (

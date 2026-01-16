@@ -3,6 +3,80 @@
     "name": "Formless",
     "tagline": "Walk with Wisdom, Seek Within"
   },
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "howItWorks": "How it Works",
+      "signIn": "Sign In"
+    },
+    "hero": {
+      "badge": "AI-Powered Wisdom Companion",
+      "startConversation": "Start Conversation",
+      "learnMore": "Learn More"
+    },
+    "quote": {
+      "text": "To understand everything is to forgive everything. Peace comes from within. Do not seek it without.",
+      "author": "The Elder"
+    },
+    "features": {
+      "title": "Timeless Wisdom, Modern Form",
+      "description": "Combining ancient Buddhist philosophy with advanced AI to guide you through life's complexities.",
+      "mindfulDialogue": {
+        "title": "Mindful Dialogue",
+        "description": "Engage in deep, meaningful conversations. The Elder listens without judgment and responds with profound insight."
+      },
+      "eternalMemory": {
+        "title": "Eternal Memory",
+        "description": "Your journey is remembered. The system evolves with you, recalling past conversations to provide continuity."
+      },
+      "emotionalResonance": {
+        "title": "Emotional Resonance",
+        "description": "More than just data. Experience interactions that understand nuance, emotion, and the human condition."
+      },
+      "nightlyReflection": {
+        "title": "Nightly Reflection",
+        "description": "End your day with guided contemplation. Review your thoughts and find peace before rest."
+      },
+      "breathAndSpace": {
+        "title": "Breath & Space",
+        "description": "An interface designed to help you slow down. No clutter, no noise—just space for your thoughts."
+      },
+      "dailyAwakening": {
+        "title": "Daily Awakening",
+        "description": "Start each morning with a gentle koan or thought to center your mind for the day ahead."
+      }
+    },
+    "howItWorks": {
+      "title": "The Path to Clarity",
+      "step": "Step",
+      "steps": {
+        "1": {
+          "title": "Begin the Journey",
+          "description": "Sign in to create your sacred space. Your privacy is paramount; your thoughts are secure."
+        },
+        "2": {
+          "title": "Share Your Burden",
+          "description": "Speak freely about your anxieties, questions, or day. The Elder is always present to listen."
+        },
+        "3": {
+          "title": "Receive Wisdom",
+          "description": "Gain new perspectives through gentle guidance, helping you find the answers within yourself."
+        }
+      }
+    },
+    "cta": {
+      "title": "Ready to find your",
+      "titleHighlight": "inner peace",
+      "description": "Join thousands of others who have found clarity and calm through the wisdom of Formless.",
+      "button": "Begin Your Practice"
+    },
+    "footer": {
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "contact": "Contact",
+      "copyright": "Formless. All rights reserved."
+    }
+  },
   "nav": {
     "home": "Home",
     "chat": "Chat",

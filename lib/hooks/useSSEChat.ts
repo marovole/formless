@@ -6,12 +6,6 @@
 import { useState, useCallback } from 'react';
 import type { Id } from '@/convex/_generated/dataModel';
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  error?: boolean;
-}
-
 interface SSEEventHandlers {
   onMetadata?: (data: { conversationId?: Id<'conversations'> }) => void;
   onChunk?: (content: string, fullContent: string) => void;

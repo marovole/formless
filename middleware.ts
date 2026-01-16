@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import createIntlMiddleware from 'next-intl/middleware'
+import { NextResponse } from 'next/server'
 import { routing } from '@/i18n/routing'
 
 const intlMiddleware = createIntlMiddleware(routing)
@@ -7,15 +8,25 @@ const intlMiddleware = createIntlMiddleware(routing)
 // 公开路由 - 不需要认证
 const isPublicRoute = createRouteMatcher([
   '/',
+  '/robots.txt',
+  '/sitemap.xml',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/:locale',
+  '/:locale/robots.txt',
+  '/:locale/sitemap.xml',
   '/:locale/sign-in(.*)',
   '/:locale/sign-up(.*)',
   '/api/webhook(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {
+  const { pathname } = req.nextUrl
+
+  if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+    return NextResponse.next()
+  }
+
   // 保护非公开路由
   if (!isPublicRoute(req)) {
     await auth.protect()

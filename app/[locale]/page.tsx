@@ -41,12 +41,12 @@ const FeatureCard = ({ icon: Icon, title, description, delay = 0 }: { icon: any,
   </div>
 )
 
-const Step = ({ number, title, description }: { number: string, title: string, description: string }) => (
+const Step = ({ number, title, description, stepLabel }: { number: string, title: string, description: string, stepLabel: string }) => (
   <div className="flex flex-col items-center text-center max-w-xs mx-auto">
     <span className="font-serif text-6xl text-stone-100 font-bold mb-4 select-none relative z-0">
       {number}
       <span className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 text-sm font-sans font-medium text-stone-400 tracking-widest uppercase z-10 bg-rice-50 px-2 whitespace-nowrap">
-        Step {number}
+        {stepLabel} {number}
       </span>
     </span>
     <h3 className="text-lg font-serif text-ink-800 mb-2">{title}</h3>
@@ -56,6 +56,7 @@ const Step = ({ number, title, description }: { number: string, title: string, d
 
 export default function HomePage() {
   const t = useTranslations('app')
+  const tLanding = useTranslations('landing')
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -80,9 +81,9 @@ export default function HomePage() {
           </Link>
           <div className="flex items-center gap-4">
             <nav className="hidden md:flex items-center gap-8 text-sm text-ink-500 font-medium">
-              <Link href="#features" className="hover:text-ink-900 transition-colors">Features</Link>
-              <Link href="#how-it-works" className="hover:text-ink-900 transition-colors">How it Works</Link>
-              <Link href="/auth" className="hover:text-ink-900 transition-colors">Sign In</Link>
+              <Link href="#features" className="hover:text-ink-900 transition-colors">{tLanding('nav.features')}</Link>
+              <Link href="#how-it-works" className="hover:text-ink-900 transition-colors">{tLanding('nav.howItWorks')}</Link>
+              <Link href="/auth" className="hover:text-ink-900 transition-colors">{tLanding('nav.signIn')}</Link>
             </nav>
             <LanguageSwitcher className="w-auto" />
           </div>
@@ -97,7 +98,7 @@ export default function HomePage() {
           <div className="relative z-10 text-center max-w-4xl mx-auto space-y-8 animate-fade-in">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/50 border border-stone-200/50 backdrop-blur-sm shadow-sm mb-4">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              <span className="text-xs font-medium tracking-wide text-ink-500 uppercase">AI-Powered Wisdom Companion</span>
+              <span className="text-xs font-medium tracking-wide text-ink-500 uppercase">{tLanding('hero.badge')}</span>
             </div>
             
             <h1 className="font-serif text-6xl md:text-8xl lg:text-9xl text-ink-900 tracking-tight leading-[0.9]">
@@ -114,7 +115,7 @@ export default function HomePage() {
                   size="lg"
                   className="bg-ink-800 hover:bg-ink-700 text-rice-50 rounded-full px-10 py-7 text-lg shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group"
                 >
-                  Start Conversation
+                  {tLanding('hero.startConversation')}
                   <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
@@ -124,7 +125,7 @@ export default function HomePage() {
                   variant="outline"
                   className="bg-transparent border-stone-300 text-ink-600 hover:bg-stone-100 hover:text-ink-900 rounded-full px-10 py-7 text-lg transition-all duration-300"
                 >
-                  Learn More
+                  {tLanding('hero.learnMore')}
                 </Button>
               </Link>
             </div>
@@ -141,11 +142,10 @@ export default function HomePage() {
               <Leaf className="w-8 h-8 opacity-50" />
             </div>
             <blockquote className="font-serif text-3xl md:text-4xl text-ink-700 leading-snug italic">
-              &quot;To understand everything is to forgive everything. <br/>
-              Peace comes from within. Do not seek it without.&quot;
+              &quot;{tLanding('quote.text')}&quot;
             </blockquote>
             <cite className="block mt-6 text-sm font-sans font-medium text-ink-400 uppercase tracking-widest not-italic">
-              — The Elder
+              — {tLanding('quote.author')}
             </cite>
           </div>
         </section>
@@ -153,47 +153,47 @@ export default function HomePage() {
         <section id="features" className="py-32 relative">
           <div className="container mx-auto px-6 relative z-10">
             <div className="text-center max-w-2xl mx-auto mb-20">
-              <h2 className="font-serif text-4xl text-ink-800 mb-4">Timeless Wisdom, Modern Form</h2>
+              <h2 className="font-serif text-4xl text-ink-800 mb-4">{tLanding('features.title')}</h2>
               <p className="text-ink-500 font-light text-lg">
-                Combining ancient Buddhist philosophy with advanced AI to guide you through life&apos;s complexities.
+                {tLanding('features.description')}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
               <FeatureCard 
                 icon={MessageCircle}
-                title="Mindful Dialogue"
-                description="Engage in deep, meaningful conversations. The Elder listens without judgment and responds with profound insight."
+                title={tLanding('features.mindfulDialogue.title')}
+                description={tLanding('features.mindfulDialogue.description')}
                 delay={0}
               />
               <FeatureCard 
                 icon={Infinity}
-                title="Eternal Memory"
-                description="Your journey is remembered. The system evolves with you, recalling past conversations to provide continuity."
+                title={tLanding('features.eternalMemory.title')}
+                description={tLanding('features.eternalMemory.description')}
                 delay={100}
               />
               <FeatureCard 
                 icon={Heart}
-                title="Emotional Resonance"
-                description="More than just data. Experience interactions that understand nuance, emotion, and the human condition."
+                title={tLanding('features.emotionalResonance.title')}
+                description={tLanding('features.emotionalResonance.description')}
                 delay={200}
               />
               <FeatureCard 
                 icon={Moon}
-                title="Nightly Reflection"
-                description="End your day with guided contemplation. Review your thoughts and find peace before rest."
+                title={tLanding('features.nightlyReflection.title')}
+                description={tLanding('features.nightlyReflection.description')}
                 delay={300}
               />
               <FeatureCard 
                 icon={Wind}
-                title="Breath & Space"
-                description="An interface designed to help you slow down. No clutter, no noise—just space for your thoughts."
+                title={tLanding('features.breathAndSpace.title')}
+                description={tLanding('features.breathAndSpace.description')}
                 delay={400}
               />
               <FeatureCard 
                 icon={Sun}
-                title="Daily Awakening"
-                description="Start each morning with a gentle koan or thought to center your mind for the day ahead."
+                title={tLanding('features.dailyAwakening.title')}
+                description={tLanding('features.dailyAwakening.description')}
                 delay={500}
               />
             </div>
@@ -205,7 +205,7 @@ export default function HomePage() {
           
           <div className="container mx-auto px-6 relative z-10">
             <div className="text-center mb-20">
-              <h2 className="font-serif text-4xl text-ink-800 mb-4">The Path to Clarity</h2>
+              <h2 className="font-serif text-4xl text-ink-800 mb-4">{tLanding('howItWorks.title')}</h2>
               <div className="w-16 h-1 bg-sandalwood-300 mx-auto rounded-full opacity-50" />
             </div>
 
@@ -214,18 +214,21 @@ export default function HomePage() {
               
               <Step 
                 number="01" 
-                title="Begin the Journey" 
-                description="Sign in to create your sacred space. Your privacy is paramount; your thoughts are secure."
+                title={tLanding('howItWorks.steps.1.title')}
+                description={tLanding('howItWorks.steps.1.description')}
+                stepLabel={tLanding('howItWorks.step')}
               />
               <Step 
                 number="02" 
-                title="Share Your Burden" 
-                description="Speak freely about your anxieties, questions, or day. The Elder is always present to listen."
+                title={tLanding('howItWorks.steps.2.title')}
+                description={tLanding('howItWorks.steps.2.description')}
+                stepLabel={tLanding('howItWorks.step')}
               />
               <Step 
                 number="03" 
-                title="Receive Wisdom" 
-                description="Gain new perspectives through gentle guidance, helping you find the answers within yourself."
+                title={tLanding('howItWorks.steps.3.title')}
+                description={tLanding('howItWorks.steps.3.description')}
+                stepLabel={tLanding('howItWorks.step')}
               />
             </div>
           </div>
@@ -238,15 +241,15 @@ export default function HomePage() {
             
             <div className="relative z-10 space-y-8">
               <h2 className="font-serif text-4xl md:text-5xl text-rice-50 leading-tight">
-                Ready to find your <span className="text-amber-200/80 italic">inner peace</span>?
+                {tLanding('cta.title')} <span className="text-amber-200/80 italic">{tLanding('cta.titleHighlight')}</span>?
               </h2>
               <p className="text-stone-400 max-w-xl mx-auto text-lg font-light">
-                Join thousands of others who have found clarity and calm through the wisdom of Formless.
+                {tLanding('cta.description')}
               </p>
               <div className="pt-4">
                 <Link href="/auth">
                   <Button className="bg-rice-50 text-ink-900 hover:bg-amber-50 px-10 py-8 rounded-full text-lg font-medium shadow-lg hover:scale-105 transition-all duration-300">
-                    Begin Your Practice
+                    {tLanding('cta.button')}
                   </Button>
                 </Link>
               </div>
@@ -262,17 +265,17 @@ export default function HomePage() {
               <div className="w-6 h-6 rounded-full bg-ink-800 text-rice-50 flex items-center justify-center text-xs font-serif italic font-bold">
                 无
               </div>
-              <span className="font-serif text-lg text-ink-800">Formless</span>
+              <span className="font-serif text-lg text-ink-800">{t('name')}</span>
             </div>
             
             <div className="flex gap-8 text-sm text-stone-500">
-              <Link href="#" className="hover:text-ink-800 transition-colors">Privacy Policy</Link>
-              <Link href="#" className="hover:text-ink-800 transition-colors">Terms of Service</Link>
-              <Link href="#" className="hover:text-ink-800 transition-colors">Contact</Link>
+              <Link href="#" className="hover:text-ink-800 transition-colors">{tLanding('footer.privacy')}</Link>
+              <Link href="#" className="hover:text-ink-800 transition-colors">{tLanding('footer.terms')}</Link>
+              <Link href="#" className="hover:text-ink-800 transition-colors">{tLanding('footer.contact')}</Link>
             </div>
             
             <div className="text-stone-400 text-sm">
-              © {new Date().getFullYear()} Formless. All rights reserved.
+              © {new Date().getFullYear()} {tLanding('footer.copyright')}
             </div>
           </div>
         </div>

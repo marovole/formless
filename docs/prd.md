@@ -3,7 +3,7 @@
 
 **版本**：v1.0  
 **日期**：2025年1月  
-**状态**：MVP 规划中
+**状态**：MVP 已完成，准备上线
 
 ---
 
@@ -303,9 +303,10 @@
 
 | 层级 | 选型 |
 |------|------|
-| 框架 | Next.js 14 (App Router) |
+| 框架 | Next.js 15 (App Router) |
 | 部署 | Cloudflare Pages + Workers |
-| 数据库 | Supabase (PostgreSQL) |
+| 数据库/后端 | Convex |
+| 认证 | Clerk |
 | 国际化 | next-intl |
 | 样式 | Tailwind CSS |
 | 后台 UI | shadcn/ui |

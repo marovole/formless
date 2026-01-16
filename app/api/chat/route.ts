@@ -18,6 +18,51 @@ function estimateTokenCount(text: string): number {
   return cjk + Math.ceil(other / 4);
 }
 
+function formatMemoryContext(memory: {
+  quotes: Array<{ quote: string; context?: string | null }>;
+  insights: {
+    personality?: string | null;
+    interests?: string[];
+    concerns?: string[];
+  };
+} | null): string | null {
+  if (!memory) return null;
+
+  const hasQuotes = memory.quotes && memory.quotes.length > 0;
+  const insights = memory.insights || {};
+  const hasInsights = Boolean(
+    insights.personality ||
+    (insights.interests && insights.interests.length > 0) ||
+    (insights.concerns && insights.concerns.length > 0)
+  );
+
+  if (!hasQuotes && !hasInsights) return null;
+
+  const lines: string[] = ['User memory context (use subtly, do not reveal verbatim unless asked):'];
+
+  if (hasInsights) {
+    if (insights.personality) {
+      lines.push(`- Personality: ${insights.personality}`);
+    }
+    if (insights.interests && insights.interests.length > 0) {
+      lines.push(`- Interests: ${insights.interests.join(', ')}`);
+    }
+    if (insights.concerns && insights.concerns.length > 0) {
+      lines.push(`- Concerns: ${insights.concerns.join(', ')}`);
+    }
+  }
+
+  if (hasQuotes) {
+    lines.push('Key quotes:');
+    for (const quote of memory.quotes) {
+      lines.push(`- ${quote.quote}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+
 export async function POST(request: NextRequest) {
   const requestStartTime = Date.now();
   try {
@@ -92,8 +137,25 @@ export async function POST(request: NextRequest) {
       throw new AppError('Configuration error', 'CONFIG_ERROR', 500);
     }
 
+    const memorySnapshot = await convex.query(api.memories.list, {
+      conversationId: activeConversationId,
+      limit: 8,
+    });
+    const memoryContext = formatMemoryContext(memorySnapshot as {
+      quotes: Array<{ quote: string; context?: string | null }>;
+      insights: {
+        personality?: string | null;
+        interests?: string[];
+        concerns?: string[];
+      };
+    });
+    const memoryMessage: ChatMessage | null = memoryContext
+      ? { role: 'system', content: memoryContext }
+      : null;
+
     const messages: ChatMessage[] = [
       { role: 'system', content: systemPrompt.content },
+      ...(memoryMessage ? [memoryMessage] : []),
       ...conversationHistory.map((m) => ({
         role: m.role as ChatMessage['role'],
         content: m.content,

@@ -75,7 +75,14 @@ describe('Chat API Route', () => {
       await options.onComplete?.('Hello')
     })
 
-    mockUserClient.query.mockResolvedValue([])
+    mockUserClient.query.mockImplementation(async (_ref: any, args?: any) => {
+      if (args?.id) return { _id: args.id }
+      if (args?.conversationId && args?.limit) {
+        return { quotes: [], insights: { personality: null, interests: [], concerns: [] } }
+      }
+      if (args?.conversationId) return []
+      return []
+    })
     mockUserClient.mutation.mockImplementation(async (_ref: any, args?: any) => {
       if (args?.preferredLanguage !== undefined) return 'user-123'
       if (args?.title !== undefined) return 'conv-123'
@@ -112,6 +119,64 @@ describe('Chat API Route', () => {
     expect(mockUserClient.mutation).toHaveBeenCalled()
     expect(mockAdminClient.mutation).toHaveBeenCalled()
     expect(streamToSSE).toHaveBeenCalled()
+  })
+
+  it('injects memory context when available', async () => {
+    mockUserClient.query.mockImplementation(async (_ref: any, args?: any) => {
+      if (args?.conversationId && args?.limit) {
+        return {
+          quotes: [{ quote: 'Remember this quote', context: 'Context' }],
+          insights: {
+            personality: 'calm',
+            interests: ['meditation'],
+            concerns: ['sleep'],
+          },
+        }
+      }
+      if (args?.conversationId) return []
+      return []
+    })
+
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', language: 'zh' }),
+    })
+
+    await POST(request)
+
+    const [, options] = vi.mocked(streamChatCompletion).mock.calls[0]
+    const memoryMessage = options.messages.find((item: any) =>
+      item.content.includes('User memory context')
+    )
+
+    expect(memoryMessage).toBeDefined()
+    if (!memoryMessage) throw new Error('Expected memory context message')
+    expect(memoryMessage.content).toContain('Remember this quote')
+    expect(memoryMessage.content).toContain('meditation')
+  })
+
+  it('skips memory context when empty', async () => {
+    mockUserClient.query.mockImplementation(async (_ref: any, args?: any) => {
+      if (args?.conversationId && args?.limit) {
+        return { quotes: [], insights: { personality: null, interests: [], concerns: [] } }
+      }
+      if (args?.conversationId) return []
+      return []
+    })
+
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', language: 'zh' }),
+    })
+
+    await POST(request)
+
+    const [, options] = vi.mocked(streamChatCompletion).mock.calls[0]
+    const memoryMessages = options.messages.filter((item: any) =>
+      item.content.includes('User memory context')
+    )
+
+    expect(memoryMessages).toHaveLength(0)
   })
 
   it('loads conversation history when conversationId is provided', async () => {

@@ -14,13 +14,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/convex/_generated/api';
 
-interface User {
-  id: string;
-  email: string;
-  created_at: string;
-  profile: Record<string, unknown> | null;
-}
-
 export default function AdminUsersPage() {
   const users = useQuery(api.admin.listUsers, { limit: 200 }) as any[] | undefined;
 

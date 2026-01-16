@@ -3,7 +3,7 @@
  * Provides a single implementation for all LLM providers
  */
 
-import type { ChatMessage, LLMStreamOptions, LLMProviderConfig, LLMProvider } from './types';
+import type { LLMStreamOptions, LLMProviderConfig, LLMProvider } from './types';
 import { LLM_DEFAULTS } from '@/lib/constants';
 
 /**

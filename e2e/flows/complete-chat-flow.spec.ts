@@ -1,6 +1,10 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../fixtures/test-data'
 
 test.describe('Complete Chat Flow', () => {
+  test.beforeEach(async ({ login }) => {
+    await login()
+  })
+
   test('new user journey - first chat interaction', async ({ page }) => {
     // Start at homepage
     await page.goto('/')

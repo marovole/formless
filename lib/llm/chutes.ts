@@ -6,7 +6,7 @@
  */
 
 import { streamChatCompletionWithProvider } from './client';
-import type { ChatMessage, LLMStreamOptions } from './types';
+import type { LLMStreamOptions } from './types';
 
 // Re-export types for backwards compatibility
 export type { ChatMessage } from './types';

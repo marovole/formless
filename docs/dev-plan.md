@@ -4,9 +4,10 @@
 
 | 层级 | 选型 |
 |------|------|
-| 框架 | Next.js 14 (App Router) |
+| 框架 | Next.js 15 (App Router) |
 | 部署 | Cloudflare Pages |
-| 数据库 | Supabase |
+| 数据库/后端 | Convex |
+| 认证 | Clerk |
 | 国际化 | next-intl |
 | 样式 | Tailwind CSS |
 | 后台 UI | shadcn/ui |
@@ -21,11 +22,11 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ 项目初始化 | Next.js + Cloudflare 适配 |
-| ☐ Supabase 配置 | 创建项目、建表、RLS 策略 |
-| ☐ 国际化配置 | next-intl 路由 + 基础文案 |
-| ☐ shadcn/ui 安装 | 后台基础组件 |
-| ☐ 环境变量配置 | 本地 + Cloudflare |
+| ✅ 项目初始化 | Next.js + Cloudflare 适配 |
+| ✅ Convex 配置 | 创建项目、Schema、Functions、权限控制 |
+| ✅ 国际化配置 | next-intl 路由 + 基础文案 |
+| ✅ shadcn/ui 安装 | 后台基础组件 |
+| ✅ 环境变量配置 | 本地 + Cloudflare |
 
 **产出**：可运行的空项目骨架
 
@@ -35,10 +36,10 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ 管理员认证 | 登录、Session 管理 |
-| ☐ API Key 管理 | 增删改查、轮询逻辑 |
-| ☐ 用量统计 | 基础统计、图表展示 |
-| ☐ Prompt 管理 | 编辑、保存、版本 |
+| ✅ 管理员认证 | 登录、Session 管理 |
+| ✅ API Key 管理 | 增删改查、轮询逻辑 |
+| ✅ 用量统计 | 基础统计、图表展示 |
+| ✅ Prompt 管理 | 编辑、保存、版本 |
 
 **产出**：可管理 API Key 和 Prompt 的后台
 
@@ -48,11 +49,11 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ LLM 调用封装 | Chutes + OpenRouter + Key 轮询 |
-| ☐ 流式响应 | SSE 流式输出 |
-| ☐ 对话 API | /api/chat 接口 |
-| ☐ 对话 UI | ChatContainer、MessageBubble |
-| ☐ 无相长老 Prompt | 接入 Prompt 管理 |
+| ✅ LLM 调用封装 | Chutes + OpenRouter + Key 轮询 |
+| ✅ 流式响应 | SSE 流式输出 |
+| ✅ 对话 API | /api/chat 接口 |
+| ✅ 对话 UI | ChatContainer、MessageBubble |
+| ✅ 无相长老 Prompt | 接入 Prompt 管理 |
 
 **产出**：可以和无相长老对话
 
@@ -62,10 +63,10 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ 记忆提取 | 对话结束后异步提取 |
-| ☐ 记忆召回 | 对话开始时注入 Context |
-| ☐ 用户档案 | profile JSON 管理 |
-| ☐ 对话历史 | 列表、删除功能 |
+| ✅ 记忆提取 | 对话结束后异步提取 |
+| ✅ 记忆召回 | 对话开始时注入 Context |
+| ✅ 用户档案 | profile JSON 管理 |
+| ✅ 对话历史 | 列表、删除功能 |
 
 **产出**：长老能记住用户
 
@@ -75,9 +76,9 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ 用户注册/登录 | Supabase Auth |
-| ☐ 用户设置页 | 语言、主题 |
-| ☐ 后台用户管理 | 查看用户列表、详情 |
+| ✅ 用户注册/登录 | Clerk Auth |
+| ✅ 用户设置页 | 语言、主题 |
+| ✅ 后台用户管理 | 查看用户列表、详情 |
 
 **产出**：完整的用户体系
 
@@ -87,8 +88,8 @@
 
 | 任务 | 说明 |
 |------|------|
-| ☐ Landing Page | 首页设计实现 |
-| ☐ SEO 优化 | Meta、OG Image |
+| ✅ Landing Page | 首页设计实现 |
+| ✅ SEO 优化 | Meta、OG Image |
 | ☐ 域名配置 | Cloudflare DNS |
 | ☐ 上线测试 | 全流程走通 |
 

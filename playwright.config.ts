@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const shouldRunWebServer = !process.env.BASE_URL
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -18,10 +20,12 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
-  },
+  webServer: shouldRunWebServer
+    ? {
+        command: 'npm run dev',
+        url: 'http://localhost:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120 * 1000,
+      }
+    : undefined,
 })

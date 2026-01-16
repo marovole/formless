@@ -315,6 +315,38 @@ Content: 你是无相长老，一位修行千年的智者...
 
 ---
 
+## 上线前一周检查清单（执行表）
+
+| 序号 | 模块 | 检查项 | 优先级 | 验收标准 | 执行方式/命令 | 证据输出 | 负责人 | 状态 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 环境配置 | Cloudflare Pages 环境变量齐全 | P0 | `NEXT_PUBLIC_CONVEX_URL`/`CONVEX_ADMIN_TOKEN`/Clerk keys/`ADMIN_EMAILS` 已配置 | Cloudflare 控制台检查 | 截图或配置导出 |  | ☐ |
+| 2 | 环境配置 | Convex 生产环境变量 | P0 | `CLERK_JWT_ISSUER_DOMAIN`、`ADMIN_EMAILS` 已设置 | Convex 控制台检查 | 截图 |  | ☐ |
+| 3 | 认证 | Clerk JWT template | P0 | `convex` 模板 + `aud=convex` + `email` claim | Clerk 控制台检查 | 截图 |  | ☐ |
+| 4 | 后端部署 | Convex 生产部署 | P0 | 部署成功、无错误 | `npx convex deploy --prod` | 终端输出 |  | ☐ |
+| 5 | 前端构建 | Cloudflare Pages 构建 | P0 | 构建成功，无错误 | `npm run pages:build` | 终端输出 |  | ☐ |
+| 6 | 前端部署 | Cloudflare Pages 发布 | P0 | 发布成功 | `npm run deploy` | 终端输出 |  | ☐ |
+| 7 | Admin 初始化 | Admin 首次配置 | P0 | `/admin` 中创建 API Keys + Prompts 成功 | 手动操作 | 截图/记录 |  | ☐ |
+| 8 | P0 测试 | Landing 加载 | P0 | 无白屏/无 console error | `docs/TEST_PLAN.md` TC-001 | 测试记录 |  | ☐ |
+| 9 | P0 测试 | 语言切换 | P0 | 8 语言切换即时生效 | TC-002 | 测试记录 |  | ☐ |
+| 10 | P0 测试 | 注册/登录 | P0 | 注册成功、登录持久 | TC-003/004 | 测试记录 |  | ☐ |
+| 11 | P0 测试 | 对话流式 | P0 | 流式响应正常、风格正确 | TC-005 | 测试记录 |  | ☐ |
+| 12 | P0 测试 | 历史记录 | P0 | 列表/继续/删除正常 | TC-006 | 测试记录 |  | ☐ |
+| 13 | P1 测试 | 记忆召回 | P1 | 跨对话召回成功 | TC-007 | 测试记录 |  | ☐ |
+| 14 | P1 测试 | Admin 访问控制 | P1 | 非管理员不可进 | TC-008 | 测试记录 |  | ☐ |
+| 15 | P1 测试 | API Key 管理 | P1 | CRUD 正常 | TC-009 | 测试记录 |  | ☐ |
+| 16 | P1 测试 | Prompt 管理 | P1 | 版本递增、激活可控 | TC-010 | 测试记录 |  | ☐ |
+| 17 | P1 测试 | 观照功能 | P1 | 触发器生效、设置可用 | `docs/guanzhao/IMPLEMENTATION_CHECKLIST.md` | 测试记录 |  | ☐ |
+| 18 | P2 测试 | SEO 校验 | P2 | robots/sitemap/meta 完整 | TC-011 | 测试记录 |  | ☐ |
+| 19 | P2 测试 | 移动端适配 | P2 | 无溢出、关键页面可用 | TC-012 | 测试记录 |  | ☐ |
+| 20 | 自动化 | 单测 | P0 | 全部通过 | `npm run test:run` | 2026-01-16 vitest 59/59 |  | ✅ |
+| 21 | 自动化 | E2E | P0 | 全部通过 | `npm run test:e2e` | 失败：登录页未出现 identifier/email 输入 |  | ☐ |
+| 22 | 自动化 | 全量测试 | P0 | 全部通过 | `npm run test:all` | 失败：E2E 超时（单测通过） |  | ☐ |
+| 23 | 文档一致性 | PRD/Dev Plan 更新 | P1 | 状态与现状一致 | 手动更新 | PR/记录 |  | ☐ |
+| 24 | 监控准备 | 监控/告警确认 | P1 | 可查看日志与错误 | 平台检查 | 截图/说明 |  | ☐ |
+| 25 | 发布准备 | 回滚预案 | P0 | 可恢复到上版本 | 记录流程 | 文档 |  | ☐ |
+
+---
+
 ## 附录：自动化测试命令
 
 ```bash

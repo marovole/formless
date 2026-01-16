@@ -3,6 +3,80 @@
     "name": "无相",
     "tagline": "与智慧同行，向内心寻觅"
   },
+  "landing": {
+    "nav": {
+      "features": "功能特点",
+      "howItWorks": "如何开始",
+      "signIn": "登录"
+    },
+    "hero": {
+      "badge": "AI 智慧伴侣",
+      "startConversation": "开始对话",
+      "learnMore": "了解更多"
+    },
+    "quote": {
+      "text": "理解一切，即是宽恕一切。平静来自内心，莫向外求。",
+      "author": "无相长老"
+    },
+    "features": {
+      "title": "千年智慧，现代呈现",
+      "description": "将古老的佛学智慧与先进的人工智能相结合，引导你穿越生命的复杂。",
+      "mindfulDialogue": {
+        "title": "正念对话",
+        "description": "进行深刻而有意义的对话。长老不带评判地倾听，以深邃的洞见回应。"
+      },
+      "eternalMemory": {
+        "title": "永恒记忆",
+        "description": "你的旅程被铭记。系统与你一同成长，回忆过往对话，保持连续性。"
+      },
+      "emotionalResonance": {
+        "title": "情感共鸣",
+        "description": "不仅仅是数据。体验理解细微差别、情感和人类境况的互动。"
+      },
+      "nightlyReflection": {
+        "title": "夜间冥想",
+        "description": "以引导式的沉思结束一天。回顾你的思绪，在休息前找到平静。"
+      },
+      "breathAndSpace": {
+        "title": "呼吸与空间",
+        "description": "旨在帮助你慢下来的界面。没有杂乱，没有噪音——只有思绪的空间。"
+      },
+      "dailyAwakening": {
+        "title": "晨间觉醒",
+        "description": "每天清晨以一则温和的公案或思考开始，让心灵为新的一天做好准备。"
+      }
+    },
+    "howItWorks": {
+      "title": "通往清明之路",
+      "step": "步骤",
+      "steps": {
+        "1": {
+          "title": "开始旅程",
+          "description": "登录创建你的私密空间。隐私至上，思绪安全。"
+        },
+        "2": {
+          "title": "倾诉心声",
+          "description": "自由地谈论你的焦虑、疑问或日常。长老始终在此倾听。"
+        },
+        "3": {
+          "title": "获得智慧",
+          "description": "通过温和的引导获得新的视角，帮助你在内心找到答案。"
+        }
+      }
+    },
+    "cta": {
+      "title": "准备好找到你的",
+      "titleHighlight": "内心平静",
+      "description": "加入成千上万通过无相的智慧找到清明与平静的人们。",
+      "button": "开始你的修行"
+    },
+    "footer": {
+      "privacy": "隐私政策",
+      "terms": "服务条款",
+      "contact": "联系我们",
+      "copyright": "无相。保留所有权利。"
+    }
+  },
   "nav": {
     "home": "首页",
     "chat": "对话",

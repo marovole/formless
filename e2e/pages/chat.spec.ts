@@ -1,7 +1,8 @@
 import { test, expect } from '../fixtures/test-data'
 
 test.describe('Chat Page', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, login }) => {
+    await login()
     await page.goto('/zh/chat')
   })
 

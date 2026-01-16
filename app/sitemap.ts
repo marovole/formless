@@ -1,14 +1,20 @@
 import { MetadataRoute } from 'next'
+import { headers } from 'next/headers'
 
 const locales = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es', 'pt']
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro'
-  
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const requestHeaders = await headers()
+  const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https'
+  const baseUrl = host
+    ? `${protocol}://${host}`
+    : (process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro')
+
   const routes = ['', '/chat', '/history', '/settings']
-  
+
   const entries: MetadataRoute.Sitemap = []
-  
+
   for (const locale of locales) {
     for (const route of routes) {
       entries.push({
@@ -19,6 +25,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       })
     }
   }
-  
+
   return entries
 }

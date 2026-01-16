@@ -53,29 +53,26 @@ export default async function LocaleLayout({
       </head>
       <body>
         {/* JSON-LD Structured Data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              '@context': 'https://schema.org',
-              '@type': 'WebApplication',
-              name: '无相 Formless',
-              description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations.',
-              url: 'https://formless.ai',
-              applicationCategory: 'LifestyleApplication',
-              operatingSystem: 'Web',
-              offers: {
-                '@type': 'Offer',
-                price: '0',
-                priceCurrency: 'USD',
-              },
-              author: {
-                '@type': 'Organization',
-                name: 'Formless Team',
-              },
-            }),
-          }}
-        />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebApplication',
+            name: '无相 Formless',
+            description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations.',
+            url: 'https://formless.ai',
+            applicationCategory: 'LifestyleApplication',
+            operatingSystem: 'Web',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'USD',
+            },
+            author: {
+              '@type': 'Organization',
+              name: 'Formless Team',
+            },
+          })}
+        </script>
         <ClerkProvider>
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider>

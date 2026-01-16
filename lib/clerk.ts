@@ -5,8 +5,7 @@ export async function getClerkUser(userId: string) {
     const client = await clerkClient();
     const user = await client.users.getUser(userId);
     return user;
-  } catch (error) {
-    console.error("Error fetching Clerk user:", error);
+  } catch {
     return null;
   }
 }
