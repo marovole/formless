@@ -25,6 +25,6 @@ export function getConvexAdminClient(adminToken?: string): ConvexHttpClient {
   }
 
   const client = new ConvexHttpClient(getConvexUrl());
-  (client as any).setAdminAuth(token);
+  client.setAuth(token);
   return client;
 }
