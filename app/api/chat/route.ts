@@ -8,7 +8,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexAdminClient, getConvexClientWithAuth } from '@/lib/convex';
 import { api, internal } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { AppError, NotFoundError } from '@/lib/errors';
+import { AppError } from '@/lib/errors';
 import { LLM_DEFAULTS } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 
@@ -107,12 +107,22 @@ export async function POST(request: NextRequest) {
     if (conversationId) {
       const convId = conversationId as Id<"conversations">;
       const conv = await convex.query(api.conversations.get, { id: convId });
-      if (!conv) throw new NotFoundError('Conversation not found');
 
-      activeConversationId = convId;
-      conversationHistory = (await convex.query(api.messages.listByConversation, {
-        conversationId: activeConversationId,
-      })) as Array<{ role: string; content: string }>;
+      if (!conv) {
+        logger.warn('Conversation not found, creating a new one', {
+          conversationId: convId,
+          userId: clerkId,
+        });
+        activeConversationId = await convex.mutation(api.conversations.create, {
+          language,
+          title: message.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
+        });
+      } else {
+        activeConversationId = convId;
+        conversationHistory = (await convex.query(api.messages.listByConversation, {
+          conversationId: activeConversationId,
+        })) as Array<{ role: string; content: string }>;
+      }
     } else {
       activeConversationId = await convex.mutation(api.conversations.create, {
         language,
