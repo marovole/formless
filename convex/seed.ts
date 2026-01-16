@@ -1,4 +1,5 @@
 import { internalMutation } from "./_generated/server";
+import { v } from "convex/values";
 
 export const seedPrompts = internalMutation({
   args: {},
@@ -95,5 +96,42 @@ export const seedPrompts = internalMutation({
     });
 
     return { message: "Seeded 2 prompts successfully", count: 2 };
+  },
+});
+
+export const seedApiKey = internalMutation({
+  args: {
+    provider: v.string(),
+    api_key: v.string(),
+    model_name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("api_keys")
+      .filter((q) => q.eq(q.field("provider"), args.provider))
+      .first();
+    
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        api_key: args.api_key,
+        model_name: args.model_name,
+        updated_at: Date.now(),
+      });
+      return { message: `Updated ${args.provider} API key`, id: existing._id };
+    }
+
+    const id = await ctx.db.insert("api_keys", {
+      provider: args.provider,
+      api_key: args.api_key,
+      model_name: args.model_name,
+      daily_limit: 1000,
+      daily_used: 0,
+      priority: 1,
+      is_active: true,
+      reset_at: Date.now() + 24 * 60 * 60 * 1000,
+      updated_at: Date.now(),
+    });
+
+    return { message: `Created ${args.provider} API key`, id };
   },
 });

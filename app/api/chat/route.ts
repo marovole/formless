@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { streamChatCompletion } from '@/lib/llm/chutes';
+import { streamChatCompletionWithProvider } from '@/lib/llm/client';
 import { streamToSSE } from '@/lib/llm/streaming';
 import { ChatSchema } from '@/lib/validation/schemas';
 import { unauthorizedResponse, validationErrorResponse, handleApiError } from '@/lib/api/responses';
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = await (convexAdmin as any).mutation(internal.api_keys.getAvailableInternal, {
-      provider: 'chutes',
+      provider: 'openrouter',
     });
     if (!apiKey) {
       logger.error('No available API key', { userId: clerkId });
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
         'metadata'
       );
 
-      await streamChatCompletion(apiKey.api_key, {
+      await streamChatCompletionWithProvider('openrouter', apiKey.api_key, {
         messages,
         temperature: LLM_DEFAULTS.TEMPERATURE,
         max_tokens: LLM_DEFAULTS.MAX_TOKENS,
@@ -197,7 +197,7 @@ export async function POST(request: NextRequest) {
 
           await (convexAdmin as any).mutation(internal.api_usage.logInternal, {
             apiKeyId: apiKey._id,
-            provider: 'chutes',
+            provider: 'openrouter',
             modelName: apiKey.model_name ?? undefined,
             userId: convexUserId,
             conversationId: activeConversationId,
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
           try {
             await (convexAdmin as any).mutation(internal.api_usage.logInternal, {
               apiKeyId: apiKey._id,
-              provider: 'chutes',
+              provider: 'openrouter',
               modelName: apiKey.model_name ?? undefined,
               userId: convexUserId,
               conversationId: activeConversationId,

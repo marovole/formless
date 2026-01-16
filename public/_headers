@@ -1,0 +1,2 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.formless.pro https://*.clerk.accounts.dev https://*.convex.cloud; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://*.clerk.accounts.dev https://clerk.formless.pro https://*.convex.cloud wss://*.convex.cloud; frame-src 'self' https://clerk.formless.pro https://*.clerk.accounts.dev; worker-src 'self' blob:;

@@ -10,11 +10,13 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/robots.txt',
   '/sitemap.xml',
+  '/auth(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/:locale',
   '/:locale/robots.txt',
   '/:locale/sitemap.xml',
+  '/:locale/auth(.*)',
   '/:locale/sign-in(.*)',
   '/:locale/sign-up(.*)',
   '/api/webhook(.*)',
@@ -24,6 +26,14 @@ export default clerkMiddleware(async (auth, req) => {
   const { pathname } = req.nextUrl
 
   if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+    return NextResponse.next()
+  }
+
+  // Admin 路由跳过国际化，直接处理
+  if (pathname.startsWith('/admin')) {
+    if (!isPublicRoute(req)) {
+      await auth.protect()
+    }
     return NextResponse.next()
   }
 

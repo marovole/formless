@@ -22,28 +22,33 @@ export default async function AdminProtectedLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { userId, getToken } = await auth()
-  if (!userId) {
-    redirect('/sign-in')
+  try {
+    const { userId, getToken } = await auth()
+    if (!userId) {
+      redirect('/en/sign-in')
+    }
+
+    const user = await currentUser()
+    const email =
+      user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress
+
+    if (!isAdminEmail(email)) {
+      redirect('/en')
+    }
+
+    const token = await getToken({ template: 'convex' })
+    if (token) {
+      const convex = getConvexClientWithAuth(token)
+      await convex.mutation(api.users.ensureCurrent, {
+        fullName: user?.fullName || undefined,
+        avatarUrl: user?.imageUrl || undefined,
+      })
+    }
+
+    return <>{children}</>
+  } catch (error) {
+    console.error('Admin layout error:', error)
+    redirect('/en/sign-in')
   }
-
-  const user = await currentUser()
-  const email =
-    user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress
-
-  if (!isAdminEmail(email)) {
-    redirect('/')
-  }
-
-  const token = await getToken({ template: 'convex' })
-  if (token) {
-    const convex = getConvexClientWithAuth(token)
-    await convex.mutation(api.users.ensureCurrent, {
-      fullName: user?.fullName || undefined,
-      avatarUrl: user?.imageUrl || undefined,
-    })
-  }
-
-  return <>{children}</>
 }
 
