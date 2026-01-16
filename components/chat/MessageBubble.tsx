@@ -27,18 +27,18 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <Card
-        className={`max-w-[80%] p-4 ${
+        className={`max-w-[85%] p-4 ${
           isUser
-            ? 'bg-amber-50 border-amber-200'
+            ? 'bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200 shadow-sm'
             : isError
-              ? 'bg-red-50 border-red-200'
-              : 'bg-white border-stone-200'
+              ? 'bg-gradient-to-br from-red-50 to-red-100/50 border-red-200 shadow-sm'
+              : 'bg-gradient-to-br from-white to-stone-50 border-stone-200 shadow-sm'
         }`}
       >
-        <p className="whitespace-pre-wrap text-stone-800">{message.content}</p>
+        <p className="whitespace-pre-wrap text-stone-800 leading-relaxed">{message.content}</p>
         {isError && onRetry && (
-          <div className="mt-2 flex gap-2">
-            <Button size="sm" variant="outline" onClick={onRetry}>
+          <div className="mt-3 pt-3 border-t border-stone-200/50 flex gap-2">
+            <Button size="sm" variant="outline" onClick={onRetry} className="text-xs h-7">
               Retry
             </Button>
           </div>
@@ -59,9 +59,9 @@ interface MessageListProps {
 export function MessageList({ messages, onRetry }: MessageListProps) {
   return (
     <>
-      {messages.map((msg, idx) => (
+      {messages.map((msg) => (
         <MessageBubble
-          key={idx}
+          key={`${msg.role}-${msg.content}`}
           message={msg}
           onRetry={msg.error ? onRetry : undefined}
         />
