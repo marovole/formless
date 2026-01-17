@@ -125,7 +125,7 @@ describe('ChatSchema', () => {
   it('should reject invalid language', () => {
     const result = ChatSchema.safeParse({
       message: 'Hello',
-      language: 'fr'
+      language: 'it'
     })
     expect(result.success).toBe(false)
   })
@@ -139,8 +139,22 @@ describe('ChatSchema', () => {
       message: 'Hello',
       language: 'en'
     })
+    const frResult = ChatSchema.safeParse({
+      message: 'Hello',
+      language: 'fr'
+    })
     expect(zhResult.success).toBe(true)
     expect(enResult.success).toBe(true)
+    expect(frResult.success).toBe(true)
+  })
+
+  it('should accept null conversationId', () => {
+    const result = ChatSchema.safeParse({
+      message: 'Hello',
+      conversationId: null,
+      language: 'zh'
+    })
+    expect(result.success).toBe(true)
   })
 })
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { locales } from '@/i18n/routing'
 
 /**
  * Login request validation schema
@@ -15,8 +16,8 @@ export type LoginInput = z.infer<typeof LoginSchema>
  */
 export const ChatSchema = z.object({
   message: z.string().min(1, 'Message is required').max(5000, 'Message too long'),
-  conversationId: z.string().trim().min(1, 'Invalid conversation ID').optional(),
-  language: z.enum(['zh', 'en']).optional(),
+  conversationId: z.string().trim().min(1, 'Invalid conversation ID').optional().nullable(),
+  language: z.enum([...locales] as [string, ...string[]]).optional(),
 })
 
 export type ChatInput = z.infer<typeof ChatSchema>

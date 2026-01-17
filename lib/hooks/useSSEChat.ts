@@ -138,14 +138,23 @@ export function useSSEChat(): UseSSEChatReturn {
     setCurrentContent('');
 
     try {
+      const payload: {
+        message: string;
+        language: string;
+        conversationId?: Id<'conversations'>;
+      } = {
+        message,
+        language: locale,
+      };
+
+      if (conversationId) {
+        payload.conversationId = conversationId;
+      }
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message,
-          conversationId,
-          language: locale,
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal,
       });
 

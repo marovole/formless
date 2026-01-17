@@ -44,6 +44,10 @@ export default async function LocaleLayout({
   }
 
   const messages = await getMessages()
+  const signInUrl = `/${locale}/sign-in`
+  const signUpUrl = `/${locale}/sign-up`
+  const afterSignInUrl = `/${locale}/chat`
+  const afterSignUpUrl = `/${locale}/chat`
 
   return (
     <html lang={locale} className={GeistSans.className}>
@@ -73,7 +77,12 @@ export default async function LocaleLayout({
             },
           })}
         </script>
-        <ClerkProvider>
+        <ClerkProvider
+          signInUrl={signInUrl}
+          signUpUrl={signUpUrl}
+          afterSignInUrl={afterSignInUrl}
+          afterSignUpUrl={afterSignUpUrl}
+        >
           <NextIntlClientProvider messages={messages}>
             <ConvexClientProvider>
               <EnsureCurrentUser preferredLanguage={locale} />

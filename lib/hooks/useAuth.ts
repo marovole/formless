@@ -3,16 +3,19 @@
 import { useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useAuth as useClerkAuth } from "@clerk/nextjs";
+import { useLocale } from 'next-intl';
 
 export function useAuthGuard() {
   const router = useRouter();
+  const locale = useLocale();
   const { isLoaded, userId } = useClerkAuth();
+  const signInPath = `/${locale}/sign-in`;
 
   useEffect(() => {
     if (isLoaded && !userId) {
-      router.push('/sign-in');
+      router.push(signInPath);
     }
-  }, [isLoaded, userId, router]);
+  }, [isLoaded, userId, router, signInPath]);
 }
 
 export function useAuth() {
