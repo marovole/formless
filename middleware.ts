@@ -37,6 +37,14 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next()
   }
 
+  // API 路由跳过国际化中间件，直接处理认证
+  if (pathname.startsWith('/api')) {
+    if (!isPublicRoute(req)) {
+      await auth.protect()
+    }
+    return NextResponse.next()
+  }
+
   // 保护非公开路由
   if (!isPublicRoute(req)) {
     await auth.protect()
