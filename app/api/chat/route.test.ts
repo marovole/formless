@@ -12,8 +12,8 @@ vi.mock('@/lib/convex', () => ({
   getConvexAdminClient: vi.fn(),
 }))
 
-vi.mock('@/lib/llm/chutes', () => ({
-  streamChatCompletion: vi.fn(),
+vi.mock('@/lib/llm/client', () => ({
+  streamChatCompletionWithProvider: vi.fn(),
 }))
 
 vi.mock('@/lib/llm/streaming', () => ({
@@ -26,7 +26,7 @@ process.env.CONVEX_ADMIN_TOKEN = 'admin-token'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getConvexClientWithAuth, getConvexAdminClient } from '@/lib/convex'
 import { streamToSSE } from '@/lib/llm/streaming'
-import { streamChatCompletion } from '@/lib/llm/chutes'
+import { streamChatCompletionWithProvider } from '@/lib/llm/client'
 
 describe('Chat API Route', () => {
   let mockUserClient: any
@@ -70,10 +70,12 @@ describe('Chat API Route', () => {
       return new Response('mocked response')
     })
 
-    vi.mocked(streamChatCompletion).mockImplementation(async (_apiKey: string, options: any) => {
-      options.onChunk?.('Hello')
-      await options.onComplete?.('Hello')
-    })
+    vi.mocked(streamChatCompletionWithProvider).mockImplementation(
+      async (_provider: string, _apiKey: string, options: any) => {
+        options.onChunk?.('Hello')
+        await options.onComplete?.('Hello')
+      }
+    )
 
     mockUserClient.query.mockImplementation(async (_ref: any, args?: any) => {
       if (args?.id) return { _id: args.id }
@@ -106,6 +108,23 @@ describe('Chat API Route', () => {
 
     const data = await response.json()
     expect(data.error).toBe('Validation failed')
+  })
+
+  it('returns 500 when no API key is configured', async () => {
+    mockAdminClient.mutation.mockReset()
+    mockAdminClient.mutation.mockResolvedValueOnce(null)
+
+    const request = new NextRequest('http://localhost:3000/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'Hello', language: 'zh' }),
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(500)
+
+    const data = await response.json()
+    expect(data.code).toBe('CONFIG_ERROR')
+    expect(data.error).toBe('OpenRouter API key is not configured')
   })
 
   it('creates a new conversation when conversationId is not provided', async () => {
@@ -144,7 +163,7 @@ describe('Chat API Route', () => {
 
     await POST(request)
 
-    const [, options] = vi.mocked(streamChatCompletion).mock.calls[0]
+    const [, , options] = vi.mocked(streamChatCompletionWithProvider).mock.calls[0]
     const memoryMessage = options.messages.find((item: any) =>
       item.content.includes('User memory context')
     )
@@ -171,7 +190,7 @@ describe('Chat API Route', () => {
 
     await POST(request)
 
-    const [, options] = vi.mocked(streamChatCompletion).mock.calls[0]
+    const [, , options] = vi.mocked(streamChatCompletionWithProvider).mock.calls[0]
     const memoryMessages = options.messages.filter((item: any) =>
       item.content.includes('User memory context')
     )

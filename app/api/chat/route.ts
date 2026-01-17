@@ -8,7 +8,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexAdminClient, getConvexClientWithAuth } from '@/lib/convex';
 import { api, internal } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { AppError } from '@/lib/errors';
+import { ConfigError } from '@/lib/errors';
 import { LLM_DEFAULTS } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 
@@ -134,8 +134,12 @@ export async function POST(request: NextRequest) {
       provider: 'openrouter',
     });
     if (!apiKey) {
-      logger.error('No available API key', { userId: clerkId });
-      throw new AppError('Service temporarily unavailable', 'SERVICE_UNAVAILABLE', 503);
+      logger.error('No available API key', {
+        provider: 'openrouter',
+        userId: clerkId,
+        conversationId: activeConversationId,
+      });
+      throw new ConfigError('OpenRouter API key is not configured');
     }
 
     const systemPrompt = await (convexAdmin as any).query(internal.prompts.getActiveInternal, {
@@ -144,7 +148,7 @@ export async function POST(request: NextRequest) {
     });
     if (!systemPrompt) {
       logger.error('System prompt not found', { language });
-      throw new AppError('Configuration error', 'CONFIG_ERROR', 500);
+      throw new ConfigError('Configuration error');
     }
 
     const memorySnapshot = await convex.query(api.memories.list, {

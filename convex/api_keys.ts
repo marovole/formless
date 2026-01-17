@@ -192,3 +192,48 @@ export const incrementUsageInternal = internalMutation({
   },
 });
 
+export const seedApiKeyInternal = internalMutation({
+  args: {
+    provider: v.string(),
+    api_key: v.string(),
+    model_name: v.optional(v.string()),
+    daily_limit: v.optional(v.number()),
+    priority: v.optional(v.number()),
+    is_active: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("api_keys")
+      .withIndex("by_provider_priority", (q) => q.eq("provider", args.provider))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        api_key: args.api_key,
+        model_name: args.model_name,
+        daily_limit: args.daily_limit ?? API_KEY_DEFAULTS.DAILY_LIMIT,
+        priority: args.priority ?? 1,
+        is_active: args.is_active ?? true,
+        updated_at: Date.now(),
+      });
+      return { id: existing._id, action: "updated" };
+    }
+
+    const id = await ctx.db.insert("api_keys", {
+      provider: args.provider,
+      api_key: args.api_key,
+      model_name: args.model_name,
+      daily_limit: args.daily_limit ?? API_KEY_DEFAULTS.DAILY_LIMIT,
+      daily_used: 0,
+      priority: args.priority ?? 1,
+      is_active: args.is_active ?? true,
+      reset_at: Date.now() + API_KEY_DEFAULTS.RESET_INTERVAL_MS,
+      updated_at: Date.now(),
+    });
+
+    return { id, action: "created" };
+  },
+});
+
+
+

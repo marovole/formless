@@ -1,4 +1,4 @@
-import { internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./_lib/auth";
 
@@ -107,5 +107,48 @@ export const getActiveInternal = internalQuery({
       )
       .filter((q) => q.eq(q.field("is_active"), true))
       .first();
+  },
+});
+
+export const seedPromptInternal = internalMutation({
+  args: {
+    name: v.string(),
+    role: v.string(),
+    language: v.string(),
+    content: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("prompts")
+      .withIndex("by_role_language", (q) =>
+        q.eq("role", args.role).eq("language", args.language),
+      )
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        content: args.content,
+        description: args.description,
+        version: (existing.version ?? 1) + 1,
+        is_active: true,
+        updated_at: Date.now(),
+      });
+      return { id: existing._id, action: "updated" };
+    }
+
+    const id = await ctx.db.insert("prompts", {
+      name: args.name,
+      role: args.role,
+      language: args.language,
+      content: args.content,
+      version: 1,
+      is_active: true,
+      description: args.description,
+      updated_at: Date.now(),
+    });
+
+    return { id, action: "created" };
   },
 });
