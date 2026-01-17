@@ -36,10 +36,15 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next()
   }
 
+  // 从路径中提取 locale（用于构建正确的登录重定向URL）
+  const localeMatch = pathname.match(new RegExp(`^/(${localePattern})`))
+  const locale = localeMatch ? localeMatch[1] : routing.defaultLocale
+  const signInUrl = `/${locale}/sign-in`
+
   // Admin 路由跳过国际化，直接处理
   if (pathname.startsWith('/admin')) {
     if (!isPublicRoute(req)) {
-      await auth.protect()
+      await auth.protect({ unauthenticatedUrl: signInUrl })
     }
     return NextResponse.next()
   }
@@ -47,14 +52,14 @@ export default clerkMiddleware(async (auth, req) => {
   // API 路由跳过国际化中间件，直接处理认证
   if (pathname.startsWith('/api')) {
     if (!isPublicRoute(req)) {
-      await auth.protect()
+      await auth.protect({ unauthenticatedUrl: signInUrl })
     }
     return NextResponse.next()
   }
 
   // 保护非公开路由
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    await auth.protect({ unauthenticatedUrl: signInUrl })
   }
   // 运行 i18n 中间件
   return intlMiddleware(req)
