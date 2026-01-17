@@ -11,6 +11,7 @@ import { MessageList, type ChatMessage } from '@/components/chat/MessageBubble';
 import { useSSEChat } from '@/lib/hooks/useSSEChat';
 import { useLocale } from 'next-intl';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
+import { UserButton } from '@clerk/nextjs';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import type { Id } from '@/convex/_generated/dataModel';
@@ -228,8 +229,20 @@ export default function ChatPage() {
       <div className="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col">
         {/* Header */}
         <div className="flex-shrink-0 pb-4 border-b border-stone-200/50 mb-4">
-          <h1 className="text-2xl font-serif text-stone-800">{copy.title}</h1>
-          <p className="text-sm text-stone-500 mt-1">{copy.subtitle}</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-serif text-stone-800">{copy.title}</h1>
+              <p className="text-sm text-stone-500 mt-1">{copy.subtitle}</p>
+            </div>
+            <UserButton
+              afterSignOutUrl={`/${locale}/auth`}
+              appearance={{
+                elements: {
+                  avatarBox: 'w-9 h-9',
+                },
+              }}
+            />
+          </div>
           <div className="flex gap-3 mt-3">
             <Button
               variant="ghost"
