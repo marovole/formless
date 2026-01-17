@@ -39,7 +39,7 @@ export default clerkMiddleware(async (auth, req) => {
   // 从路径中提取 locale（用于构建正确的登录重定向URL）
   const localeMatch = pathname.match(new RegExp(`^/(${localePattern})`))
   const locale = localeMatch ? localeMatch[1] : routing.defaultLocale
-  const signInUrl = `/${locale}/sign-in`
+  const signInUrl = new URL(`/${locale}/sign-in`, req.nextUrl.origin).toString()
 
   // Admin 路由跳过国际化，直接处理
   if (pathname.startsWith('/admin')) {
