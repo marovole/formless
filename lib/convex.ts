@@ -25,6 +25,7 @@ export function getConvexAdminClient(adminToken?: string): ConvexHttpClient {
   }
 
   const client = new ConvexHttpClient(getConvexUrl());
-  client.setAdminAuth(token);
+  // ConvexHttpClient has setAdminAuth at runtime, but the type defs lag behind.
+  (client as ConvexHttpClient & { setAdminAuth: (token: string) => void }).setAdminAuth(token);
   return client;
 }
