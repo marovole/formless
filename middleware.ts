@@ -4,6 +4,13 @@ import { NextResponse } from 'next/server'
 import { routing } from '@/i18n/routing'
 
 const intlMiddleware = createIntlMiddleware(routing)
+const localePattern = routing.locales.join('|')
+const localeRootRegex = new RegExp(`^/(${localePattern})$`)
+const localeRobotsRegex = new RegExp(`^/(${localePattern})/robots\\.txt$`)
+const localeSitemapRegex = new RegExp(`^/(${localePattern})/sitemap\\.xml$`)
+const localeAuthRegex = new RegExp(`^/(${localePattern})/auth(.*)`)
+const localeSignInRegex = new RegExp(`^/(${localePattern})/sign-in(.*)`)
+const localeSignUpRegex = new RegExp(`^/(${localePattern})/sign-up(.*)`)
 
 // 公开路由 - 不需要认证
 const isPublicRoute = createRouteMatcher([
@@ -13,12 +20,12 @@ const isPublicRoute = createRouteMatcher([
   '/auth(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
-  '/:locale',
-  '/:locale/robots.txt',
-  '/:locale/sitemap.xml',
-  '/:locale/auth(.*)',
-  '/:locale/sign-in(.*)',
-  '/:locale/sign-up(.*)',
+  localeRootRegex,
+  localeRobotsRegex,
+  localeSitemapRegex,
+  localeAuthRegex,
+  localeSignInRegex,
+  localeSignUpRegex,
   '/api/webhook(.*)',
 ])
 

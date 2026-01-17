@@ -83,7 +83,7 @@ export default function HomePage() {
             <nav className="hidden md:flex items-center gap-8 text-sm text-ink-500 font-medium">
               <Link href="#features" className="hover:text-ink-900 transition-colors">{tLanding('nav.features')}</Link>
               <Link href="#how-it-works" className="hover:text-ink-900 transition-colors">{tLanding('nav.howItWorks')}</Link>
-              <Link href="/auth" className="hover:text-ink-900 transition-colors">{tLanding('nav.signIn')}</Link>
+              <Link href="/sign-in" className="hover:text-ink-900 transition-colors">{tLanding('nav.signIn')}</Link>
             </nav>
             <LanguageSwitcher className="w-auto" />
           </div>
@@ -247,7 +247,7 @@ export default function HomePage() {
                 {tLanding('cta.description')}
               </p>
               <div className="pt-4">
-                <Link href="/auth">
+                <Link href="/sign-in">
                   <Button className="bg-rice-50 text-ink-900 hover:bg-amber-50 px-10 py-8 rounded-full text-lg font-medium shadow-lg hover:scale-105 transition-all duration-300">
                     {tLanding('cta.button')}
                   </Button>

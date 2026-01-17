@@ -10,7 +10,7 @@ export function useAuthGuard() {
 
   useEffect(() => {
     if (isLoaded && !userId) {
-      router.push('/auth');
+      router.push('/sign-in');
     }
   }, [isLoaded, userId, router]);
 }
