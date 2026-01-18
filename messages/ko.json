@@ -3,6 +3,80 @@
     "name": "무상",
     "tagline": "지혜와 함께 걸으며, 내면을 찾다"
   },
+  "landing": {
+    "nav": {
+      "features": "특징",
+      "howItWorks": "사용법",
+      "signIn": "로그인"
+    },
+    "hero": {
+      "badge": "AI 지혜 동반자",
+      "startConversation": "대화 시작",
+      "learnMore": "자세히 보기"
+    },
+    "quote": {
+      "text": "모든 것을 이해하는 것은 모든 것을 용서하는 것이다. 평화는 내면에서 온다. 외부에서 찾지 마라.",
+      "author": "장로님"
+    },
+    "features": {
+      "title": "천년의 지혜, 현대의 형태",
+      "description": "고대 불교 철학과 첨단 AI를 결합하여 삶의 복잡함을 헤쳐나가는 길잡이가 됩니다.",
+      "mindfulDialogue": {
+        "title": "마음챙김 대화",
+        "description": "깊고 의미 있는 대화에 참여하세요. 장로님은 판단 없이 듣고 깊은 통찰로 응답합니다."
+      },
+      "eternalMemory": {
+        "title": "영원한 기억",
+        "description": "당신의 여정은 기억됩니다. 시스템은 당신과 함께 성장하며, 과거 대화를 기억하여 연속성을 제공합니다."
+      },
+      "emotionalResonance": {
+        "title": "감정의 공명",
+        "description": "단순한 데이터 이상입니다. 뉘앙스, 감정, 인간의 상황을 이해하는 상호작용을 경험하세요."
+      },
+      "nightlyReflection": {
+        "title": "밤의 명상",
+        "description": "안내된 명상으로 하루를 마무리하세요. 생각을 되돌아보고 쉬기 전에 평화를 찾으세요."
+      },
+      "breathAndSpace": {
+        "title": "호흡과 공간",
+        "description": "느리게 할 수 있도록 설계된 인터페이스. 혼란도 소음도 없이—생각을 위한 공간만."
+      },
+      "dailyAwakening": {
+        "title": "아침의 각성",
+        "description": "매일 아침 부드러운 공안이나 생각으로 마음을 가다듬고 새로운 하루를 준비하세요."
+      }
+    },
+    "howItWorks": {
+      "title": "명료함으로 가는 길",
+      "step": "단계",
+      "steps": {
+        "1": {
+          "title": "여정을 시작하다",
+          "description": "로그인하여 신성한 공간을 만드세요. 개인정보는 최우선이며, 생각은 안전합니다."
+        },
+        "2": {
+          "title": "마음을 나누다",
+          "description": "불안, 질문 또는 일상에 대해 자유롭게 이야기하세요. 장로님은 항상 듣고 계십니다."
+        },
+        "3": {
+          "title": "지혜를 받다",
+          "description": "부드러운 안내를 통해 새로운 시각을 얻고, 자신 안에서 답을 찾는 데 도움을 받으세요."
+        }
+      }
+    },
+    "cta": {
+      "title": "당신의",
+      "titleHighlight": "내면의 평화",
+      "description": "무상의 지혜를 통해 명료함과 평온을 찾은 수많은 사람들과 함께하세요.",
+      "button": "수행 시작하기"
+    },
+    "footer": {
+      "privacy": "개인정보처리방침",
+      "terms": "이용약관",
+      "contact": "문의하기",
+      "copyright": "무상. 모든 권리 보유."
+    }
+  },
   "nav": {
     "home": "홈",
     "chat": "대화",

@@ -13,7 +13,9 @@ import {
   Sun,
   ArrowRight,
   Heart,
-  Infinity
+  Infinity,
+  Menu,
+  X
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -58,6 +60,7 @@ export default function HomePage() {
   const t = useTranslations('app')
   const tLanding = useTranslations('landing')
   const [scrolled, setScrolled] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
@@ -86,8 +89,22 @@ export default function HomePage() {
               <Link href="/sign-in" className="hover:text-ink-900 transition-colors">{tLanding('nav.signIn')}</Link>
             </nav>
             <LanguageSwitcher className="w-auto" />
+            <button
+              className="md:hidden p-2 text-ink-600 hover:text-ink-900 transition-colors"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <nav className="md:hidden bg-rice-50/95 backdrop-blur-md border-t border-stone-100 px-6 py-4 flex flex-col gap-4">
+            <Link href="#features" className="text-ink-600 hover:text-ink-900 transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>{tLanding('nav.features')}</Link>
+            <Link href="#how-it-works" className="text-ink-600 hover:text-ink-900 transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>{tLanding('nav.howItWorks')}</Link>
+            <Link href="/sign-in" className="text-ink-600 hover:text-ink-900 transition-colors py-2" onClick={() => setMobileMenuOpen(false)}>{tLanding('nav.signIn')}</Link>
+          </nav>
+        )}
       </header>
 
       <main>
@@ -150,11 +167,11 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="features" className="py-32 relative">
-          <div className="container mx-auto px-6 relative z-10">
-            <div className="text-center max-w-2xl mx-auto mb-20">
-              <h2 className="font-serif text-4xl text-ink-800 mb-4">{tLanding('features.title')}</h2>
-              <p className="text-ink-500 font-light text-lg">
+        <section id="features" className="py-16 md:py-32 relative">
+          <div className="container mx-auto px-4 md:px-6 relative z-10">
+            <div className="text-center max-w-2xl mx-auto mb-12 md:mb-20">
+              <h2 className="font-serif text-2xl md:text-4xl text-ink-800 mb-4">{tLanding('features.title')}</h2>
+              <p className="text-ink-500 font-light text-base md:text-lg">
                 {tLanding('features.description')}
               </p>
             </div>
@@ -200,16 +217,16 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="how-it-works" className="py-32 bg-stone-100/50 relative overflow-hidden">
+        <section id="how-it-works" className="py-16 md:py-32 bg-stone-100/50 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-amber-50/40 via-transparent to-transparent opacity-70" />
           
-          <div className="container mx-auto px-6 relative z-10">
-            <div className="text-center mb-20">
-              <h2 className="font-serif text-4xl text-ink-800 mb-4">{tLanding('howItWorks.title')}</h2>
+          <div className="container mx-auto px-4 md:px-6 relative z-10">
+            <div className="text-center mb-12 md:mb-20">
+              <h2 className="font-serif text-2xl md:text-4xl text-ink-800 mb-4">{tLanding('howItWorks.title')}</h2>
               <div className="w-16 h-1 bg-sandalwood-300 mx-auto rounded-full opacity-50" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 relative">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 relative">
               <div className="hidden md:block absolute top-12 left-0 right-0 h-px bg-gradient-to-r from-transparent via-stone-300 to-transparent -z-10" />
               
               <Step 
@@ -234,21 +251,21 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="py-32 px-6">
-          <div className="max-w-5xl mx-auto bg-ink-900 rounded-3xl p-12 md:p-24 text-center relative overflow-hidden shadow-2xl">
+        <section className="py-16 md:py-32 px-4 md:px-6">
+          <div className="max-w-5xl mx-auto bg-ink-900 rounded-2xl md:rounded-3xl p-8 md:p-12 lg:p-24 text-center relative overflow-hidden shadow-2xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
             
             <div className="relative z-10 space-y-8">
-              <h2 className="font-serif text-4xl md:text-5xl text-rice-50 leading-tight">
+              <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-rice-50 leading-tight">
                 {tLanding('cta.title')} <span className="text-amber-200/80 italic">{tLanding('cta.titleHighlight')}</span>?
               </h2>
-              <p className="text-stone-400 max-w-xl mx-auto text-lg font-light">
+              <p className="text-stone-400 max-w-xl mx-auto text-base md:text-lg font-light px-4 md:px-0">
                 {tLanding('cta.description')}
               </p>
               <div className="pt-4">
                 <Link href="/sign-in">
-                  <Button className="bg-rice-50 text-ink-900 hover:bg-amber-50 px-10 py-8 rounded-full text-lg font-medium shadow-lg hover:scale-105 transition-all duration-300">
+                  <Button className="bg-rice-50 text-ink-900 hover:bg-amber-50 px-8 md:px-10 py-6 md:py-8 rounded-full text-base md:text-lg font-medium shadow-lg hover:scale-105 transition-all duration-300">
                     {tLanding('cta.button')}
                   </Button>
                 </Link>

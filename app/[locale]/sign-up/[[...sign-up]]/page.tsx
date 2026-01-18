@@ -1,11 +1,11 @@
-import { SignUp as ClerkSignUp } from '@clerk/nextjs'
+'use client'
 
-export default async function SignUpPage({
-  params,
-}: {
-  params: Promise<{ locale: string }>
-}) {
-  const { locale } = await params
+import { SignUp as ClerkSignUp } from '@clerk/nextjs'
+import { useParams } from 'next/navigation'
+
+export default function SignUpPage() {
+  const params = useParams()
+  const locale = params.locale as string
   const signUpUrl = `/${locale}/sign-up`
   const signInUrl = `/${locale}/sign-in`
 

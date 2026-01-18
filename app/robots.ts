@@ -1,7 +1,10 @@
 import { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro'
+  // Use environment variable in production, fallback to correct production URL
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 
+                  process.env.NEXT_PUBLIC_SITE_URL || 
+                  'https://formless.pages.dev'
   
   return {
     rules: [

@@ -3,6 +3,80 @@
     "name": "Formless",
     "tagline": "Caminar con sabiduría, buscar en el interior"
   },
+  "landing": {
+    "nav": {
+      "features": "Características",
+      "howItWorks": "Cómo funciona",
+      "signIn": "Iniciar sesión"
+    },
+    "hero": {
+      "badge": "Compañero de sabiduría IA",
+      "startConversation": "Iniciar conversación",
+      "learnMore": "Saber más"
+    },
+    "quote": {
+      "text": "Entenderlo todo es perdonarlo todo. La paz viene de dentro. No la busques fuera.",
+      "author": "El Anciano"
+    },
+    "features": {
+      "title": "Sabiduría milenaria, forma moderna",
+      "description": "Combinando la filosofía budista antigua con IA avanzada para guiarte a través de las complejidades de la vida.",
+      "mindfulDialogue": {
+        "title": "Diálogo consciente",
+        "description": "Participa en conversaciones profundas y significativas. El Anciano escucha sin juzgar y responde con profunda perspicacia."
+      },
+      "eternalMemory": {
+        "title": "Memoria eterna",
+        "description": "Tu viaje es recordado. El sistema evoluciona contigo, recordando conversaciones pasadas para proporcionar continuidad."
+      },
+      "emotionalResonance": {
+        "title": "Resonancia emocional",
+        "description": "Más que simples datos. Experimenta interacciones que entienden matices, emociones y la condición humana."
+      },
+      "nightlyReflection": {
+        "title": "Reflexión nocturna",
+        "description": "Termina tu día con contemplación guiada. Revisa tus pensamientos y encuentra paz antes del descanso."
+      },
+      "breathAndSpace": {
+        "title": "Respiración y espacio",
+        "description": "Una interfaz diseñada para ayudarte a desacelerar. Sin desorden, sin ruido—solo espacio para tus pensamientos."
+      },
+      "dailyAwakening": {
+        "title": "Despertar diario",
+        "description": "Comienza cada mañana con un koan suave o pensamiento para centrar tu mente para el día que viene."
+      }
+    },
+    "howItWorks": {
+      "title": "El camino hacia la claridad",
+      "step": "Paso",
+      "steps": {
+        "1": {
+          "title": "Comenzar el viaje",
+          "description": "Inicia sesión para crear tu espacio sagrado. Tu privacidad es primordial; tus pensamientos están seguros."
+        },
+        "2": {
+          "title": "Compartir tu carga",
+          "description": "Habla libremente sobre tus ansiedades, preguntas o tu día. El Anciano siempre está presente para escuchar."
+        },
+        "3": {
+          "title": "Recibir sabiduría",
+          "description": "Obtén nuevas perspectivas a través de una guía gentil, ayudándote a encontrar las respuestas dentro de ti mismo."
+        }
+      }
+    },
+    "cta": {
+      "title": "¿Listo para encontrar tu",
+      "titleHighlight": "paz interior",
+      "description": "Únete a miles de personas que han encontrado claridad y calma a través de la sabiduría de Formless.",
+      "button": "Comenzar tu práctica"
+    },
+    "footer": {
+      "privacy": "Política de privacidad",
+      "terms": "Términos de servicio",
+      "contact": "Contacto",
+      "copyright": "Formless. Todos los derechos reservados."
+    }
+  },
   "nav": {
     "home": "Inicio",
     "chat": "Diálogo",

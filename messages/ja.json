@@ -3,6 +3,80 @@
     "name": "無相",
     "tagline": "智慧と共に歩み、内なる心を探る"
   },
+  "landing": {
+    "nav": {
+      "features": "特徴",
+      "howItWorks": "使い方",
+      "signIn": "ログイン"
+    },
+    "hero": {
+      "badge": "AI知恵の伴侶",
+      "startConversation": "対話を始める",
+      "learnMore": "詳しく見る"
+    },
+    "quote": {
+      "text": "すべてを理解することは、すべてを許すこと。平和は内から来る。外に求めてはならない。",
+      "author": "長老"
+    },
+    "features": {
+      "title": "千年の智慧、現代の形",
+      "description": "古来の仏教哲学と先進のAIを組み合わせ、人生の複雑さを乗り越える導きとなります。",
+      "mindfulDialogue": {
+        "title": "正念の対話",
+        "description": "深く意味のある対話に参加してください。長老は判断なく聴き、深い洞察で応答します。"
+      },
+      "eternalMemory": {
+        "title": "永遠の記憶",
+        "description": "あなたの旅路は記憶されます。システムはあなたと共に成長し、過去の対話を思い出して継続性を提供します。"
+      },
+      "emotionalResonance": {
+        "title": "感情の共鳴",
+        "description": "単なるデータ以上のもの。ニュアンス、感情、人間の状況を理解する対話を体験してください。"
+      },
+      "nightlyReflection": {
+        "title": "夜の瞑想",
+        "description": "ガイド付きの瞑想で一日を終えましょう。思考を振り返り、休息前に平和を見つけてください。"
+      },
+      "breathAndSpace": {
+        "title": "呼吸と空間",
+        "description": "ゆっくりするためのインターフェース。雑音なし、混乱なし—思考のための空間だけ。"
+      },
+      "dailyAwakening": {
+        "title": "朝の目覚め",
+        "description": "毎朝、穏やかな公案や思考で心を整え、新しい一日に備えましょう。"
+      }
+    },
+    "howItWorks": {
+      "title": "清明への道",
+      "step": "ステップ",
+      "steps": {
+        "1": {
+          "title": "旅を始める",
+          "description": "ログインして聖なる空間を作成してください。プライバシーは最優先、思考は安全です。"
+        },
+        "2": {
+          "title": "心の内を語る",
+          "description": "不安、疑問、日常について自由に語ってください。長老は常に聴いています。"
+        },
+        "3": {
+          "title": "智慧を受け取る",
+          "description": "穏やかな導きを通じて新しい視点を得て、自分の中に答えを見つける手助けをします。"
+        }
+      }
+    },
+    "cta": {
+      "title": "あなたの",
+      "titleHighlight": "心の平和",
+      "description": "無相の智慧を通じて明晰さと静けさを見つけた多くの人々に加わりましょう。",
+      "button": "修行を始める"
+    },
+    "footer": {
+      "privacy": "プライバシーポリシー",
+      "terms": "利用規約",
+      "contact": "お問い合わせ",
+      "copyright": "無相。全著作権所有。"
+    }
+  },
   "nav": {
     "home": "ホーム",
     "chat": "対話",

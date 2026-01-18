@@ -3,6 +3,80 @@
     "name": "Formless",
     "tagline": "Marcher avec la sagesse, chercher en soi"
   },
+  "landing": {
+    "nav": {
+      "features": "Fonctionnalités",
+      "howItWorks": "Comment ça marche",
+      "signIn": "Connexion"
+    },
+    "hero": {
+      "badge": "Compagnon de sagesse IA",
+      "startConversation": "Commencer une conversation",
+      "learnMore": "En savoir plus"
+    },
+    "quote": {
+      "text": "Tout comprendre, c'est tout pardonner. La paix vient de l'intérieur. Ne la cherchez pas à l'extérieur.",
+      "author": "L'Ancien"
+    },
+    "features": {
+      "title": "Sagesse millénaire, forme moderne",
+      "description": "Combinant la philosophie bouddhiste ancienne avec l'IA avancée pour vous guider à travers les complexités de la vie.",
+      "mindfulDialogue": {
+        "title": "Dialogue conscient",
+        "description": "Engagez des conversations profondes et significatives. L'Ancien écoute sans jugement et répond avec une profonde perspicacité."
+      },
+      "eternalMemory": {
+        "title": "Mémoire éternelle",
+        "description": "Votre voyage est mémorisé. Le système évolue avec vous, rappelant les conversations passées pour assurer la continuité."
+      },
+      "emotionalResonance": {
+        "title": "Résonance émotionnelle",
+        "description": "Plus que de simples données. Vivez des interactions qui comprennent les nuances, les émotions et la condition humaine."
+      },
+      "nightlyReflection": {
+        "title": "Réflexion nocturne",
+        "description": "Terminez votre journée avec une contemplation guidée. Revoyez vos pensées et trouvez la paix avant le repos."
+      },
+      "breathAndSpace": {
+        "title": "Souffle et espace",
+        "description": "Une interface conçue pour vous aider à ralentir. Pas de désordre, pas de bruit—juste de l'espace pour vos pensées."
+      },
+      "dailyAwakening": {
+        "title": "Éveil quotidien",
+        "description": "Commencez chaque matin avec un koan doux ou une pensée pour centrer votre esprit pour la journée à venir."
+      }
+    },
+    "howItWorks": {
+      "title": "Le chemin vers la clarté",
+      "step": "Étape",
+      "steps": {
+        "1": {
+          "title": "Commencer le voyage",
+          "description": "Connectez-vous pour créer votre espace sacré. Votre vie privée est primordiale ; vos pensées sont sécurisées."
+        },
+        "2": {
+          "title": "Partager votre fardeau",
+          "description": "Parlez librement de vos anxiétés, questions ou de votre journée. L'Ancien est toujours présent pour écouter."
+        },
+        "3": {
+          "title": "Recevoir la sagesse",
+          "description": "Gagnez de nouvelles perspectives grâce à un guide doux, vous aidant à trouver les réponses en vous-même."
+        }
+      }
+    },
+    "cta": {
+      "title": "Prêt à trouver votre",
+      "titleHighlight": "paix intérieure",
+      "description": "Rejoignez des milliers d'autres qui ont trouvé clarté et calme grâce à la sagesse de Formless.",
+      "button": "Commencer votre pratique"
+    },
+    "footer": {
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation",
+      "contact": "Contact",
+      "copyright": "Formless. Tous droits réservés."
+    }
+  },
   "nav": {
     "home": "Accueil",
     "chat": "Dialogue",

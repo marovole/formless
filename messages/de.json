@@ -3,6 +3,80 @@
     "name": "Formless",
     "tagline": "Mit Weisheit wandeln, im Inneren suchen"
   },
+  "landing": {
+    "nav": {
+      "features": "Funktionen",
+      "howItWorks": "So funktioniert's",
+      "signIn": "Anmelden"
+    },
+    "hero": {
+      "badge": "KI-Weisheitsbegleiter",
+      "startConversation": "Gespräch beginnen",
+      "learnMore": "Mehr erfahren"
+    },
+    "quote": {
+      "text": "Alles zu verstehen bedeutet, alles zu vergeben. Frieden kommt von innen. Suche ihn nicht außen.",
+      "author": "Der Älteste"
+    },
+    "features": {
+      "title": "Jahrtausendealte Weisheit, moderne Form",
+      "description": "Die Verbindung alter buddhistischer Philosophie mit fortschrittlicher KI, um Sie durch die Komplexitäten des Lebens zu führen.",
+      "mindfulDialogue": {
+        "title": "Achtsamer Dialog",
+        "description": "Führen Sie tiefe, bedeutungsvolle Gespräche. Der Älteste hört ohne Urteil zu und antwortet mit tiefgreifender Einsicht."
+      },
+      "eternalMemory": {
+        "title": "Ewige Erinnerung",
+        "description": "Ihre Reise wird erinnert. Das System entwickelt sich mit Ihnen, erinnert sich an vergangene Gespräche für Kontinuität."
+      },
+      "emotionalResonance": {
+        "title": "Emotionale Resonanz",
+        "description": "Mehr als nur Daten. Erleben Sie Interaktionen, die Nuancen, Emotionen und die menschliche Situation verstehen."
+      },
+      "nightlyReflection": {
+        "title": "Nächtliche Reflexion",
+        "description": "Beenden Sie Ihren Tag mit geführter Kontemplation. Überdenken Sie Ihre Gedanken und finden Sie Frieden vor der Ruhe."
+      },
+      "breathAndSpace": {
+        "title": "Atem und Raum",
+        "description": "Eine Oberfläche, die Ihnen hilft, langsamer zu werden. Kein Durcheinander, kein Lärm—nur Raum für Ihre Gedanken."
+      },
+      "dailyAwakening": {
+        "title": "Tägliches Erwachen",
+        "description": "Beginnen Sie jeden Morgen mit einem sanften Koan oder Gedanken, um Ihren Geist für den kommenden Tag zu zentrieren."
+      }
+    },
+    "howItWorks": {
+      "title": "Der Weg zur Klarheit",
+      "step": "Schritt",
+      "steps": {
+        "1": {
+          "title": "Die Reise beginnen",
+          "description": "Melden Sie sich an, um Ihren heiligen Raum zu schaffen. Ihre Privatsphäre ist oberstes Gebot; Ihre Gedanken sind sicher."
+        },
+        "2": {
+          "title": "Ihre Last teilen",
+          "description": "Sprechen Sie frei über Ihre Ängste, Fragen oder Ihren Tag. Der Älteste ist immer da, um zuzuhören."
+        },
+        "3": {
+          "title": "Weisheit empfangen",
+          "description": "Gewinnen Sie neue Perspektiven durch sanfte Führung, die Ihnen hilft, die Antworten in sich selbst zu finden."
+        }
+      }
+    },
+    "cta": {
+      "title": "Bereit, Ihren",
+      "titleHighlight": "inneren Frieden",
+      "description": "Schließen Sie sich Tausenden an, die durch die Weisheit von Formless Klarheit und Ruhe gefunden haben.",
+      "button": "Ihre Praxis beginnen"
+    },
+    "footer": {
+      "privacy": "Datenschutzrichtlinie",
+      "terms": "Nutzungsbedingungen",
+      "contact": "Kontakt",
+      "copyright": "Formless. Alle Rechte vorbehalten."
+    }
+  },
   "nav": {
     "home": "Startseite",
     "chat": "Dialog",
