@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { getConvexClientWithAuth } from '@/lib/convex';
-import { api } from '@/convex/_generated/api';
+import { getConvexClientWithAuth, getConvexAdminClient } from '@/lib/convex';
+import { api, internal } from '@/convex/_generated/api';
 import { logger } from '@/lib/logger';
 
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase());
@@ -26,7 +26,15 @@ export async function POST() {
     }
 
     const convex = getConvexClientWithAuth(convexToken);
+    const convexAdmin = getConvexAdminClient();
     const results: string[] = [];
+
+    try {
+      const promptResult = await (convexAdmin as any).mutation(internal.seed.seedPrompts, {});
+      results.push(`Prompts: ${promptResult.message}`);
+    } catch (e) {
+      results.push(`Prompts: ${String(e)}`);
+    }
 
     const chutesApiKey = process.env.CHUTES_API_KEY;
     if (chutesApiKey) {
@@ -52,17 +60,17 @@ export async function POST() {
       const keys = openrouterKeys.split(',').map(k => k.trim()).filter(Boolean);
       for (let i = 0; i < keys.length; i++) {
         try {
-          await convex.mutation(api.api_keys.create, {
+          const result = await (convexAdmin as any).mutation(internal.api_keys.seedApiKeyInternal, {
             provider: 'openrouter',
             api_key: keys[i],
-            model_name: 'glm-4.5-air',
+            model_name: 'mistralai/devstral-2512:free',
             daily_limit: 1000,
             priority: i + 1,
             is_active: true,
           });
-          results.push(`Created OpenRouter API key ${i + 1}`);
-        } catch {
-          results.push(`OpenRouter API key ${i + 1} may already exist`);
+          results.push(`OpenRouter API key ${i + 1}: ${result.action}`);
+        } catch (e) {
+          results.push(`OpenRouter API key ${i + 1}: ${String(e)}`);
         }
       }
     } else {

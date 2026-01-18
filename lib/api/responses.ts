@@ -174,14 +174,38 @@ export function serverErrorResponse(
  * 用于 try-catch 块中处理各种错误
  */
 export function handleApiError(error: unknown, context?: string): NextResponse {
-  // 记录错误日志
-  logger.error(context || '未知错误', error);
+  // 记录详细错误日志
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStack = error instanceof Error ? error.stack : undefined;
+  logger.error(context || '未知错误', { 
+    error: errorMessage, 
+    stack: errorStack,
+    context 
+  });
 
   // 如果是应用自定义错误,使用其信息
   if (isAppError(error)) {
     return errorResponse(error);
   }
 
-  // 未知错误,返回通用错误响应
-  return serverErrorResponse();
+  // 未知错误,返回错误响应（包含错误类型以便调试）
+  const response: ApiErrorResponse = {
+    success: false,
+    error: '服务器内部错误',
+    code: 'INTERNAL_SERVER_ERROR',
+  };
+
+  if (context) {
+    response.details = { context };
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    response.details = {
+      ...response.details as object,
+      message: errorMessage,
+      stack: errorStack?.split('\n').slice(0, 5),
+    };
+  }
+
+  return NextResponse.json(response, { status: 500 });
 }

@@ -9,7 +9,7 @@ const config = {
       queue: 'dummy',
     },
   },
-  edgeExternals: ['node:crypto'],
+  edgeExternals: ['node:crypto', 'ws', 'bufferutil', 'utf-8-validate'],
   middleware: {
     external: true,
     override: {
