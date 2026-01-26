@@ -11,6 +11,7 @@ import { Id } from '@/convex/_generated/dataModel';
 import { ConfigError } from '@/lib/errors';
 import { LLM_DEFAULTS } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
+import { runMemoryAgentLoop } from '@/lib/agent/loop';
 
 function estimateTokenCount(text: string): number {
   const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length;
@@ -190,6 +191,57 @@ export async function POST(request: NextRequest) {
         JSON.stringify({ conversationId: activeConversationId }),
         'metadata'
       );
+
+      const enableAgentMemory = process.env.AGENT_MEMORY === 'true';
+
+      if (enableAgentMemory) {
+        try {
+          const { finalContent } = await runMemoryAgentLoop({
+            convex,
+            openRouterApiKey: apiKey.api_key,
+            openRouterModel: apiKey.model_name || 'anthropic/claude-3.7-sonnet',
+            messages,
+            conversationId: activeConversationId,
+          });
+
+          fullResponse = finalContent;
+          // Emit in small chunks so the client sees incremental updates.
+          const chunkSize = 120;
+          for (let i = 0; i < finalContent.length; i += chunkSize) {
+            const piece = finalContent.slice(i, i + chunkSize);
+            stream.sendEvent(JSON.stringify({ content: piece }), 'chunk');
+          }
+
+          const tokenCount = estimateTokenCount(finalContent);
+          await convex.mutation(api.messages.append, {
+            conversationId: activeConversationId,
+            role: 'assistant',
+            content: finalContent,
+            tokens: tokenCount,
+          });
+
+          await (convexAdmin as any).mutation(internal.api_usage.logInternal, {
+            apiKeyId: apiKey._id,
+            provider: 'openrouter',
+            modelName: apiKey.model_name ?? undefined,
+            userId: convexUserId,
+            conversationId: activeConversationId,
+            tokensUsed: tokenCount,
+            success: true,
+            responseTimeMs: Date.now() - requestStartTime,
+          });
+
+          await (convexAdmin as any).mutation(internal.api_keys.incrementUsageInternal, {
+            keyId: apiKey._id,
+            tokenCount,
+          });
+
+          stream.sendEvent(JSON.stringify({ done: true }), 'complete');
+          return;
+        } catch (error) {
+          logger.error('Agent memory loop error, falling back to streaming', { error });
+        }
+      }
 
       await streamChatCompletionWithProvider('openrouter', apiKey.api_key, {
         messages,

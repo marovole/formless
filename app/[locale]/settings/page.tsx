@@ -27,6 +27,7 @@ export default function SettingsPage() {
         actionsSubtitle: 'Jump to common destinations',
         history: 'View Conversation History',
         letters: 'Open Letters Inbox',
+        memory: 'Memory',
         signOut: 'Sign Out',
       }
     : {
@@ -41,6 +42,7 @@ export default function SettingsPage() {
         actionsSubtitle: '快速访问其他功能',
         history: '查看对话历史',
         letters: '查看来信',
+        memory: '记忆设置',
         signOut: '退出登录',
       };
   const { isSignedIn } = useAuth();
@@ -96,6 +98,19 @@ export default function SettingsPage() {
               <p className="text-xs text-stone-400">{copy.actionsSubtitle}</p>
             </div>
             <div className="space-y-3">
+              <Button
+                variant="outline"
+                className="w-full justify-start"
+                onClick={() => router.push(`/${locale}/settings/memory`)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2" aria-hidden="true">
+                  <path d="M21 15a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4h7"/>
+                  <path d="M18 2v4"/>
+                  <path d="M18 8v2"/>
+                  <path d="M13 6h8"/>
+                </svg>
+                {copy.memory}
+              </Button>
               <Button
                 variant="outline"
                 className="w-full justify-start"

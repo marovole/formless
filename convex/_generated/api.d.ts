@@ -10,6 +10,7 @@
 
 import type * as _lib_auth from "../_lib/auth.js";
 import type * as admin from "../admin.js";
+import type * as agent_memories from "../agent_memories.js";
 import type * as api_keys from "../api_keys.js";
 import type * as api_usage from "../api_usage.js";
 import type * as conversations from "../conversations.js";
@@ -31,6 +32,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "_lib/auth": typeof _lib_auth;
   admin: typeof admin;
+  agent_memories: typeof agent_memories;
   api_keys: typeof api_keys;
   api_usage: typeof api_usage;
   conversations: typeof conversations;

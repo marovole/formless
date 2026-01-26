@@ -73,6 +73,19 @@ export default defineSchema({
   .index("by_user_id", ["user_id"])
   .index("by_conversation_id", ["conversation_id"]),
 
+  agent_memories: defineTable({
+    user_id: v.id("users"),
+    category: v.string(),
+    content: v.string(),
+    importance: v.number(),
+    last_referenced: v.optional(v.number()),
+    source_conversation: v.optional(v.id("conversations")),
+    archived: v.optional(v.boolean()),
+  })
+  .index("by_user_id", ["user_id"])
+  .index("by_user_category", ["user_id", "category"])
+  .index("by_user_archived", ["user_id", "archived"]),
+
   api_keys: defineTable({
     provider: v.string(), // 'chutes', 'openrouter'
     api_key: v.string(),

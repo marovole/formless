@@ -92,3 +92,41 @@ export const ensureCurrent = mutation({
   },
 });
 
+export const getProfile = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await requireIdentity(ctx);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!user) return null;
+    return user.profile || {};
+  },
+});
+
+export const updateProfile = mutation({
+  args: {
+    updates: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await requireIdentity(ctx);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+    if (!user) throw new Error("User not found");
+
+    const current = ((user.profile || {}) as Record<string, unknown>) ?? {};
+    const updates = (args.updates || {}) as Record<string, unknown>;
+    const next = {
+      ...current,
+      ...updates,
+      last_memory_update: new Date().toISOString(),
+    };
+
+    await ctx.db.patch(user._id, { profile: next, updated_at: Date.now() });
+    return next;
+  },
+});
+
