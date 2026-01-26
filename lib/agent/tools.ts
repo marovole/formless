@@ -2,7 +2,13 @@ import type { Id } from '@/convex/_generated/dataModel';
 import { api } from '@/convex/_generated/api';
 import type { EdgeConvexClient } from '@/lib/convex';
 
-export type ToolName = 'save_user_insight' | 'recall_user_context' | 'update_user_mood';
+export type ToolName =
+  | 'save_user_insight'
+  | 'recall_user_context'
+  | 'update_user_mood'
+  | 'search_books'
+  | 'get_meditation_audio'
+  | 'web_search';
 
 export interface ToolCall {
   id: string;
@@ -69,6 +75,60 @@ export const memoryTools = [
           trigger: { type: 'string' },
         },
         required: ['mood'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_books',
+      description: '搜索心理疗愈/哲学/佛学相关书籍推荐。返回结构化书单，不要编造。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+          mood: { type: 'string' },
+          topic: { type: 'string' },
+          language: { type: 'string', enum: ['zh', 'en'] },
+          limit: { type: 'number', minimum: 1, maximum: 5 },
+        },
+        required: ['query'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_meditation_audio',
+      description: '获取冥想/呼吸练习音频。返回可播放的音频 URL 与标题。',
+      parameters: {
+        type: 'object',
+        properties: {
+          mood: { type: 'string' },
+          duration: { type: 'number', minimum: 1, maximum: 30 },
+          style: { type: 'string', enum: ['breathing', 'body_scan', 'zen'] },
+          language: { type: 'string', enum: ['zh', 'en'] },
+        },
+        required: ['mood'],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'web_search',
+      description: '搜索网络获取相关信息。返回结构化结果，不要编造来源。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string' },
+          locale: { type: 'string', enum: ['zh', 'en'] },
+          limit: { type: 'number', minimum: 1, maximum: 8 },
+        },
+        required: ['query'],
         additionalProperties: false,
       },
     },
@@ -141,6 +201,68 @@ export async function executeToolCall(args: {
       role: 'tool',
       name,
       content: JSON.stringify({ ok: true }),
+    };
+  }
+
+  if (name === 'search_books') {
+    const query = String(parsed.query || '');
+    const mood = parsed.mood === undefined ? undefined : String(parsed.mood);
+    const topic = parsed.topic === undefined ? undefined : String(parsed.topic);
+    const language = parsed.language === undefined ? undefined : String(parsed.language);
+    const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
+    const result = await convex.query(api.resources.searchBooks, {
+      query,
+      mood,
+      topic,
+      language,
+      limit,
+    });
+
+    return {
+      tool_call_id: toolCall.id,
+      role: 'tool',
+      name,
+      content: JSON.stringify({ ok: true, items: (result as any)?.items ?? [] }),
+    };
+  }
+
+  if (name === 'get_meditation_audio') {
+    const mood = String(parsed.mood || '');
+    const durationMinutes = parsed.duration === undefined ? undefined : Number(parsed.duration);
+    const style = parsed.style === undefined ? undefined : String(parsed.style);
+    const language = parsed.language === undefined ? undefined : String(parsed.language);
+
+    const audio = await convex.query(api.resources.pickMeditationAudio, {
+      mood,
+      durationMinutes,
+      style,
+      language,
+    });
+
+    return {
+      tool_call_id: toolCall.id,
+      role: 'tool',
+      name,
+      content: JSON.stringify({ ok: true, audio }),
+    };
+  }
+
+  if (name === 'web_search') {
+    const query = String(parsed.query || '');
+    const locale = parsed.locale === undefined ? undefined : String(parsed.locale);
+    const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
+    // MVP: no external search configured yet.
+    return {
+      tool_call_id: toolCall.id,
+      role: 'tool',
+      name,
+      content: JSON.stringify({
+        ok: false,
+        error: 'External search is not configured',
+        query,
+        locale,
+        limit,
+      }),
     };
   }
 

@@ -135,3 +135,54 @@ export const seedApiKey = internalMutation({
     return { message: `Created ${args.provider} API key`, id };
   },
 });
+
+export const seedResources = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const existingBooks = await ctx.db.query("healing_books").first();
+    const existingAudios = await ctx.db.query("meditation_audios").first();
+    if (existingBooks || existingAudios) {
+      return { message: "Resources already exist, skipping seed" };
+    }
+
+    await ctx.db.insert("healing_books", {
+      title: "当下的力量",
+      author: "埃克哈特·托利",
+      tags: ["焦虑", "当下", "正念"],
+      description: "帮助你从念头的洪流里退一步，回到此刻。",
+      link: "https://book.douban.com/subject/1858513/",
+      language: "zh",
+    });
+
+    await ctx.db.insert("healing_books", {
+      title: "The Wisdom of Insecurity",
+      author: "Alan Watts",
+      tags: ["anxiety", "acceptance", "zen"],
+      description: "A gentle exploration of fear and uncertainty through a Zen lens.",
+      link: "https://www.goodreads.com/book/show/551520.The_Wisdom_of_Insecurity",
+      language: "en",
+    });
+
+    await ctx.db.insert("meditation_audios", {
+      title: "5分钟呼吸练习（放松）",
+      duration: 5 * 60,
+      style: "breathing",
+      tags: ["焦虑", "失眠", "放松"],
+      url: "https://example.com/audio/breathing-5min.mp3",
+      instructions: "跟随节奏：吸气4拍，停2拍，呼气6拍。",
+      language: "zh",
+    });
+
+    await ctx.db.insert("meditation_audios", {
+      title: "5-min Breathing Practice (Calm)",
+      duration: 5 * 60,
+      style: "breathing",
+      tags: ["anxiety", "sleep", "calm"],
+      url: "https://example.com/audio/breathing-5min-en.mp3",
+      instructions: "Breathe in for 4, hold 2, breathe out for 6.",
+      language: "en",
+    });
+
+    return { message: "Seeded resources successfully" };
+  },
+});

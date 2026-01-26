@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { useSessionTracking, useGuanzhaoTriggers } from '@/lib/hooks/useSessionTracking';
 import { GuanzhaoTriggerContainer } from '@/components/guanzhao/GuanzhaoTriggerCard';
 import { MessageList, type ChatMessage } from '@/components/chat/MessageBubble';
+import type { ToolSuggestion } from '@/components/chat/ToolSuggestionButtons';
 import { useSSEChat } from '@/lib/hooks/useSSEChat';
 import { useLocale } from 'next-intl';
 import { useAuthGuard } from '@/lib/hooks/useAuth';
@@ -65,6 +66,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<Id<'conversations'> | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [, setPendingSuggestions] = useState<ToolSuggestion[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // SSE Chat hook for streaming
@@ -170,6 +172,7 @@ export default function ChatPage() {
     const userMessage = messageText;
     setInput('');
     setErrorMessage(null);
+    setPendingSuggestions([]);
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
 
     try {
@@ -186,6 +189,29 @@ export default function ChatPage() {
             if (data.conversationId) {
               setConversationId(data.conversationId);
             }
+          },
+          onSuggestion: (data) => {
+            if (data?.suggestions && Array.isArray(data.suggestions)) {
+              setPendingSuggestions(data.suggestions as any);
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === 'assistant') {
+                  last.suggestions = data.suggestions as any;
+                }
+                return next;
+              });
+            }
+          },
+          onAudio: (data) => {
+            setMessages((prev) => {
+              const next = [...prev];
+              const last = next[next.length - 1];
+              if (last?.role === 'assistant') {
+                (last as any).audio = data;
+              }
+              return next;
+            });
           },
           onError: (error) => {
             console.error('Stream error:', error);
@@ -302,7 +328,15 @@ export default function ChatPage() {
             </div>
           ) : (
             <>
-              <MessageList messages={messages} onRetry={handleRetry} />
+              <MessageList
+                messages={messages}
+                onRetry={handleRetry}
+                onSuggestionChoose={(s) => {
+                  // Encode tool request as a user message so backend can interpret.
+                  const payload = `__tool:${s.tool}__ ${JSON.stringify(s.params)}`;
+                  handleSend(payload);
+                }}
+              />
               {isStreaming && (
                 <div className="flex justify-start">
                   <Card className="max-w-[80%] p-4 bg-white border-stone-200">

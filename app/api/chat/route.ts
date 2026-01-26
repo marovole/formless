@@ -13,6 +13,45 @@ import { LLM_DEFAULTS } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 import { runMemoryAgentLoop } from '@/lib/agent/loop';
 
+function tryBuildSuggestions(text: string, language: string) {
+  const lower = text.toLowerCase();
+  const isSleep = /睡不着|失眠|睡眠/.test(text) || lower.includes('insomnia');
+  const isAnxious = /焦虑|紧张|压力/.test(text) || lower.includes('anxious') || lower.includes('anxiety');
+  if (!isSleep && !isAnxious) return null;
+
+  if (language === 'en') {
+    return {
+      suggestions: [
+        {
+          tool: 'get_meditation_audio',
+          label: 'Play a 5-min breathing practice',
+          params: { mood: isSleep ? 'insomnia' : 'anxiety', duration: 5, style: 'breathing', language: 'en' },
+        },
+        {
+          tool: 'search_books',
+          label: 'Recommend a book for this',
+          params: { query: isSleep ? 'sleep' : 'anxiety', language: 'en', limit: 3 },
+        },
+      ],
+    };
+  }
+
+  return {
+    suggestions: [
+      {
+        tool: 'get_meditation_audio',
+        label: '放一段 5 分钟呼吸练习',
+        params: { mood: isSleep ? '失眠' : '焦虑', duration: 5, style: 'breathing', language: 'zh' },
+      },
+      {
+        tool: 'search_books',
+        label: '推荐一本相关的书',
+        params: { query: isSleep ? '睡眠' : '焦虑', language: 'zh', limit: 3 },
+      },
+    ],
+  };
+}
+
 function estimateTokenCount(text: string): number {
   const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length;
   const other = Math.max(0, text.length - cjk);
@@ -93,6 +132,20 @@ export async function POST(request: NextRequest) {
     }
 
     const { message, conversationId, language = 'zh' } = validationResult.data;
+
+    // Client-side tool button encodes explicit tool request as a user message.
+    let effectiveMessage = message;
+    const toolMatch = message.match(/^__tool:([a-z_]+)__\s*(\{[\s\S]*\})$/);
+    if (toolMatch) {
+      const toolName = toolMatch[1];
+      const rawArgs = toolMatch[2];
+      try {
+        const toolArgs = JSON.parse(rawArgs);
+        effectiveMessage = `User confirmed tool action. Call tool "${toolName}" with args: ${JSON.stringify(toolArgs)}.`;
+      } catch {
+        // fall through
+      }
+    }
     const convex = getConvexClientWithAuth(convexToken);
     const convexAdmin = getConvexAdminClient();
 
@@ -116,7 +169,7 @@ export async function POST(request: NextRequest) {
         });
         activeConversationId = await convex.mutation(api.conversations.create, {
           language,
-          title: message.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
+          title: effectiveMessage.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
         });
       } else {
         activeConversationId = convId;
@@ -127,7 +180,7 @@ export async function POST(request: NextRequest) {
     } else {
       activeConversationId = await convex.mutation(api.conversations.create, {
         language,
-        title: message.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
+        title: effectiveMessage.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
       });
     }
 
@@ -175,7 +228,7 @@ export async function POST(request: NextRequest) {
         role: m.role as ChatMessage['role'],
         content: m.content,
       })),
-      { role: 'user', content: message },
+      { role: 'user', content: effectiveMessage },
     ];
 
     await convex.mutation(api.messages.append, {
@@ -192,17 +245,43 @@ export async function POST(request: NextRequest) {
         'metadata'
       );
 
+      const suggestionsPayload = tryBuildSuggestions(message, language);
+      if (suggestionsPayload) {
+        stream.sendEvent(JSON.stringify(suggestionsPayload), 'suggestion');
+      }
+
       const enableAgentMemory = process.env.AGENT_MEMORY === 'true';
+      const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
+      const deepSeekBaseUrl = process.env.DEEPSEEK_ANTHROPIC_BASE_URL;
+      const deepSeekModel = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
 
       if (enableAgentMemory) {
         try {
+          const provider = deepSeekApiKey ? 'deepseek' : 'openrouter';
+          const apiKeyForProvider = deepSeekApiKey || apiKey.api_key;
+          const modelForProvider = deepSeekApiKey
+            ? deepSeekModel
+            : (apiKey.model_name || 'anthropic/claude-3.7-sonnet');
+
           const { finalContent } = await runMemoryAgentLoop({
             convex,
-            openRouterApiKey: apiKey.api_key,
-            openRouterModel: apiKey.model_name || 'anthropic/claude-3.7-sonnet',
+            provider,
+            apiKey: apiKeyForProvider,
+            model: modelForProvider,
+            baseUrl: deepSeekBaseUrl,
             messages,
             conversationId: activeConversationId,
           });
+
+          const maybeAudio = finalContent.match(/\[AUDIO\]\s*(\{[\s\S]*\})/);
+          if (maybeAudio) {
+            try {
+              const audioPayload = JSON.parse(maybeAudio[1]);
+              stream.sendEvent(JSON.stringify(audioPayload), 'audio');
+            } catch {
+              // ignore
+            }
+          }
 
           fullResponse = finalContent;
           // Emit in small chunks so the client sees incremental updates.

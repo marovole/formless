@@ -9,6 +9,8 @@ import type { Id } from '@/convex/_generated/dataModel';
 interface SSEEventHandlers {
   onMetadata?: (data: { conversationId?: Id<'conversations'> }) => void;
   onChunk?: (content: string, fullContent: string) => void;
+  onSuggestion?: (data: { suggestions: Array<{ tool: string; label: string; params: any }> }) => void;
+  onAudio?: (data: { title: string; url: string; duration: number; instructions?: string }) => void;
   onComplete?: () => void;
   onError?: (error: Error) => void;
 }
@@ -92,6 +94,24 @@ async function parseSSEStream(
 
       if (eventType === 'complete') {
         handlers.onComplete?.();
+        continue;
+      }
+
+      if (eventType === 'suggestion') {
+        try {
+          handlers.onSuggestion?.(JSON.parse(data));
+        } catch {
+          // Ignore invalid payload.
+        }
+        continue;
+      }
+
+      if (eventType === 'audio') {
+        try {
+          handlers.onAudio?.(JSON.parse(data));
+        } catch {
+          // Ignore invalid payload.
+        }
         continue;
       }
 

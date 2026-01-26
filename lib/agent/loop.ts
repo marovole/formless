@@ -3,6 +3,11 @@ import type { ToolCall, ToolResult } from '@/lib/agent/tools';
 import { executeToolCall, memoryTools } from '@/lib/agent/tools';
 import type { EdgeConvexClient } from '@/lib/convex';
 import type { Id } from '@/convex/_generated/dataModel';
+import {
+  deepSeekMessagesWithTools,
+  mapOpenAiMessagesToAnthropic,
+  mapOpenAiToolToAnthropic,
+} from '@/lib/agent/providers/deepseek';
 
 type LLMWithToolsResponse = {
   content: string;
@@ -52,10 +57,31 @@ async function callOpenRouterWithTools(args: {
   };
 }
 
+async function callDeepSeekWithTools(args: {
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+  messages: unknown[];
+}): Promise<LLMWithToolsResponse> {
+  const { system, messages } = mapOpenAiMessagesToAnthropic(args.messages);
+  const tools = (memoryTools as unknown as any[]).map(mapOpenAiToolToAnthropic);
+
+  return await deepSeekMessagesWithTools({
+    apiKey: args.apiKey,
+    baseUrl: args.baseUrl,
+    model: args.model,
+    system,
+    messages,
+    tools,
+  });
+}
+
 export async function runMemoryAgentLoop(args: {
   convex: EdgeConvexClient;
-  openRouterApiKey: string;
-  openRouterModel: string;
+  provider: 'openrouter' | 'deepseek';
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
   messages: ChatMessage[];
   conversationId: Id<'conversations'>;
   maxToolRounds?: number;
@@ -72,11 +98,19 @@ export async function runMemoryAgentLoop(args: {
   let lastContent = '';
 
   while (round < maxToolRounds) {
-    const { content, toolCalls } = await callOpenRouterWithTools({
-      apiKey: args.openRouterApiKey,
-      model: args.openRouterModel,
-      messages: workingMessages,
-    });
+    const { content, toolCalls } =
+      args.provider === 'deepseek'
+        ? await callDeepSeekWithTools({
+            apiKey: args.apiKey,
+            baseUrl: args.baseUrl,
+            model: args.model,
+            messages: workingMessages,
+          })
+        : await callOpenRouterWithTools({
+            apiKey: args.apiKey,
+            model: args.model,
+            messages: workingMessages,
+          });
 
     lastContent = content;
 

@@ -20,6 +20,7 @@ import type * as letters from "../letters.js";
 import type * as memories from "../memories.js";
 import type * as messages from "../messages.js";
 import type * as prompts from "../prompts.js";
+import type * as resources from "../resources.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   memories: typeof memories;
   messages: typeof messages;
   prompts: typeof prompts;
+  resources: typeof resources;
   seed: typeof seed;
   users: typeof users;
 }>;
