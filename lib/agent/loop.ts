@@ -86,7 +86,7 @@ export async function runMemoryAgentLoop(args: {
   conversationId: Id<'conversations'>;
   maxToolRounds?: number;
 }): Promise<{ finalContent: string; toolResults: ToolResult[] }>{
-  const maxToolRounds = Math.min(args.maxToolRounds ?? 2, 4);
+  const maxToolRounds = Math.min(args.maxToolRounds ?? 4, 4);
   const toolResults: ToolResult[] = [];
 
   const workingMessages: unknown[] = args.messages.map((m) => ({

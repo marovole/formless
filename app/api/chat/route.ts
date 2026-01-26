@@ -281,6 +281,10 @@ export async function POST(request: NextRequest) {
             conversationId: activeConversationId,
           });
 
+          if (!finalContent || !finalContent.trim()) {
+            throw new Error('Empty response from memory agent loop');
+          }
+
           const maybeAudio = finalContent.match(/\[AUDIO\]\s*(\{[\s\S]*\})/);
           if (maybeAudio) {
             try {
