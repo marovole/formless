@@ -263,6 +263,14 @@ export async function POST(request: NextRequest) {
             ? deepSeekModel
             : (apiKey.model_name || 'anthropic/claude-3.7-sonnet');
 
+          logger.info('Agent memory provider selected', {
+            conversationId: activeConversationId,
+            provider,
+            model: modelForProvider,
+            hasDeepSeekApiKey: Boolean(deepSeekApiKey),
+            deepSeekBaseUrlSet: Boolean(deepSeekBaseUrl),
+          });
+
           const { finalContent } = await runMemoryAgentLoop({
             convex,
             provider,
