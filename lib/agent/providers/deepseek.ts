@@ -16,6 +16,51 @@ type AnthropicTool = {
   input_schema: unknown;
 };
 
+export async function deepSeekMessages(args: {
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+  system?: string;
+  messages: AnthropicMessage[];
+}): Promise<string> {
+  const baseUrl = (args.baseUrl ?? 'https://api.deepseek.com/anthropic').replace(/\/$/, '');
+  const url = `${baseUrl}/v1/messages`;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': args.apiKey,
+    },
+    body: JSON.stringify({
+      model: args.model,
+      max_tokens: 1024,
+      system: args.system,
+      messages: args.messages,
+      stream: false,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`deepseek anthropic error ${res.status}: ${text}`);
+  }
+
+  const data = (await res.json()) as any;
+  const blocks = (data?.content ?? []) as unknown;
+
+  if (typeof blocks === 'string') return blocks;
+  if (!Array.isArray(blocks)) return '';
+
+  let text = '';
+  for (const b of blocks as any[]) {
+    if (b?.type === 'text' && typeof b.text === 'string') {
+      text += b.text;
+    }
+  }
+  return text;
+}
+
 export async function deepSeekMessagesWithTools(args: {
   apiKey: string;
   baseUrl?: string;

@@ -4,6 +4,7 @@ import { executeToolCall, memoryTools } from '@/lib/agent/tools';
 import type { EdgeConvexClient } from '@/lib/convex';
 import type { Id } from '@/convex/_generated/dataModel';
 import {
+  deepSeekMessages,
   deepSeekMessagesWithTools,
   mapOpenAiMessagesToAnthropic,
   mapOpenAiToolToAnthropic,
@@ -57,6 +58,34 @@ async function callOpenRouterWithTools(args: {
   };
 }
 
+async function callOpenRouterNoTools(args: {
+  apiKey: string;
+  model: string;
+  messages: unknown[];
+}): Promise<string> {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${args.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: args.model,
+      messages: args.messages,
+      temperature: 0.2,
+      stream: false,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`openrouter error ${res.status}: ${text}`);
+  }
+
+  const data = (await res.json()) as any;
+  return parseContent(data);
+}
+
 async function callDeepSeekWithTools(args: {
   apiKey: string;
   baseUrl?: string;
@@ -73,6 +102,22 @@ async function callDeepSeekWithTools(args: {
     system,
     messages,
     tools,
+  });
+}
+
+async function callDeepSeekNoTools(args: {
+  apiKey: string;
+  baseUrl?: string;
+  model: string;
+  messages: unknown[];
+}): Promise<string> {
+  const { system, messages } = mapOpenAiMessagesToAnthropic(args.messages);
+  return await deepSeekMessages({
+    apiKey: args.apiKey,
+    baseUrl: args.baseUrl,
+    model: args.model,
+    system,
+    messages,
   });
 }
 
@@ -115,7 +160,25 @@ export async function runMemoryAgentLoop(args: {
     lastContent = content;
 
     if (!toolCalls.length) {
-      return { finalContent: lastContent, toolResults };
+      if (lastContent && lastContent.trim()) {
+        return { finalContent: lastContent, toolResults };
+      }
+
+      const final =
+        args.provider === 'deepseek'
+          ? await callDeepSeekNoTools({
+              apiKey: args.apiKey,
+              baseUrl: args.baseUrl,
+              model: args.model,
+              messages: workingMessages,
+            })
+          : await callOpenRouterNoTools({
+              apiKey: args.apiKey,
+              model: args.model,
+              messages: workingMessages,
+            });
+
+      return { finalContent: final, toolResults };
     }
 
     workingMessages.push({
@@ -143,5 +206,19 @@ export async function runMemoryAgentLoop(args: {
     round += 1;
   }
 
-  return { finalContent: lastContent, toolResults };
+  const final =
+    args.provider === 'deepseek'
+      ? await callDeepSeekNoTools({
+          apiKey: args.apiKey,
+          baseUrl: args.baseUrl,
+          model: args.model,
+          messages: workingMessages,
+        })
+      : await callOpenRouterNoTools({
+          apiKey: args.apiKey,
+          model: args.model,
+          messages: workingMessages,
+        });
+
+  return { finalContent: final || lastContent, toolResults };
 }
