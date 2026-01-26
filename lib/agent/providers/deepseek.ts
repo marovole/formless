@@ -2,7 +2,8 @@ import type { ToolCall } from '@/lib/agent/tools';
 
 type AnthropicTextBlock = { type: 'text'; text: string };
 type AnthropicToolUseBlock = { type: 'tool_use'; id: string; name: string; input: unknown };
-type AnthropicContentBlock = AnthropicTextBlock | AnthropicToolUseBlock;
+type AnthropicToolResultBlock = { type: 'tool_result'; tool_use_id: string; content: string };
+type AnthropicContentBlock = AnthropicTextBlock | AnthropicToolUseBlock | AnthropicToolResultBlock;
 
 type AnthropicMessage = {
   role: 'user' | 'assistant';
@@ -91,24 +92,61 @@ export function mapOpenAiMessagesToAnthropic(input: unknown[]): { system?: strin
       continue;
     }
 
-    if (m.role === 'user' || m.role === 'assistant') {
-      messages.push({ role: m.role, content: String(m.content ?? '') });
+    if (m.role === 'user') {
+      messages.push({ role: 'user', content: typeof m.content === 'string' ? m.content : '' });
+      continue;
+    }
+
+    if (m.role === 'assistant') {
+      const toolCalls = Array.isArray(m.tool_calls) ? m.tool_calls : [];
+
+      if (toolCalls.length > 0) {
+        const blocks: AnthropicContentBlock[] = [];
+
+        const text = typeof m.content === 'string' ? m.content : '';
+        if (text) {
+          blocks.push({ type: 'text', text });
+        }
+
+        for (const tc of toolCalls) {
+          let inputObj: unknown = {};
+          const rawArgs = tc?.function?.arguments;
+          if (typeof rawArgs === 'string') {
+            try {
+              inputObj = JSON.parse(rawArgs);
+            } catch {
+              inputObj = {};
+            }
+          }
+
+          blocks.push({
+            type: 'tool_use',
+            id: String(tc?.id ?? ''),
+            name: String(tc?.function?.name ?? ''),
+            input: inputObj,
+          });
+        }
+
+        messages.push({ role: 'assistant', content: blocks });
+      } else {
+        messages.push({ role: 'assistant', content: typeof m.content === 'string' ? m.content : '' });
+      }
       continue;
     }
 
     if (m.role === 'tool') {
       // Anthropic expects tool_result blocks inside a user message.
-      const toolResultBlock = {
+      const toolResultBlock: AnthropicToolResultBlock = {
         type: 'tool_result',
         tool_use_id: m.tool_call_id,
         content: String(m.content ?? ''),
-      } as any;
+      };
 
       const last = messages[messages.length - 1];
       if (last && last.role === 'user' && Array.isArray(last.content)) {
-        (last.content as any[]).push(toolResultBlock);
+        (last.content as AnthropicContentBlock[]).push(toolResultBlock);
       } else {
-        messages.push({ role: 'user', content: [toolResultBlock] as any });
+        messages.push({ role: 'user', content: [toolResultBlock] });
       }
       continue;
     }
