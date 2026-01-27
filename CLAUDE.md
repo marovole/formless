@@ -1,8 +1,36 @@
-# Formless 项目指南
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 项目概述
 
 无相 Formless - 一个充满佛性与耐心的 AI 长老，通过智慧对话帮助用户答疑解惑、疏导情绪、获得内心平静。
+
+## 常用命令
+
+```bash
+# 本地开发（需要两个终端）
+npx convex dev              # 终端1：启动 Convex 开发服务器
+npm run dev                 # 终端2：启动 Next.js 开发服务器
+
+# 测试
+npm run test                # 单元测试（监听模式）
+npm run test:run            # 单元测试（单次运行）
+npm run test:coverage       # 单元测试 + 覆盖率
+npm run test:e2e            # E2E 测试
+npm run test:e2e:ui         # E2E 测试（UI 模式）
+npm run test:all            # 全部测试
+
+# 代码检查
+npm run lint                # ESLint
+npm run type-check          # TypeScript 类型检查
+
+# 构建与部署
+npm run pages:build         # 构建 Cloudflare Pages
+npm run preview             # 本地预览 Cloudflare 环境
+npm run deploy              # 构建 + 部署到 Cloudflare Pages
+npx convex deploy           # 部署 Convex 后端
+```
 
 ## 技术栈
 
@@ -12,23 +40,53 @@
 | 部署 | Cloudflare Pages + Workers |
 | 数据库 | Convex |
 | 认证 | Clerk |
-| 国际化 | next-intl |
-| 样式 | Tailwind CSS |
+| 国际化 | next-intl（8 种语言） |
+| 样式 | Tailwind CSS + shadcn/ui |
+| 测试 | Vitest + Playwright |
+
+## 架构概述
+
+### 目录结构
+
+```
+app/
+├── [locale]/           # 国际化路由（zh/en/ja/ko/fr/de/es/pt）
+│   ├── chat/          # 对话页面
+│   ├── history/       # 对话历史
+│   └── settings/      # 用户设置（含观照系统）
+├── admin/             # 后台管理（API keys/prompts/用量）
+└── api/               # API Routes
+    └── chat/          # 聊天 API（SSE 流式响应）
+
+convex/                # Convex 后端
+├── schema.ts          # 数据库 Schema（17 张表）
+├── users.ts           # 用户管理
+├── conversations.ts   # 对话管理
+├── messages.ts        # 消息管理
+├── memories.ts        # 记忆系统
+└── guanzhao.ts        # 观照系统（主动关怀 Agent）
+
+lib/
+├── convex.ts          # ⭐ EdgeConvexClient（Cloudflare 兼容）
+├── llm/               # LLM 客户端（DeepSeek/OpenRouter）
+├── agent/             # Agent 系统（记忆提取/工具调用）
+└── hooks/             # React Hooks（useSSEChat 等）
+```
+
+### 核心数据流
+
+```
+用户输入 → /api/chat → Clerk 认证 → 加载历史 + 召回记忆
+    → Agent 工具循环（最多 4 轮）→ SSE 流式响应 → 保存消息
+```
 
 ## 关键约束
 
-### Cloudflare Workers 兼容性
+### Cloudflare Workers 兼容性（最重要）
 
-**问题**: Cloudflare Workers 不完全支持 Node.js API，特别是 `node:https` 模块。
+**问题**: Cloudflare Workers 不支持 `node:https` 模块，`convex/browser` 包依赖 `ws` 库会导致运行时错误。
 
-**影响**: `convex/browser` 包依赖 `ws` 库（WebSocket），而 `ws` 需要 `node:https`，导致在 Cloudflare Workers 环境中运行时报错：
-```
-Error: No such module "node:https"
-```
-
-**解决方案**: 本项目使用自定义的 `EdgeConvexClient`（位于 `/lib/convex.ts`），通过原生 `fetch` API 直接调用 Convex HTTP API，完全绕过 WebSocket 依赖。
-
-### Convex Client 使用规范
+**解决方案**: 使用项目自定义的 `EdgeConvexClient`（`/lib/convex.ts`）。
 
 ```typescript
 // ✅ 正确：使用项目自定义的 EdgeConvexClient
@@ -37,79 +95,47 @@ import { getConvexClient, getConvexClientWithAuth, getConvexAdminClient } from '
 const client = getConvexAdminClient();
 const result = await client.query(api.users.get, { id: userId });
 
-// ❌ 错误：直接从 convex/browser 导入
-import { ConvexHttpClient } from 'convex/browser'; // 会导致 ws 依赖问题
+// ❌ 错误：直接从 convex/browser 导入（会导致 "No such module node:https" 错误）
+import { ConvexHttpClient } from 'convex/browser';
 ```
 
 ### FunctionReference 路径提取
 
-Convex 的 `api.module.function` 返回的是 Proxy 对象，函数路径存储在 `Symbol.for('functionName')` 中：
+Convex 的 `api.module.function` 返回 Proxy 对象，函数路径存储在 `Symbol.for('functionName')` 中：
 
 ```typescript
 const FUNCTION_NAME_SYMBOL = Symbol.for('functionName');
 
 function getFunctionPath(fnRef: any): string {
   if (typeof fnRef === 'string') return fnRef;
-  
   if (fnRef && typeof fnRef === 'object') {
     const symbolName = fnRef[FUNCTION_NAME_SYMBOL];
-    if (typeof symbolName === 'string') {
-      return symbolName;
-    }
+    if (typeof symbolName === 'string') return symbolName;
   }
-  
   throw new Error(`Cannot extract function path from: ${typeof fnRef}`);
 }
 ```
 
 ## 环境变量
 
-### 必需的环境变量
+| 变量名 | 用途 |
+|--------|------|
+| `NEXT_PUBLIC_CONVEX_URL` | Convex 部署 URL |
+| `CONVEX_ADMIN_TOKEN` | Convex Admin 认证（格式: `prod:deployment-name\|base64token`） |
+| `CLERK_SECRET_KEY` | Clerk 后端密钥 |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk 前端密钥 |
+| `ADMIN_EMAILS` | 管理员邮箱白名单 |
 
-| 变量名 | 用途 | 格式示例 |
-|--------|------|----------|
-| `NEXT_PUBLIC_CONVEX_URL` | Convex 部署 URL | `https://xxx.convex.cloud` |
-| `CONVEX_ADMIN_TOKEN` | Convex Admin 认证 | `prod:deployment-name\|base64token` |
-| `CLERK_SECRET_KEY` | Clerk 后端密钥 | `sk_test_xxx` |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk 前端密钥 | `pk_test_xxx` |
-
-### Cloudflare Pages Secrets
-
-使用 wrangler 设置：
+Cloudflare Pages secrets 设置：
 ```bash
 echo 'your-token' | npx wrangler pages secret put CONVEX_ADMIN_TOKEN --project-name formless
 ```
 
-## 部署
-
-```bash
-# 构建并部署
-pnpm run deploy
-
-# 仅构建
-pnpm pages:build
-
-# 仅部署（需要先构建）
-npx wrangler pages deploy .open-next --project-name formless
-```
-
 ## 常见问题
 
-### Q: API 返回 500 错误 "Internal Server Error"
-
-检查顺序：
-1. 确认 `CONVEX_ADMIN_TOKEN` 已正确设置
-2. 确认使用的是 `EdgeConvexClient` 而非 `ConvexHttpClient`
-3. 检查 Convex 函数路径是否正确（使用 `Symbol.for('functionName')` 提取）
-
-### Q: 聊天无响应但无错误
-
-检查：
-1. OpenRouter API key 是否有效（通过 Convex Dashboard 或 `/admin` 页面查看）
-2. System prompt 是否存在（需要 seed 数据）
-
-### Q: Clerk 认证失败
-
-确保：
-1. `CLERK_SECRET_KEY` 和 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` 都已设置
-2. Clerk Dashboard 中已创建 `convex` JWT template
+| 错误信息 | 原因 | 解决方案 |
+|---------|------|----------|
+| `No such module "node:https"` | 使用了 `convex/browser` | 改用 `EdgeConvexClient` |
+| `Cannot convert object to primitive value` | FunctionReference 转字符串失败 | 使用 `Symbol.for('functionName')` |
+| `CONVEX_ADMIN_TOKEN is not set` | 环境变量缺失 | 通过 wrangler 设置 secret |
+| `session-token-and-uat-missing` | Clerk 认证失败 | 检查 Clerk JWT template 配置 |
