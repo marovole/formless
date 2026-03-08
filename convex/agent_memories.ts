@@ -139,7 +139,7 @@ export const clearAll = mutation({
       await ctx.db.delete(m._id);
     }
 
-    const profile = ((user.profile || {}) as Record<string, unknown>) ?? {};
+    const profile = user.profile || {};
     const updatedProfile = {
       ...profile,
       tags: [],

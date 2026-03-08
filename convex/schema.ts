@@ -9,7 +9,17 @@ export default defineSchema({
     full_name: v.optional(v.string()),
     avatar_url: v.optional(v.string()),
     preferred_language: v.optional(v.string()), // 'zh' or 'en'
-    profile: v.optional(v.any()), // JSONB
+    profile: v.optional(v.object({
+      personality: v.optional(v.string()),
+      interests: v.optional(v.array(v.string())),
+      concerns: v.optional(v.array(v.string())),
+      tags: v.optional(v.array(v.string())),
+      recurring_topics: v.optional(v.array(v.string())),
+      communication_style: v.optional(v.union(v.string(), v.null())),
+      last_mood: v.optional(v.union(v.string(), v.null())),
+      active_concerns: v.optional(v.array(v.string())),
+      last_memory_update: v.optional(v.string()),
+    })),
     updated_at: v.optional(v.number()),
     // created_at handled by _creationTime
   })
@@ -146,7 +156,7 @@ export default defineSchema({
     content: v.string(),
     version: v.optional(v.number()),
     is_active: v.optional(v.boolean()),
-    variables: v.optional(v.any()),
+    variables: v.optional(v.record(v.string(), v.string())),
     description: v.optional(v.string()),
     created_by: v.optional(v.id("users")),
     updated_at: v.optional(v.number()),

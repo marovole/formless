@@ -63,7 +63,7 @@ export async function POST() {
           const result = await (convexAdmin as any).mutation(internal.api_keys.seedApiKeyInternal, {
             provider: 'openrouter',
             api_key: keys[i],
-            model_name: 'mistralai/devstral-2512:free',
+            model_name: 'nvidia/nemotron-3-nano-30b-a3b:free',
             daily_limit: 1000,
             priority: i + 1,
             is_active: true,

@@ -17,7 +17,7 @@ const PROVIDER_CONFIGS: Record<LLMProvider, LLMProviderConfig> = {
   },
   openrouter: {
     apiUrl: 'https://openrouter.ai/api/v1/chat/completions',
-    defaultModel: 'mistralai/devstral-2512:free',
+    defaultModel: 'nvidia/nemotron-3-nano-30b-a3b:free',
     providerName: 'openrouter',
   },
 };

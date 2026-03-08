@@ -117,8 +117,8 @@ export const updateProfile = mutation({
       .first();
     if (!user) throw new Error("User not found");
 
-    const current = ((user.profile || {}) as Record<string, unknown>) ?? {};
-    const updates = (args.updates || {}) as Record<string, unknown>;
+    const current = user.profile || {};
+    const updates = args.updates || {};
     const next = {
       ...current,
       ...updates,

@@ -43,6 +43,16 @@ const eslintConfig = [
           'ts-check': 'allow-with-description',
         },
       ],
+      // TODO: Change to 'error' after fixing remaining any types in:
+      // - app/[locale]/settings/guanzhao/page.tsx
+      // - app/[locale]/settings/memory/page.tsx
+      // - app/admin/(protected)/*.tsx
+      // - app/api/admin/init/route.ts
+      // - app/api/chat/conversation.ts
+      // - components/chat/ToolSuggestionButtons.tsx
+      // - lib/agent/providers/deepseek.ts
+      // - lib/agent/tools.ts
+      // - lib/hooks/useSSEChat.ts
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { 'argsIgnorePattern': '^_' }],
     },

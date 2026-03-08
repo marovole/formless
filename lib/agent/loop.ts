@@ -15,14 +15,32 @@ type LLMWithToolsResponse = {
   toolCalls: ToolCall[];
 };
 
-function parseToolCalls(raw: any): ToolCall[] {
-  const calls = raw?.choices?.[0]?.message?.tool_calls;
-  if (!Array.isArray(calls)) return [];
-  return calls as ToolCall[];
+interface OpenRouterResponse {
+  choices?: Array<{
+    message?: {
+      content?: string;
+      tool_calls?: ToolCall[];
+    };
+  }>;
 }
 
-function parseContent(raw: any): string {
-  return (raw?.choices?.[0]?.message?.content as string | undefined) ?? '';
+interface OpenAiTool {
+  type: string;
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+function parseToolCalls(raw: OpenRouterResponse): ToolCall[] {
+  const calls = raw?.choices?.[0]?.message?.tool_calls;
+  if (!Array.isArray(calls)) return [];
+  return calls;
+}
+
+function parseContent(raw: OpenRouterResponse): string {
+  return raw?.choices?.[0]?.message?.content ?? '';
 }
 
 async function callOpenRouterWithTools(args: {
@@ -51,7 +69,7 @@ async function callOpenRouterWithTools(args: {
     throw new Error(`openrouter tools error ${res.status}: ${text}`);
   }
 
-  const data = (await res.json()) as any;
+  const data: OpenRouterResponse = await res.json();
   return {
     content: parseContent(data),
     toolCalls: parseToolCalls(data),
@@ -82,7 +100,7 @@ async function callOpenRouterNoTools(args: {
     throw new Error(`openrouter error ${res.status}: ${text}`);
   }
 
-  const data = (await res.json()) as any;
+  const data: OpenRouterResponse = await res.json();
   return parseContent(data);
 }
 
@@ -93,7 +111,7 @@ async function callDeepSeekWithTools(args: {
   messages: unknown[];
 }): Promise<LLMWithToolsResponse> {
   const { system, messages } = mapOpenAiMessagesToAnthropic(args.messages);
-  const tools = (memoryTools as unknown as any[]).map(mapOpenAiToolToAnthropic);
+  const tools = ([...memoryTools] as OpenAiTool[]).map(mapOpenAiToolToAnthropic);
 
   return await deepSeekMessagesWithTools({
     apiKey: args.apiKey,

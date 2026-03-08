@@ -127,12 +127,12 @@ export const saveExtracted = mutation({
     }
 
     if (args.insights) {
-      const currentProfile = (user.profile || {}) as Record<string, unknown>;
+      const currentProfile = user.profile || {};
       const updatedProfile = {
         ...currentProfile,
-        personality: args.insights.personality || currentProfile.personality,
-        interests: args.insights.interests || currentProfile.interests || [],
-        concerns: args.insights.concerns || currentProfile.concerns || [],
+        personality: (args.insights.personality as string | undefined) || currentProfile.personality,
+        interests: (args.insights.interests as string[] | undefined) || currentProfile.interests || [],
+        concerns: (args.insights.concerns as string[] | undefined) || currentProfile.concerns || [],
         last_memory_update: new Date().toISOString(),
       };
       await ctx.db.patch(user._id, { profile: updatedProfile, updated_at: Date.now() });
@@ -167,7 +167,7 @@ export const extractFromConversation = internalAction({
         Authorization: `Bearer ${apiKey.api_key}`,
       },
       body: JSON.stringify({
-        model: apiKey.model_name || "mistralai/devstral-2512:free",
+        model: apiKey.model_name || "nvidia/nemotron-3-nano-30b-a3b:free",
         messages: [
           {
             role: "system",
