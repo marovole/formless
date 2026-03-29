@@ -1,7 +1,7 @@
 import { Id } from '@/convex/_generated/dataModel';
 import { api } from '@/convex/_generated/api';
 import { streamChatCompletionWithProvider } from '@/lib/llm/client';
-import { LLM_DEFAULTS } from '@/lib/constants';
+import { LLM_DEFAULTS, CHAT_STREAMING, AGENT_LOOP } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 import { runMemoryAgentLoop } from '@/lib/agent/loop';
 import { EdgeConvexClient } from '@/lib/convex';
@@ -23,11 +23,40 @@ interface StreamingParams {
   convexAdmin: EdgeConvexClient;
   logger: Logger;
   stream: SSEStream;
-  activeConversationId: Id<"conversations">;
-  convexUserId: Id<"users">;
+  activeConversationId: Id<'conversations'>;
+  convexUserId: Id<'users'>;
   messages: ChatMessage[];
   apiKey: ApiKeyRecord;
   requestStartTime: number;
+}
+
+/**
+ * 流式发送响应内容
+ * 将长文本分块发送以优化前端渲染性能
+ */
+function streamContentInChunks(
+  stream: SSEStream,
+  content: string,
+  chunkSize: number = CHAT_STREAMING.CHUNK_SIZE
+): void {
+  for (let i = 0; i < content.length; i += chunkSize) {
+    const piece = content.slice(i, i + chunkSize);
+    stream.sendEvent(JSON.stringify({ content: piece }), 'chunk');
+  }
+}
+
+/**
+ * 尝试从响应中提取音频元数据
+ */
+function tryExtractAudioMetadata(content: string): unknown | null {
+  const maybeAudio = content.match(/\[AUDIO\]\s*(\{[\s\S]*\})/);
+  if (!maybeAudio) return null;
+
+  try {
+    return JSON.parse(maybeAudio[1]);
+  } catch {
+    return null;
+  }
 }
 
 export async function handleStreamingResponse({
@@ -51,7 +80,7 @@ export async function handleStreamingResponse({
   const enableAgentMemory = process.env.AGENT_MEMORY === 'true';
   const deepSeekApiKey = process.env.DEEPSEEK_API_KEY;
   const deepSeekBaseUrl = process.env.DEEPSEEK_ANTHROPIC_BASE_URL;
-  const deepSeekModel = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+  const deepSeekModel = process.env.DEEPSEEK_MODEL || AGENT_LOOP.DEFAULT_DEEPSEEK_MODEL;
 
   if (enableAgentMemory) {
     try {
@@ -83,22 +112,13 @@ export async function handleStreamingResponse({
         throw new Error('Empty response from memory agent loop');
       }
 
-      const maybeAudio = finalContent.match(/\[AUDIO\]\s*(\{[\s\S]*\})/);
-      if (maybeAudio) {
-        try {
-          const audioPayload = JSON.parse(maybeAudio[1]);
-          stream.sendEvent(JSON.stringify(audioPayload), 'audio');
-        } catch {
-          // ignore parse errors
-        }
+      const audioPayload = tryExtractAudioMetadata(finalContent);
+      if (audioPayload) {
+        stream.sendEvent(JSON.stringify(audioPayload), 'audio');
       }
 
       fullResponse = finalContent;
-      const chunkSize = 120;
-      for (let i = 0; i < finalContent.length; i += chunkSize) {
-        const piece = finalContent.slice(i, i + chunkSize);
-        stream.sendEvent(JSON.stringify({ content: piece }), 'chunk');
-      }
+      streamContentInChunks(stream, finalContent);
 
       await saveResponseAndLogUsage({
         convex,
@@ -164,8 +184,8 @@ export async function handleStreamingResponse({
 interface SaveResponseParams {
   convex: EdgeConvexClient;
   convexAdmin: EdgeConvexClient;
-  activeConversationId: Id<"conversations">;
-  convexUserId: Id<"users">;
+  activeConversationId: Id<'conversations'>;
+  convexUserId: Id<'users'>;
   apiKey: ApiKeyRecord;
   fullResponse: string;
   requestStartTime: number;

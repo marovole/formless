@@ -1,31 +1,45 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import type { FunctionReference } from 'convex/server';
+
 type FunctionArgs = Record<string, unknown>;
 
 const FUNCTION_NAME_SYMBOL = Symbol.for('functionName');
 
-function getFunctionPath(fnRef: any): string {
+/**
+ * 函数引用类型 - 支持 Convex FunctionReference 或字符串
+ * 使用 Record 类型允许动态属性访问
+ */
+type FunctionRef = FunctionReference<any, any> | string;
+
+/**
+ * 从 FunctionReference 或字符串中提取函数路径
+ * Convex 的 FunctionReference 是一个 Proxy 对象，需要通过 Symbol 提取路径
+ */
+function getFunctionPath(fnRef: FunctionRef): string {
   if (typeof fnRef === 'string') return fnRef;
-  
+
   if (fnRef && typeof fnRef === 'object') {
-    const symbolName = fnRef[FUNCTION_NAME_SYMBOL];
+    // 使用类型断言访问 Convex FunctionReference 的内部属性
+    const ref = fnRef as Record<string | symbol, unknown>;
+
+    const symbolName = ref[FUNCTION_NAME_SYMBOL];
     if (typeof symbolName === 'string') {
       return symbolName;
     }
-    if (typeof fnRef._name === 'string') {
-      return fnRef._name;
+    if (typeof ref._name === 'string') {
+      return ref._name;
     }
-    if (typeof fnRef._path === 'string') {
-      return fnRef._path;
+    if (typeof ref._path === 'string') {
+      return ref._path;
     }
   }
-  
+
   throw new Error(`Cannot extract function path from: ${typeof fnRef}`);
 }
 
 function getConvexUrl(): string {
   const url = process.env.NEXT_PUBLIC_CONVEX_URL;
   if (!url) {
-    throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+    throw new Error('NEXT_PUBLIC_CONVEX_URL is not set');
   }
   return url;
 }
@@ -59,7 +73,10 @@ export class EdgeConvexClient {
     return headers;
   }
 
-  async query<T = unknown>(fnRef: any, args: FunctionArgs = {}): Promise<T> {
+  async query<T = unknown>(
+    fnRef: FunctionReference<any, any>,
+    args: FunctionArgs = {}
+  ): Promise<T> {
     const path = getFunctionPath(fnRef);
     const response = await fetch(`${this.baseUrl}/api/query`, {
       method: 'POST',
@@ -83,7 +100,10 @@ export class EdgeConvexClient {
     return result.value as T;
   }
 
-  async mutation<T = unknown>(fnRef: any, args: FunctionArgs = {}): Promise<T> {
+  async mutation<T = unknown>(
+    fnRef: FunctionReference<any, any>,
+    args: FunctionArgs = {}
+  ): Promise<T> {
     const path = getFunctionPath(fnRef);
     const response = await fetch(`${this.baseUrl}/api/mutation`, {
       method: 'POST',
@@ -107,7 +127,10 @@ export class EdgeConvexClient {
     return result.value as T;
   }
 
-  async action<T = unknown>(fnRef: any, args: FunctionArgs = {}): Promise<T> {
+  async action<T = unknown>(
+    fnRef: FunctionReference<any, any>,
+    args: FunctionArgs = {}
+  ): Promise<T> {
     const path = getFunctionPath(fnRef);
     const response = await fetch(`${this.baseUrl}/api/action`, {
       method: 'POST',
@@ -146,7 +169,7 @@ export function getConvexAdminClient(adminToken?: string): EdgeConvexClient {
   const token = adminToken ?? process.env.CONVEX_ADMIN_TOKEN;
   if (!token) {
     const availableEnvVars = Object.keys(process.env)
-      .filter(k => k.includes('CONVEX'))
+      .filter((k) => k.includes('CONVEX'))
       .join(', ');
     throw new Error(
       `CONVEX_ADMIN_TOKEN is not set. Available CONVEX vars: ${availableEnvVars || 'none'}`

@@ -7,7 +7,7 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexAdminClient, getConvexClientWithAuth } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { LLM_DEFAULTS } from '@/lib/constants';
+import { LLM_DEFAULTS, TOOL_MESSAGE_PATTERN, CHAT_STREAMING } from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 
 import { tryBuildSuggestions } from './suggestions';
@@ -15,6 +15,30 @@ import { formatMemoryContext } from './utils';
 import { setupConversation } from './conversation';
 import { getApiKey, getSystemPrompt } from './config';
 import { handleStreamingResponse } from './streaming';
+
+/**
+ * 解析工具消息
+ * 客户端工具按钮将显式工具请求编码为用户消息
+ * 格式: __tool:{tool_name}__ {json_args}
+ */
+function parseToolMessage(message: string): { isTool: boolean; effectiveMessage: string } {
+  const toolMatch = message.match(TOOL_MESSAGE_PATTERN);
+  if (!toolMatch) {
+    return { isTool: false, effectiveMessage: message };
+  }
+
+  const toolName = toolMatch[1];
+  const rawArgs = toolMatch[2];
+  try {
+    const toolArgs = JSON.parse(rawArgs);
+    return {
+      isTool: true,
+      effectiveMessage: `User confirmed tool action. Call tool "${toolName}" with args: ${JSON.stringify(toolArgs)}.`,
+    };
+  } catch {
+    return { isTool: false, effectiveMessage: message };
+  }
+}
 
 export async function POST(request: NextRequest) {
   const requestStartTime = Date.now();
@@ -44,21 +68,10 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse('Validation failed', errors);
     }
 
-    const { message, conversationId, language = 'zh' } = validationResult.data;
+    const { message, conversationId, language = CHAT_STREAMING.DEFAULT_LANGUAGE } = validationResult.data;
 
-    // Client-side tool button encodes explicit tool request as a user message.
-    let effectiveMessage = message;
-    const toolMatch = message.match(/^__tool:([a-z_]+)__\s*(\{[\s\S]*\})$/);
-    if (toolMatch) {
-      const toolName = toolMatch[1];
-      const rawArgs = toolMatch[2];
-      try {
-        const toolArgs = JSON.parse(rawArgs);
-        effectiveMessage = `User confirmed tool action. Call tool "${toolName}" with args: ${JSON.stringify(toolArgs)}.`;
-      } catch {
-        // fall through
-      }
-    }
+    const { effectiveMessage } = parseToolMessage(message);
+
     const convex = getConvexClientWithAuth(convexToken);
     const convexAdmin = getConvexAdminClient();
 
@@ -66,7 +79,7 @@ export async function POST(request: NextRequest) {
       preferredLanguage: language,
       fullName: user.fullName || undefined,
       avatarUrl: user.imageUrl || undefined,
-    })) as Id<"users">;
+    })) as Id<'users'>;
 
     const { activeConversationId, conversationHistory } = await setupConversation(
       { convex, logger, LLM_DEFAULTS },
@@ -80,7 +93,7 @@ export async function POST(request: NextRequest) {
 
     const memorySnapshot = await convex.query(api.memories.list, {
       conversationId: activeConversationId,
-      limit: 8,
+      limit: CHAT_STREAMING.MEMORY_LIMIT,
     });
     const memoryContext = formatMemoryContext(memorySnapshot as {
       quotes: Array<{ quote: string; context?: string | null }>;

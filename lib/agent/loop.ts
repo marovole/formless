@@ -3,6 +3,7 @@ import type { ToolCall, ToolResult } from '@/lib/agent/tools';
 import { executeToolCall, memoryTools } from '@/lib/agent/tools';
 import type { EdgeConvexClient } from '@/lib/convex';
 import type { Id } from '@/convex/_generated/dataModel';
+import { AGENT_LOOP } from '@/lib/constants';
 import {
   deepSeekMessages,
   deepSeekMessagesWithTools,
@@ -59,7 +60,7 @@ async function callOpenRouterWithTools(args: {
       messages: args.messages,
       tools: memoryTools,
       tool_choice: 'auto',
-      temperature: 0.2,
+      temperature: AGENT_LOOP.TOOL_TEMPERATURE,
       stream: false,
     }),
   });
@@ -90,7 +91,7 @@ async function callOpenRouterNoTools(args: {
     body: JSON.stringify({
       model: args.model,
       messages: args.messages,
-      temperature: 0.2,
+      temperature: AGENT_LOOP.TOOL_TEMPERATURE,
       stream: false,
     }),
   });
@@ -148,8 +149,11 @@ export async function runMemoryAgentLoop(args: {
   messages: ChatMessage[];
   conversationId: Id<'conversations'>;
   maxToolRounds?: number;
-}): Promise<{ finalContent: string; toolResults: ToolResult[] }>{
-  const maxToolRounds = Math.min(args.maxToolRounds ?? 4, 4);
+}): Promise<{ finalContent: string; toolResults: ToolResult[] }> {
+  const maxToolRounds = Math.min(
+    args.maxToolRounds ?? AGENT_LOOP.MAX_TOOL_ROUNDS,
+    AGENT_LOOP.MAX_TOOL_ROUNDS
+  );
   const toolResults: ToolResult[] = [];
 
   const workingMessages: unknown[] = args.messages.map((m) => ({

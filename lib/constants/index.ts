@@ -27,3 +27,33 @@ export const API_KEY_DEFAULTS = {
   DAILY_LIMIT: 1000,
   RESET_INTERVAL_MS: 24 * 60 * 60 * 1000, // 24 hours
 } as const;
+
+/**
+ * Chat streaming constants
+ */
+export const CHAT_STREAMING = {
+  /** SSE chunk size for streaming response */
+  CHUNK_SIZE: 120,
+  /** Maximum memory items to include in context */
+  MEMORY_LIMIT: 8,
+  /** Default language for conversations */
+  DEFAULT_LANGUAGE: 'zh',
+} as const;
+
+/**
+ * Agent loop constants
+ */
+export const AGENT_LOOP = {
+  /** Maximum tool execution rounds to prevent infinite loops */
+  MAX_TOOL_ROUNDS: 4,
+  /** Default DeepSeek model */
+  DEFAULT_DEEPSEEK_MODEL: 'deepseek-chat',
+  /** Temperature for tool-enabled calls */
+  TOOL_TEMPERATURE: 0.2,
+} as const;
+
+/**
+ * Tool message pattern for client-side tool button encoding
+ * Format: __tool:{tool_name}__ {json_args}
+ */
+export const TOOL_MESSAGE_PATTERN = /^__tool:([a-z_]+)__\s*(\{[\s\S]*\})$/;

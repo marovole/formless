@@ -1,36 +1,55 @@
-import { MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
-import { GUANZHAO_DURATIONS } from "./constants";
-import { ActionResponse } from "./types";
-import { upsertBudgetTracking } from "./budget";
+import { MutationCtx } from '../_generated/server';
+import { Id } from '../_generated/dataModel';
+import { GUANZHAO_DURATIONS, FREQUENCY_LEVELS } from './constants';
+import { ActionResponse } from './types';
+import { upsertBudgetTracking } from './budget';
 
 // ============================================================================
-// Action Handlers for Guanzhao (Mindfulness) System
+// Snooze Action Strategy Pattern
 // ============================================================================
+
+type SnoozeStrategy = () => Date;
+
+/**
+ * 获取明天午夜时间
+ */
+function getTomorrowMidnight(): Date {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  return tomorrow;
+}
+
+/**
+ * 暂停策略映射表
+ * 消除 if-else 链，使用策略模式
+ */
+const SNOOZE_STRATEGIES: Record<string, SnoozeStrategy> = {
+  'snooze.24h': () => new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_24H),
+  'snooze.7d': () => new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_7D),
+  'snooze.today': getTomorrowMidnight,
+};
 
 export async function handleSnoozeAction(
   ctx: MutationCtx,
   userId: Id<'users'>,
   action: string
 ): Promise<ActionResponse> {
-  let snoozedUntil: Date;
+  const strategy = SNOOZE_STRATEGIES[action];
 
-  if (action === 'snooze.24h') {
-    snoozedUntil = new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_24H);
-  } else if (action === 'snooze.7d') {
-    snoozedUntil = new Date(Date.now() + GUANZHAO_DURATIONS.SNOOZE_7D);
-  } else if (action === 'snooze.today') {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    snoozedUntil = tomorrow;
-  } else {
+  if (!strategy) {
     return { error: 'Unknown snooze action' };
   }
 
+  const snoozedUntil = strategy();
   await upsertBudgetTracking(ctx, userId, { snoozed_until: snoozedUntil.toISOString() });
+
   return { success: true, message: `Snoozed until ${snoozedUntil.toLocaleString()}` };
 }
+
+// ============================================================================
+// Other Action Handlers
+// ============================================================================
 
 export async function handleDisableAction(
   ctx: MutationCtx,
@@ -48,6 +67,22 @@ export async function handleKeepWeeklyOnlyAction(
   return { success: true, message: 'Switched to weekly review only mode' };
 }
 
+// ============================================================================
+// Feedback Action with Auto-downgrade
+// ============================================================================
+
+/**
+ * 获取降级后的频率级别
+ * 如果当前级别不是最后一个，则返回下一个级别
+ */
+function getDowngradedFrequency(currentLevel: string): string | null {
+  const idx = FREQUENCY_LEVELS.indexOf(currentLevel as typeof FREQUENCY_LEVELS[number]);
+  if (idx >= 0 && idx < FREQUENCY_LEVELS.length - 1) {
+    return FREQUENCY_LEVELS[idx + 1];
+  }
+  return null;
+}
+
 export async function handleFeedbackAction(
   ctx: MutationCtx,
   userId: Id<'users'>,
@@ -57,18 +92,19 @@ export async function handleFeedbackAction(
   if (!triggerHistoryId) return { error: 'Missing triggerHistoryId' };
 
   const feedback = action.replace('feedback.', '');
-  await ctx.db.patch(triggerHistoryId as Id<"guanzhao_trigger_history">, { feedback });
+  await ctx.db.patch(triggerHistoryId as Id<'guanzhao_trigger_history'>, { feedback });
 
   // Auto-downgrade frequency if user complains about frequency
   if (feedback === 'too_frequent') {
-    const budget = await ctx.db.query("guanzhao_budget_tracking")
-      .withIndex("by_user_id", q => q.eq("user_id", userId))
+    const budget = await ctx.db
+      .query('guanzhao_budget_tracking')
+      .withIndex('by_user_id', (q) => q.eq('user_id', userId))
       .first();
 
-    if (budget && budget.frequency_level) {
-      const idx = ['jingjin', 'zhongdao', 'qingjian', 'silent'].indexOf(budget.frequency_level as string);
-      if (idx >= 0 && idx < 3) {
-        await ctx.db.patch(budget._id, { frequency_level: ['jingjin', 'zhongdao', 'qingjian', 'silent'][idx + 1] });
+    if (budget?.frequency_level) {
+      const downgraded = getDowngradedFrequency(budget.frequency_level as string);
+      if (downgraded) {
+        await ctx.db.patch(budget._id, { frequency_level: downgraded });
       }
     }
   }
@@ -76,8 +112,22 @@ export async function handleFeedbackAction(
   return { success: true, message: 'Thanks for your feedback' };
 }
 
+// ============================================================================
+// Safety Action Lookup Table
+// ============================================================================
+
+type SafetyHandler = () => ActionResponse;
+
+/**
+ * 安全操作处理映射表
+ * 消除 if-else 链
+ */
+const SAFETY_HANDLERS: Record<string, SafetyHandler> = {
+  'safety.open_resources': () => ({ redirectUrl: '/resources/crisis' }),
+  'safety.confirm_safe': () => ({ success: true, message: 'Recorded' }),
+};
+
 export function handleSafetyAction(action: string): ActionResponse {
-  if (action === 'safety.open_resources') return { redirectUrl: '/resources/crisis' };
-  if (action === 'safety.confirm_safe') return { success: true, message: 'Recorded' };
-  return { error: 'Unknown safety action' };
+  const handler = SAFETY_HANDLERS[action];
+  return handler ? handler() : { error: 'Unknown safety action' };
 }

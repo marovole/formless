@@ -26,12 +26,31 @@ export interface ToolResult {
   content: string;
 }
 
+/**
+ * 工具执行上下文
+ */
+interface ToolContext {
+  convex: EdgeConvexClient;
+  conversationId?: Id<'conversations'>;
+  toolCallId: string;
+}
+
+/**
+ * 工具处理器函数类型
+ */
+type ToolHandler = (args: unknown, ctx: ToolContext) => Promise<ToolResult>;
+
+// ============================================================================
+// Tool Definitions for LLM
+// ============================================================================
+
 export const memoryTools = [
   {
     type: 'function',
     function: {
       name: 'save_user_insight',
-      description: '记录用户的重要信息（困扰、偏好、生活事件）以便日后关怀。仅记录可复用的信息，避免隐私细节。',
+      description:
+        '记录用户的重要信息（困扰、偏好、生活事件）以便日后关怀。仅记录可复用的信息，避免隐私细节。',
       parameters: {
         type: 'object',
         properties: {
@@ -135,13 +154,185 @@ export const memoryTools = [
   },
 ] as const;
 
-function safeParseJson(raw: string): any {
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+function safeParseJson(raw: string): unknown {
   try {
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
+
+function createSuccessResult(name: string, ctx: ToolContext, data: Record<string, unknown>): ToolResult {
+  return {
+    tool_call_id: ctx.toolCallId,
+    role: 'tool',
+    name,
+    content: JSON.stringify({ ok: true, ...data }),
+  };
+}
+
+function createErrorResult(
+  name: string,
+  ctx: ToolContext,
+  error: string,
+  extra?: Record<string, unknown>
+): ToolResult {
+  return {
+    tool_call_id: ctx.toolCallId,
+    role: 'tool',
+    name,
+    content: JSON.stringify({ ok: false, error, ...extra }),
+  };
+}
+
+// ============================================================================
+// Individual Tool Handlers
+// ============================================================================
+
+/**
+ * 保存用户洞察
+ */
+async function handleSaveUserInsight(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as {
+    category?: string;
+    content?: string;
+    importance?: number;
+  };
+  const category = String(parsed.category || 'concern');
+  const content = String(parsed.content || '');
+  const importance = Number(parsed.importance || 5);
+
+  const id = await ctx.convex.mutation(api.agent_memories.save, {
+    category,
+    content,
+    importance,
+    sourceConversationId: ctx.conversationId,
+  });
+
+  return createSuccessResult('save_user_insight', ctx, { id });
+}
+
+/**
+ * 回忆用户上下文
+ */
+async function handleRecallUserContext(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as { query?: string; limit?: number };
+  const query = String(parsed.query || '');
+  const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
+
+  const memories = await ctx.convex.query(api.agent_memories.recall, { query, limit });
+
+  return createSuccessResult('recall_user_context', ctx, { memories });
+}
+
+/**
+ * 更新用户情绪
+ */
+async function handleUpdateUserMood(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as { mood?: string; trigger?: string };
+  const mood = String(parsed.mood || '');
+  const trigger = parsed.trigger === undefined ? undefined : String(parsed.trigger);
+
+  await ctx.convex.mutation(api.users.updateProfile, {
+    updates: {
+      last_mood: mood,
+      last_mood_trigger: trigger,
+    },
+  });
+
+  return createSuccessResult('update_user_mood', ctx, {});
+}
+
+/**
+ * 搜索书籍
+ */
+async function handleSearchBooks(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as {
+    query?: string;
+    mood?: string;
+    topic?: string;
+    language?: string;
+    limit?: number;
+  };
+  const query = String(parsed.query || '');
+  const mood = parsed.mood === undefined ? undefined : String(parsed.mood);
+  const topic = parsed.topic === undefined ? undefined : String(parsed.topic);
+  const language = parsed.language === undefined ? undefined : String(parsed.language);
+  const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
+
+  const result = await ctx.convex.query(api.resources.searchBooks, {
+    query,
+    mood,
+    topic,
+    language,
+    limit,
+  });
+
+  const items = (result as { items?: unknown[] } | null)?.items ?? [];
+  return createSuccessResult('search_books', ctx, { items });
+}
+
+/**
+ * 获取冥想音频
+ */
+async function handleGetMeditationAudio(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as {
+    mood?: string;
+    duration?: number;
+    style?: string;
+    language?: string;
+  };
+  const mood = String(parsed.mood || '');
+  const durationMinutes = parsed.duration === undefined ? undefined : Number(parsed.duration);
+  const style = parsed.style === undefined ? undefined : String(parsed.style);
+  const language = parsed.language === undefined ? undefined : String(parsed.language);
+
+  const audio = await ctx.convex.query(api.resources.pickMeditationAudio, {
+    mood,
+    durationMinutes,
+    style,
+    language,
+  });
+
+  return createSuccessResult('get_meditation_audio', ctx, { audio });
+}
+
+/**
+ * 网络搜索 (MVP: 未配置外部搜索)
+ */
+async function handleWebSearch(args: unknown, ctx: ToolContext): Promise<ToolResult> {
+  const parsed = args as { query?: string; locale?: string; limit?: number };
+  const query = String(parsed.query || '');
+  const locale = parsed.locale === undefined ? undefined : String(parsed.locale);
+  const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
+
+  return createErrorResult('web_search', ctx, 'External search is not configured', {
+    query,
+    locale,
+    limit,
+  });
+}
+
+// ============================================================================
+// Tool Handler Registry
+// ============================================================================
+
+const TOOL_HANDLERS: Record<string, ToolHandler> = {
+  save_user_insight: handleSaveUserInsight,
+  recall_user_context: handleRecallUserContext,
+  update_user_mood: handleUpdateUserMood,
+  search_books: handleSearchBooks,
+  get_meditation_audio: handleGetMeditationAudio,
+  web_search: handleWebSearch,
+};
+
+// ============================================================================
+// Main Execute Function
+// ============================================================================
 
 export async function executeToolCall(args: {
   toolCall: ToolCall;
@@ -152,124 +343,16 @@ export async function executeToolCall(args: {
   const name = toolCall.function.name;
   const parsed = safeParseJson(toolCall.function.arguments) ?? {};
 
-  if (name === 'save_user_insight') {
-    const category = String(parsed.category || 'concern');
-    const content = String(parsed.content || '');
-    const importance = Number(parsed.importance || 5);
-
-    const id = await convex.mutation(api.agent_memories.save, {
-      category,
-      content,
-      importance,
-      sourceConversationId: conversationId,
-    });
-
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({ ok: true, id }),
-    };
-  }
-
-  if (name === 'recall_user_context') {
-    const query = String(parsed.query || '');
-    const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
-    const memories = await convex.query(api.agent_memories.recall, { query, limit });
-
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({ ok: true, memories }),
-    };
-  }
-
-  if (name === 'update_user_mood') {
-    const mood = String(parsed.mood || '');
-    const trigger = parsed.trigger === undefined ? undefined : String(parsed.trigger);
-
-    await convex.mutation(api.users.updateProfile, {
-      updates: {
-        last_mood: mood,
-        last_mood_trigger: trigger,
-      },
-    });
-
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({ ok: true }),
-    };
-  }
-
-  if (name === 'search_books') {
-    const query = String(parsed.query || '');
-    const mood = parsed.mood === undefined ? undefined : String(parsed.mood);
-    const topic = parsed.topic === undefined ? undefined : String(parsed.topic);
-    const language = parsed.language === undefined ? undefined : String(parsed.language);
-    const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
-    const result = await convex.query(api.resources.searchBooks, {
-      query,
-      mood,
-      topic,
-      language,
-      limit,
-    });
-
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({ ok: true, items: (result as any)?.items ?? [] }),
-    };
-  }
-
-  if (name === 'get_meditation_audio') {
-    const mood = String(parsed.mood || '');
-    const durationMinutes = parsed.duration === undefined ? undefined : Number(parsed.duration);
-    const style = parsed.style === undefined ? undefined : String(parsed.style);
-    const language = parsed.language === undefined ? undefined : String(parsed.language);
-
-    const audio = await convex.query(api.resources.pickMeditationAudio, {
-      mood,
-      durationMinutes,
-      style,
-      language,
-    });
-
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({ ok: true, audio }),
-    };
-  }
-
-  if (name === 'web_search') {
-    const query = String(parsed.query || '');
-    const locale = parsed.locale === undefined ? undefined : String(parsed.locale);
-    const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
-    // MVP: no external search configured yet.
-    return {
-      tool_call_id: toolCall.id,
-      role: 'tool',
-      name,
-      content: JSON.stringify({
-        ok: false,
-        error: 'External search is not configured',
-        query,
-        locale,
-        limit,
-      }),
-    };
-  }
-
-  return {
-    tool_call_id: toolCall.id,
-    role: 'tool',
-    name,
-    content: JSON.stringify({ ok: false, error: 'Unknown tool' }),
+  const ctx: ToolContext = {
+    convex,
+    conversationId,
+    toolCallId: toolCall.id,
   };
+
+  const handler = TOOL_HANDLERS[name];
+  if (!handler) {
+    return createErrorResult(name, ctx, 'Unknown tool');
+  }
+
+  return handler(parsed, ctx);
 }
