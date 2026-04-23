@@ -8,6 +8,8 @@
 
 **核心功能完成度：100%**
 
+**正式站点**：[formless.pro](https://formless.pro)（请确保 Cloudflare / Clerk 等控制台中的回调与 `NEXT_PUBLIC_APP_URL` 与此一致。）
+
 项目已完成所有 MVP 核心功能的开发和测试，包括：
 
 #### ✅ 已完成功能
@@ -117,6 +119,8 @@ npm run test:all
 ## 部署指南
 
 ### Cloudflare Pages 部署
+
+生产域名：**formless.pro**（在 Cloudflare Pages 项目中绑定自定义域名并完成 DNS 解析。）
 
 ```bash
 # 构建项目
@@ -229,7 +233,7 @@ accra/
 
 - [ ] Convex：设置 `CLERK_JWT_ISSUER_DOMAIN` / `ADMIN_EMAILS` 并 `npx convex deploy`
 - [ ] Clerk：创建 JWT template `convex`（`applicationID/aud = convex`，包含 `email` claim）
-- [ ] Cloudflare Pages：配置 Clerk keys / `NEXT_PUBLIC_CONVEX_URL` / `CONVEX_ADMIN_TOKEN` / `ADMIN_EMAILS`
+- [ ] Cloudflare Pages：绑定 **formless.pro**、配置 Clerk keys / `NEXT_PUBLIC_CONVEX_URL` / `NEXT_PUBLIC_APP_URL=https://formless.pro` / `CONVEX_ADMIN_TOKEN` / `ADMIN_EMAILS`
 - [ ] Admin 初始化：访问 `/admin` 创建 API keys 与 prompts
 - [ ] 功能测试
 

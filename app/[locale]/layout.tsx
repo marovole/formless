@@ -11,7 +11,10 @@ import '@/app/globals.css'
 
 export const dynamic = 'force-dynamic'
 
+const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: '无相 Formless - AI Wisdom Companion',
   description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations with an elder who remembers your journey.',
   keywords: ['AI', 'Buddhist philosophy', 'wisdom', 'conversation', 'mindfulness', 'companion'],
@@ -22,6 +25,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     siteName: 'Formless',
+    url: siteUrl,
   },
   twitter: {
     card: 'summary_large_image',
@@ -63,7 +67,7 @@ export default async function LocaleLayout({
             '@type': 'WebApplication',
             name: '无相 Formless',
             description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations.',
-            url: 'https://formless.ai',
+            url: siteUrl,
             applicationCategory: 'LifestyleApplication',
             operatingSystem: 'Web',
             offers: {

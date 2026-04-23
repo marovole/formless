@@ -90,8 +90,8 @@
 |------|------|
 | ✅ Landing Page | 首页设计实现 |
 | ✅ SEO 优化 | Meta、OG Image |
-| ☐ 域名配置 | Cloudflare DNS |
-| ☐ 上线测试 | 全流程走通 |
+| ✅ 域名配置 | 正式域名 **formless.pro**（Cloudflare DNS） |
+| ☐ 上线测试 | 全流程走通（生产环境 smoke test） |
 
 **产出**：可发布的 MVP
 

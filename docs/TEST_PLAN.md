@@ -19,8 +19,8 @@
 
 | 环境 | URL | 用途 |
 |------|-----|------|
-| Production | https://formless.pages.dev | 生产环境 |
-| Preview | https://96ec52e0.formless.pages.dev | 当前预览 |
+| Production | https://formless.pro | 生产环境（自定义域名） |
+| Preview | Cloudflare Pages 生成的 `*.pages.dev` 预览 URL | 分支/PR 预览 |
 | Local | http://localhost:3000 | 本地开发 |
 
 ---

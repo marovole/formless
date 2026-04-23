@@ -6,6 +6,8 @@ This repository deploys as:
 - **Backend/DB**: Convex
 - **Auth**: Clerk
 
+**Production domain**: `https://formless.pro` — bind this hostname in Cloudflare Pages, set `NEXT_PUBLIC_APP_URL=https://formless.pro` for correct sitemap/OG/metadata, and add the same origin in Clerk **Allowed origins** / redirect URLs as needed.
+
 ## 1) Clerk Setup
 
 1. Create a Clerk application.
