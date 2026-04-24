@@ -91,10 +91,19 @@ export default defineSchema({
     last_referenced: v.optional(v.number()),
     source_conversation: v.optional(v.id("conversations")),
     archived: v.optional(v.boolean()),
+    // Semantic embedding for cross-session passive recall.
+    // Populated asynchronously after save by generateEmbedding action.
+    // Optional for backward compatibility with pre-existing rows (lazy backfill).
+    embedding: v.optional(v.array(v.float64())),
   })
   .index("by_user_id", ["user_id"])
   .index("by_user_category", ["user_id", "category"])
-  .index("by_user_archived", ["user_id", "archived"]),
+  .index("by_user_archived", ["user_id", "archived"])
+  .vectorIndex("by_embedding", {
+    vectorField: "embedding",
+    dimensions: 1536, // openai/text-embedding-3-small
+    filterFields: ["user_id", "archived"],
+  }),
 
   healing_books: defineTable({
     title: v.string(),

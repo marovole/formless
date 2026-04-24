@@ -15,6 +15,7 @@ import { formatMemoryContext } from './utils';
 import { setupConversation } from './conversation';
 import { getApiKey, getSystemPrompt } from './config';
 import { handleStreamingResponse } from './streaming';
+import { recallCrossSessionMemories } from './memory';
 
 /**
  * 解析工具消息
@@ -91,18 +92,30 @@ export async function POST(request: NextRequest) {
     const apiKey = await getApiKey({ convexAdmin, logger }, clerkId, activeConversationId.toString());
     const systemPrompt = await getSystemPrompt({ convexAdmin }, language);
 
-    const memorySnapshot = await convex.query(api.memories.list, {
-      conversationId: activeConversationId,
-      limit: CHAT_STREAMING.MEMORY_LIMIT,
-    });
-    const memoryContext = formatMemoryContext(memorySnapshot as {
-      quotes: Array<{ quote: string; context?: string | null }>;
-      insights: {
-        personality?: string | null;
-        interests?: string[];
-        concerns?: string[];
-      };
-    });
+    // Parallel memory fetch:
+    //   (1) current conversation key_quotes + insights (existing)
+    //   (2) cross-session semantic recall (new) — bounded by CROSS_SESSION_TIMEOUT_MS
+    const [memorySnapshot, crossSessionMemories] = await Promise.all([
+      convex.query(api.memories.list, {
+        conversationId: activeConversationId,
+        limit: CHAT_STREAMING.MEMORY_LIMIT,
+      }),
+      recallCrossSessionMemories(convex, effectiveMessage, {
+        topK: CHAT_STREAMING.CROSS_SESSION_TOP_K,
+        timeoutMs: CHAT_STREAMING.CROSS_SESSION_TIMEOUT_MS,
+      }),
+    ]);
+    const memoryContext = formatMemoryContext(
+      memorySnapshot as {
+        quotes: Array<{ quote: string; context?: string | null }>;
+        insights: {
+          personality?: string | null;
+          interests?: string[];
+          concerns?: string[];
+        };
+      },
+      crossSessionMemories
+    );
     const memoryMessage: ChatMessage | null = memoryContext
       ? { role: 'system', content: memoryContext }
       : null;

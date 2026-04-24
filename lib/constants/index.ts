@@ -38,6 +38,10 @@ export const CHAT_STREAMING = {
   MEMORY_LIMIT: 8,
   /** Default language for conversations */
   DEFAULT_LANGUAGE: 'zh',
+  /** Cross-session semantic recall: top-k results to inject */
+  CROSS_SESSION_TOP_K: 3,
+  /** Cross-session semantic recall: hard timeout (ms) — skipped if slower */
+  CROSS_SESSION_TIMEOUT_MS: 600,
 } as const;
 
 /**

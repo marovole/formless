@@ -5,10 +5,26 @@
 
 ---
 
-## [P1] 跨会话记忆的被动召回
+## [P1] 跨会话记忆的被动召回 · 进行中
 
 **发现时间**：2026-04-23（线上 9 轮深度对话测试）
-**关联模块**：`lib/agent/` · `convex/memories.ts` · `app/api/chat/route.ts`
+**实现时间**：2026-04-23（待部署 Convex schema + 环境变量）
+**关联模块**：`lib/agent/` · `convex/agent_memories.ts` · `app/api/chat/route.ts` · `lib/llm/embeddings.ts` · `app/api/chat/memory.ts`
+
+**已落地**：
+- `agent_memories` 表新增 `embedding` 字段 + `by_embedding` vectorIndex（1536 维）
+- `save` mutation 插入后 scheduler 触发 `generateEmbedding` internalAction（懒回填）
+- 新增 `recallByEmbedding` action（阈值 0.35 过滤，按 `user_id` 隔离）
+- `/api/chat` 在调 LLM 前并行跑"当前会话 key_quotes + 跨会话语义召回"两路，600ms 硬超时
+- `formatMemoryContext` 增加"Things from past conversations worth remembering"区块
+- 单测覆盖 embedding 客户端 / 跨会话召回辅助 / 格式化逻辑
+
+**待执行**：
+- `npx convex deploy` 推送 schema 变更到 prod（vectorIndex 需上线）
+- Convex 部署侧 `npx convex env set EMBEDDING_PROVIDER openrouter` 并确认 OPENROUTER_API_KEYS 存在
+- 按"Verification"脚本线上重现 T5/T6 场景验收
+
+
 
 ### 现象
 在新会话中提到与历史记忆强相关的主题（例：用户在前一次会话讲述过父亲离世；新会话里描述"梦到在老家找一个找不到的人，醒来哭很久"），AI 并未主动召回记忆，反而像陌生人一样重新询问"你父亲还在身边吗？"。直到用户明确说"我们上次聊过"，记忆才被精准拉取。
