@@ -17,6 +17,7 @@ export default defineSchema({
       recurring_topics: v.optional(v.array(v.string())),
       communication_style: v.optional(v.union(v.string(), v.null())),
       last_mood: v.optional(v.union(v.string(), v.null())),
+      last_mood_trigger: v.optional(v.union(v.string(), v.null())),
       active_concerns: v.optional(v.array(v.string())),
       last_memory_update: v.optional(v.string()),
     })),
