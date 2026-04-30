@@ -84,21 +84,68 @@
     "settings": "Paramètres"
   },
   "chat": {
-    "title": "Dialoguer avec l'Ancien Formless",
-    "placeholder": "Partagez vos préoccupations...",
+    "title": "Dialogue Formless",
+    "subtitle": "Un aîné IA patient, guidé par la sagesse bouddhiste",
+    "navHistory": "Historique",
+    "navSettings": "Paramètres",
+    "quote": "« Toutes les formes sont transitoires ; revenez à la clarté intérieure. »",
+    "quoteAuthor": "— Formless",
+    "prompt": "De quoi souhaitez-vous parler ?",
+    "chips": {
+      "anxious": {
+        "label": "Anxiété",
+        "value": "Je me sens anxieux ces temps-ci et j aimerais en parler."
+      },
+      "work": {
+        "label": "Stress au travail",
+        "value": "Le travail est pesant et je suis épuisé(e)."
+      },
+      "relationship": {
+        "label": "Relations",
+        "value": "Je suis confus(e) concernant une relation."
+      },
+      "calm": {
+        "label": "Apaiser l esprit",
+        "value": "Je cherche un moyen de calmer mon esprit."
+      }
+    },
+    "placeholder": "Écrivez votre message...",
+    "sending": "Envoi...",
     "send": "Envoyer",
-    "newChat": "Nouvelle conversation",
-    "thinking": "L'Ancien médite...",
+    "retry": "Réessayer",
+    "streamingStatus": "L aîné rédige une réponse.",
+    "messageComposerLabel": "Votre message",
+    "userBubbleLabel": "Vous",
+    "assistantBubbleLabel": "L aîné",
+    "newChat": "Nouvelle discussion",
+    "thinking": "L aîné réfléchit...",
     "empty": "Commencez une conversation"
   },
   "history": {
     "title": "Historique des conversations",
     "empty": "Aucune conversation",
+    "emptyTitle": "Aucune conversation",
+    "emptySubtitle": "Démarrez un nouveau chat pour commencer.",
+    "emptyCta": "Première conversation",
+    "continue": "Continuer",
     "delete": "Supprimer",
+    "startNew": "Nouvelle conversation",
     "confirmDelete": "Supprimer cette conversation ?"
   },
   "settings": {
     "title": "Paramètres",
+    "subtitle": "Gérez votre compte et votre expérience",
+    "accountTitle": "Compte",
+    "accountSubtitle": "Voir les détails du compte",
+    "emailLabel": "E-mail",
+    "languageTitle": "Langue",
+    "languageSubtitle": "Choisissez la langue d interface",
+    "actionsTitle": "Actions rapides",
+    "actionsSubtitle": "Accès fréquents",
+    "history": "Voir l historique",
+    "letters": "Boîte aux lettres",
+    "memory": "Mémoire",
+    "signOut": "Se déconnecter",
     "language": "Langue",
     "theme": "Thème",
     "profile": "Profil"
@@ -127,5 +174,69 @@
     "loading": "Chargement...",
     "error": "Erreur",
     "success": "Succès"
+  },
+  "metadata": {
+    "title": "Formless — Compagnon de sagesse IA",
+    "description": "Un compagnon IA guidé par la philosophie bouddhiste. Trouvez la clarté par la conversation.",
+    "siteName": "Formless",
+    "ogLocale": "fr_FR",
+    "keywords": "IA,bouddhisme,sagesse,conversation,pleine conscience"
+  },
+  "letters": {
+    "badge": "Lettres",
+    "title": "Correspondance lente",
+    "subtitle": "Une réponse réfléchie à la fois. Jusqu à trois lettres par jour.",
+    "writeTitle": "Écrire une lettre",
+    "dailyRhythm": "Rythme quotidien",
+    "recipientPlaceholder": "E-mail du destinataire",
+    "subjectPlaceholder": "Objet (optionnel)",
+    "bodyPlaceholder": "Écrivez lentement, avec soin...",
+    "alternateHint": "Vous alternez avec votre correspondant.",
+    "sendLetter": "Envoyer la lettre",
+    "sending": "Envoi...",
+    "howItWorksTitle": "Fonctionnement",
+    "howItWorks1": "Une lettre, une réponse. Pas de chevauchement.",
+    "howItWorks2": "Jusqu à trois lettres par jour.",
+    "howItWorks3": "Chaque fil est son propre archive.",
+    "slowIsFast": "Lenteur est rapidité",
+    "inbox": "Boîte de réception",
+    "threadsCount": "{count} fils",
+    "loadingThreads": "Chargement...",
+    "loadingLetters": "Chargement...",
+    "emptyInbox": "Pas encore de lettres.",
+    "yourTurn": "À vous",
+    "waiting": "En attente",
+    "openThread": "Ouvrir",
+    "untitled": "Sans titre",
+    "unknownCounterpart": "Inconnu",
+    "sendFailed": "Échec de l envoi",
+    "backToInbox": "Retour",
+    "with": "Avec {name}",
+    "yourTurnToReply": "C est à vous de répondre",
+    "waitingForReply": "En attente de réponse",
+    "loadingThread": "Chargement...",
+    "threadNotFound": "Fil introuvable.",
+    "fromYou": "De vous",
+    "fromSender": "De {name}",
+    "yourReply": "Votre réponse",
+    "slowPace": "Rythme lent",
+    "replyPlaceholder": "Écrivez votre réponse...",
+    "replyPlaceholderWaiting": "Attendez la réponse avant d écrire.",
+    "replyHint": "Vous ne pouvez répondre qu à votre tour.",
+    "sendReply": "Envoyer la réponse",
+    "replyFailed": "Échec de la réponse"
+  },
+  "errors": {
+    "title": "Une erreur s est produite",
+    "description": "Désolé, veuillez réessayer plus tard.",
+    "retry": "Réessayer",
+    "backHome": "Accueil"
+  },
+  "legal": {
+    "privacyTitle": "Confidentialité",
+    "privacyBody": "Nous respectons votre vie privée. Détails via les paramètres.",
+    "termsTitle": "Conditions d utilisation",
+    "termsBody": "Utilisez le service légalement et avec bienveillance.",
+    "backHome": "Accueil"
   }
 }

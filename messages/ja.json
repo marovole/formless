@@ -84,21 +84,68 @@
     "settings": "設定"
   },
   "chat": {
-    "title": "無相長老との対話",
-    "placeholder": "あなたの悩みを教えてください...",
+    "title": "無相との対話",
+    "subtitle": "仏性と忍耐に満ちたAI長老",
+    "navHistory": "履歴",
+    "navSettings": "設定",
+    "quote": "「すべての相は移ろいゆく。内なる明晰さに還れ。」",
+    "quoteAuthor": "— 無相",
+    "prompt": "今、何について話したいですか？",
+    "chips": {
+      "anxious": {
+        "label": "不安を感じる",
+        "value": "最近不安を感じています。話を聞いてほしいです。"
+      },
+      "work": {
+        "label": "仕事のプレッシャー",
+        "value": "仕事が重く、疲れ果てています。"
+      },
+      "relationship": {
+        "label": "人間関係の悩み",
+        "value": "人間関係について迷っています。"
+      },
+      "calm": {
+        "label": "心を静める",
+        "value": "心を落ち着かせる方法が欲しいです。"
+      }
+    },
+    "placeholder": "メッセージを入力...",
+    "sending": "送信中...",
     "send": "送信",
+    "retry": "再試行",
+    "streamingStatus": "長老が返信を書いています。",
+    "messageComposerLabel": "あなたのメッセージ",
+    "userBubbleLabel": "あなた",
+    "assistantBubbleLabel": "長老",
     "newChat": "新しい対話",
     "thinking": "長老が熟考中...",
     "empty": "対話を始めましょう"
   },
   "history": {
     "title": "対話履歴",
-    "empty": "対話記録がありません",
+    "empty": "対話がありません",
+    "emptyTitle": "対話がありません",
+    "emptySubtitle": "新しいチャットを始めて内省の旅を。",
+    "emptyCta": "最初の対話を始める",
+    "continue": "続ける",
     "delete": "削除",
+    "startNew": "新しい対話",
     "confirmDelete": "この対話を削除しますか？"
   },
   "settings": {
     "title": "設定",
+    "subtitle": "アカウントと体験の設定",
+    "accountTitle": "アカウント",
+    "accountSubtitle": "アカウント情報の確認と管理",
+    "emailLabel": "メール",
+    "languageTitle": "言語",
+    "languageSubtitle": "表示言語を選択",
+    "actionsTitle": "クイックアクション",
+    "actionsSubtitle": "よく使う画面へ",
+    "history": "対話履歴を見る",
+    "letters": "手紙受信箱",
+    "memory": "記憶",
+    "signOut": "ログアウト",
     "language": "言語",
     "theme": "テーマ",
     "profile": "プロフィール"
@@ -127,5 +174,69 @@
     "loading": "読み込み中...",
     "error": "エラー",
     "success": "成功"
+  },
+  "metadata": {
+    "title": "無相 Formless — AI知恵の伴侶",
+    "description": "仏教的な洞察に導かれた忍耐強いAI長老との対話で、心の明晰さを見つけましょう。",
+    "siteName": "無相 Formless",
+    "ogLocale": "ja_JP",
+    "keywords": "AI,仏教,智慧,対話,マインドフルネス"
+  },
+  "letters": {
+    "badge": "手紙",
+    "title": "スロー・コレスポンデンス",
+    "subtitle": "一つの思いやりある返信ずつ。1日最大3通。",
+    "writeTitle": "手紙を書く",
+    "dailyRhythm": "日々のリズム",
+    "recipientPlaceholder": "宛先メール",
+    "subjectPlaceholder": "件名（任意）",
+    "bodyPlaceholder": "ゆっくり、丁寧に…",
+    "alternateHint": "あなたと相手は交互に手紙を書きます。",
+    "sendLetter": "送信",
+    "sending": "送信中...",
+    "howItWorksTitle": "使い方",
+    "howItWorks1": "一通ずつ、返信も一通。同時進行はしません。",
+    "howItWorks2": "1日最大3通で穏やかなペース。",
+    "howItWorks3": "各スレッドは独立した記録です。",
+    "slowIsFast": "遅さは速さ",
+    "inbox": "受信箱",
+    "threadsCount": "{count} スレッド",
+    "loadingThreads": "読み込み中...",
+    "loadingLetters": "読み込み中...",
+    "emptyInbox": "まだ手紙がありません。",
+    "yourTurn": "あなたの番",
+    "waiting": "待機中",
+    "openThread": "開く",
+    "untitled": "無題",
+    "unknownCounterpart": "不明",
+    "sendFailed": "送信に失敗しました",
+    "backToInbox": "受信箱に戻る",
+    "with": "{name}さんと",
+    "yourTurnToReply": "返信の番です",
+    "waitingForReply": "返信待ち",
+    "loadingThread": "読み込み中...",
+    "threadNotFound": "見つかりません。",
+    "fromYou": "あなたから",
+    "fromSender": "{name}から",
+    "yourReply": "返信",
+    "slowPace": "スロー",
+    "replyPlaceholder": "返信を書く...",
+    "replyPlaceholderWaiting": "相手の返信をお待ちください。",
+    "replyHint": "順番が来たときだけ返信できます。",
+    "sendReply": "返信を送る",
+    "replyFailed": "返信に失敗しました"
+  },
+  "errors": {
+    "title": "エラーが発生しました",
+    "description": "問題が発生しました。しばらくしてから再試行してください。",
+    "retry": "再試行",
+    "backHome": "ホームに戻る"
+  },
+  "legal": {
+    "privacyTitle": "プライバシー",
+    "privacyBody": "プライバシーを尊重します。詳細は設定からお問い合わせください。",
+    "termsTitle": "利用規約",
+    "termsBody": "善良かつ法的にご利用ください。",
+    "backHome": "ホームに戻る"
   }
 }

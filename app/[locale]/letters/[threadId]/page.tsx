@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import type { Id } from '@/convex/_generated/dataModel';
+import { useTranslations } from 'next-intl';
+import { toDateLocale } from '@/lib/dateLocale';
 
 type ThreadData = {
   thread: {
@@ -36,10 +38,12 @@ type LetterRow = {
 export default function LetterThreadPage() {
   useAuthGuard();
 
+  const t = useTranslations('letters');
   const router = useRouter();
   const params = useParams();
   const locale = (params.locale as string) || 'zh';
   const threadId = params.threadId as string;
+  const dateLocale = toDateLocale(locale);
 
   const threadData = useQuery(api.letter_threads.getThread, {
     threadId: threadId as Id<'letter_threads'>,
@@ -65,7 +69,7 @@ export default function LetterThreadPage() {
       await reply({ threadId: threadId as Id<'letter_threads'>, body });
       setBody('');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to send letter';
+      const message = error instanceof Error ? error.message : t('replyFailed');
       setErrorMessage(message);
     } finally {
       setIsSending(false);
@@ -75,7 +79,7 @@ export default function LetterThreadPage() {
   if (threadData === undefined) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-rice-50 via-white to-stone-100 p-4 sm:p-8">
-        <Card className="p-6 text-stone-500">Loading letter thread...</Card>
+        <Card className="p-6 text-stone-500">{t('loadingThread')}</Card>
       </div>
     );
   }
@@ -83,12 +87,15 @@ export default function LetterThreadPage() {
   if (threadData === null) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-rice-50 via-white to-stone-100 p-4 sm:p-8">
-        <Card className="p-6 text-stone-500">Thread not found.</Card>
+        <Card className="p-6 text-stone-500">{t('threadNotFound')}</Card>
       </div>
     );
   }
 
-  const counterpartName = threadData.counterpart?.full_name || threadData.counterpart?.email || 'Unknown';
+  const counterpartName =
+    threadData.counterpart?.full_name ||
+    threadData.counterpart?.email ||
+    t('unknownCounterpart');
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-rice-50 via-white to-stone-100">
@@ -96,15 +103,16 @@ export default function LetterThreadPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="space-y-2">
             <button
+              type="button"
               onClick={() => router.push(`/${locale}/letters`)}
               className="text-sm text-stone-500 hover:text-stone-700 transition-colors"
             >
-              ← Back to inbox
+              ← {t('backToInbox')}
             </button>
             <h1 className="text-3xl font-serif text-ink-800">
-              {threadData.thread.subject || 'Untitled letter'}
+              {threadData.thread.subject || t('untitled')}
             </h1>
-            <p className="text-sm text-stone-500">With {counterpartName}</p>
+            <p className="text-sm text-stone-500">{t('with', { name: counterpartName })}</p>
           </div>
           <span
             className={`text-xs px-3 py-1 rounded-full border ${
@@ -113,19 +121,22 @@ export default function LetterThreadPage() {
                 : 'border-stone-200 bg-stone-100 text-stone-500'
             }`}
           >
-            {threadData.canSend ? 'Your turn to reply' : 'Waiting for reply'}
+            {threadData.canSend ? t('yourTurnToReply') : t('waitingForReply')}
           </span>
         </div>
 
         <div className="space-y-6">
           {letters === undefined ? (
-            <Card className="p-6 text-stone-500">Loading letters...</Card>
+            <Card className="p-6 text-stone-500">{t('loadingLetters')}</Card>
           ) : letters.length === 0 ? (
-            <Card className="p-6 text-stone-500">No letters yet.</Card>
+            <Card className="p-6 text-stone-500">{t('emptyInbox')}</Card>
           ) : (
             letters.map((letter) => {
               const isMine = letter.sender_id === threadData.currentUserId;
-              const date = new Date(letter.created_at).toLocaleDateString();
+              const date = new Date(letter.created_at).toLocaleDateString(dateLocale);
+              const fromLabel = isMine
+                ? t('fromYou')
+                : t('fromSender', { name: counterpartName });
               return (
                 <Card
                   key={letter._id}
@@ -135,7 +146,7 @@ export default function LetterThreadPage() {
                 >
                   <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-stone-400">
                     <span>{date}</span>
-                    <span>{isMine ? 'From you' : `From ${counterpartName}`}</span>
+                    <span>{fromLabel}</span>
                   </div>
                   <div className="mt-4 font-handwriting text-lg leading-relaxed text-ink-700 whitespace-pre-wrap">
                     {letter.body}
@@ -149,13 +160,15 @@ export default function LetterThreadPage() {
         <Card className="p-6 sm:p-8 bg-white/80 border-stone-200/70">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-serif text-ink-800">Your Reply</h2>
-              <span className="text-xs uppercase tracking-[0.2em] text-stone-400">Slow pace</span>
+              <h2 className="text-lg font-serif text-ink-800">{t('yourReply')}</h2>
+              <span className="text-xs uppercase tracking-[0.2em] text-stone-400">{t('slowPace')}</span>
             </div>
             <Textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              placeholder={threadData.canSend ? 'Write your reply...' : 'Waiting for a reply before you can write again.'}
+              placeholder={
+                threadData.canSend ? t('replyPlaceholder') : t('replyPlaceholderWaiting')
+              }
               rows={6}
               disabled={!threadData.canSend}
               className="bg-white/70 border-stone-200 font-handwriting text-lg leading-relaxed text-ink-700"
@@ -166,11 +179,9 @@ export default function LetterThreadPage() {
               </div>
             )}
             <div className="flex items-center justify-between">
-              <p className="text-xs text-stone-500">
-                You can only reply when it is your turn.
-              </p>
+              <p className="text-xs text-stone-500">{t('replyHint')}</p>
               <Button onClick={handleReply} disabled={!threadData.canSend || isSending}>
-                {isSending ? 'Sending...' : 'Send Reply'}
+                {isSending ? t('sending') : t('sendReply')}
               </Button>
             </div>
           </div>

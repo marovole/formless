@@ -84,21 +84,68 @@
     "settings": "Einstellungen"
   },
   "chat": {
-    "title": "Dialog mit dem Formless-Ältesten",
-    "placeholder": "Teilen Sie Ihre Gedanken...",
+    "title": "Gespräch mit Formless",
+    "subtitle": "Geduldiger KI-Ältester mit buddhistischer Weisheit",
+    "navHistory": "Verlauf",
+    "navSettings": "Einstellungen",
+    "quote": "« Alle Formen sind vergänglich; kehrt zur inneren Klarheit zurück. »",
+    "quoteAuthor": "— Formless",
+    "prompt": "Worüber möchten Sie sprechen?",
+    "chips": {
+      "anxious": {
+        "label": "Ängstlich",
+        "value": "Ich fühle mich zuletzt ängstlich und möchte reden."
+      },
+      "work": {
+        "label": "Arbeitsstress",
+        "value": "Die Arbeit lastet schwer und ich bin erschöpft."
+      },
+      "relationship": {
+        "label": "Beziehung",
+        "value": "Ich bin verwirrt wegen einer Beziehung."
+      },
+      "calm": {
+        "label": "Geist beruhigen",
+        "value": "Ich suche einen Weg zur Ruhe."
+      }
+    },
+    "placeholder": "Nachricht eingeben...",
+    "sending": "Senden...",
     "send": "Senden",
+    "retry": "Erneut versuchen",
+    "streamingStatus": "Der Älteste schreibt eine Antwort.",
+    "messageComposerLabel": "Ihre Nachricht",
+    "userBubbleLabel": "Sie",
+    "assistantBubbleLabel": "Der Älteste",
     "newChat": "Neues Gespräch",
-    "thinking": "Der Älteste meditiert...",
-    "empty": "Beginnen Sie ein Gespräch"
+    "thinking": "Der Älteste denkt nach...",
+    "empty": "Starten Sie ein Gespräch"
   },
   "history": {
     "title": "Gesprächsverlauf",
-    "empty": "Keine Gespräche",
+    "empty": "Noch keine Gespräche",
+    "emptyTitle": "Noch keine Gespräche",
+    "emptySubtitle": "Beginnen Sie ein neues Gespräch.",
+    "emptyCta": "Erstes Gespräch starten",
+    "continue": "Fortsetzen",
     "delete": "Löschen",
+    "startNew": "Neues Gespräch",
     "confirmDelete": "Dieses Gespräch löschen?"
   },
   "settings": {
     "title": "Einstellungen",
+    "subtitle": "Konto und Erfahrung verwalten",
+    "accountTitle": "Konto",
+    "accountSubtitle": "Kontodetails",
+    "emailLabel": "E-Mail",
+    "languageTitle": "Sprache",
+    "languageSubtitle": "Sprache wählen",
+    "actionsTitle": "Schnellaktionen",
+    "actionsSubtitle": "Häufige Ziele",
+    "history": "Verlauf anzeigen",
+    "letters": "Posteingang",
+    "memory": "Erinnerung",
+    "signOut": "Abmelden",
     "language": "Sprache",
     "theme": "Design",
     "profile": "Profil"
@@ -127,5 +174,69 @@
     "loading": "Laden...",
     "error": "Fehler",
     "success": "Erfolg"
+  },
+  "metadata": {
+    "title": "Formless — Weiser KI-Begleiter",
+    "description": "Ein weiser KI-Begleiter in buddhistischer Tradition. Klarheit im Gespräch finden.",
+    "siteName": "Formless",
+    "ogLocale": "de_DE",
+    "keywords": "KI,Buddhismus,Weisheit,Gespräch,Achtsamkeit"
+  },
+  "letters": {
+    "badge": "Briefe",
+    "title": "Langsame Korrespondenz",
+    "subtitle": "Eine bedachte Antwort nach der anderen. Bis zu drei Briefe pro Tag.",
+    "writeTitle": "Brief schreiben",
+    "dailyRhythm": "Tagesrhythmus",
+    "recipientPlaceholder": "E-Mail des Empfängers",
+    "subjectPlaceholder": "Betreff (optional)",
+    "bodyPlaceholder": "Langsam und sorgfältig schreiben...",
+    "alternateHint": "Sie wechseln sich mit dem Empfänger ab.",
+    "sendLetter": "Brief senden",
+    "sending": "Senden...",
+    "howItWorksTitle": "So funktioniert es",
+    "howItWorks1": "Ein Brief, eine Antwort.",
+    "howItWorks2": "Bis zu drei Briefe pro Tag.",
+    "howItWorks3": "Jeder Thread ist ein Archiv.",
+    "slowIsFast": "Langsam ist schnell",
+    "inbox": "Posteingang",
+    "threadsCount": "{count} Threads",
+    "loadingThreads": "Laden...",
+    "loadingLetters": "Laden...",
+    "emptyInbox": "Noch keine Briefe.",
+    "yourTurn": "Sie sind dran",
+    "waiting": "Warten",
+    "openThread": "Öffnen",
+    "untitled": "Ohne Titel",
+    "unknownCounterpart": "Unbekannt",
+    "sendFailed": "Senden fehlgeschlagen",
+    "backToInbox": "Zurück zum Posteingang",
+    "with": "Mit {name}",
+    "yourTurnToReply": "Sie antworten",
+    "waitingForReply": "Warte auf Antwort",
+    "loadingThread": "Laden...",
+    "threadNotFound": "Thread nicht gefunden.",
+    "fromYou": "Von Ihnen",
+    "fromSender": "Von {name}",
+    "yourReply": "Ihre Antwort",
+    "slowPace": "Langsamer Rhythmus",
+    "replyPlaceholder": "Antwort schreiben...",
+    "replyPlaceholderWaiting": "Warten Sie auf eine Antwort.",
+    "replyHint": "Antworten nur am Zug.",
+    "sendReply": "Antwort senden",
+    "replyFailed": "Antwort fehlgeschlagen"
+  },
+  "errors": {
+    "title": "Etwas ist schiefgelaufen",
+    "description": "Bitte versuchen Sie es später erneut.",
+    "retry": "Erneut versuchen",
+    "backHome": "Zur Startseite"
+  },
+  "legal": {
+    "privacyTitle": "Datenschutz",
+    "privacyBody": "Wir schützen Ihre Privatsphäre. Details über Einstellungen.",
+    "termsTitle": "Nutzungsbedingungen",
+    "termsBody": "Bitte nutzen Sie den Dienst rechtmäßig.",
+    "backHome": "Zur Startseite"
   }
 }

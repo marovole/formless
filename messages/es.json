@@ -84,21 +84,68 @@
     "settings": "Configuración"
   },
   "chat": {
-    "title": "Dialogar con el Anciano Formless",
-    "placeholder": "Comparte tus inquietudes...",
+    "title": "Chat Formless",
+    "subtitle": "Un anciano IA paciente, guiado por la sabiduría budista",
+    "navHistory": "Historial",
+    "navSettings": "Ajustes",
+    "quote": "«Todas las formas son transitorias; vuelve a la claridad interior.»",
+    "quoteAuthor": "— Formless",
+    "prompt": "¿De qué te gustaría hablar?",
+    "chips": {
+      "anxious": {
+        "label": "Ansiedad",
+        "value": "Me he sentido ansioso últimamente y quiero hablar."
+      },
+      "work": {
+        "label": "Estrés laboral",
+        "value": "El trabajo pesa y estoy agotado."
+      },
+      "relationship": {
+        "label": "Relaciones",
+        "value": "Me confunde una relación."
+      },
+      "calm": {
+        "label": "Calmar la mente",
+        "value": "Busco una forma de calmar mi mente."
+      }
+    },
+    "placeholder": "Escribe tu mensaje...",
+    "sending": "Enviando...",
     "send": "Enviar",
-    "newChat": "Nueva conversación",
-    "thinking": "El Anciano está meditando...",
+    "retry": "Reintentar",
+    "streamingStatus": "El anciano está escribiendo una respuesta.",
+    "messageComposerLabel": "Tu mensaje",
+    "userBubbleLabel": "Tú",
+    "assistantBubbleLabel": "El anciano",
+    "newChat": "Nuevo chat",
+    "thinking": "El anciano reflexiona...",
     "empty": "Inicia una conversación"
   },
   "history": {
     "title": "Historial de conversaciones",
-    "empty": "Sin conversaciones",
+    "empty": "Aún no hay conversaciones",
+    "emptyTitle": "Aún no hay conversaciones",
+    "emptySubtitle": "Empieza un chat nuevo.",
+    "emptyCta": "Primera conversación",
+    "continue": "Continuar",
     "delete": "Eliminar",
+    "startNew": "Nueva conversación",
     "confirmDelete": "¿Eliminar esta conversación?"
   },
   "settings": {
-    "title": "Configuración",
+    "title": "Ajustes",
+    "subtitle": "Gestiona tu cuenta y experiencia",
+    "accountTitle": "Cuenta",
+    "accountSubtitle": "Ver detalles de la cuenta",
+    "emailLabel": "Correo",
+    "languageTitle": "Idioma",
+    "languageSubtitle": "Elige el idioma",
+    "actionsTitle": "Acciones rápidas",
+    "actionsSubtitle": "Destinos frecuentes",
+    "history": "Ver historial",
+    "letters": "Bandeja de cartas",
+    "memory": "Memoria",
+    "signOut": "Cerrar sesión",
     "language": "Idioma",
     "theme": "Tema",
     "profile": "Perfil"
@@ -127,5 +174,69 @@
     "loading": "Cargando...",
     "error": "Error",
     "success": "Éxito"
+  },
+  "metadata": {
+    "title": "Formless — Compañero de sabiduría IA",
+    "description": "Un compañero sabio guiado por la filosofía budista. Encuentra claridad en la conversación.",
+    "siteName": "Formless",
+    "ogLocale": "es_ES",
+    "keywords": "IA,budismo,sabiduría,conversación,atención plena"
+  },
+  "letters": {
+    "badge": "Cartas",
+    "title": "Correspondencia lenta",
+    "subtitle": "Una respuesta reflexiva cada vez. Hasta tres cartas al día.",
+    "writeTitle": "Escribir carta",
+    "dailyRhythm": "Ritmo diario",
+    "recipientPlaceholder": "Correo del destinatario",
+    "subjectPlaceholder": "Asunto (opcional)",
+    "bodyPlaceholder": "Escribe despacio, con cuidado...",
+    "alternateHint": "Te alternas con tu destinatario.",
+    "sendLetter": "Enviar carta",
+    "sending": "Enviando...",
+    "howItWorksTitle": "Cómo funciona",
+    "howItWorks1": "Una carta, una respuesta.",
+    "howItWorks2": "Hasta tres cartas al día.",
+    "howItWorks3": "Cada hilo es su archivo.",
+    "slowIsFast": "Lento es rápido",
+    "inbox": "Bandeja",
+    "threadsCount": "{count} hilos",
+    "loadingThreads": "Cargando...",
+    "loadingLetters": "Cargando...",
+    "emptyInbox": "Aún no hay cartas.",
+    "yourTurn": "Tu turno",
+    "waiting": "Esperando",
+    "openThread": "Abrir",
+    "untitled": "Sin título",
+    "unknownCounterpart": "Desconocido",
+    "sendFailed": "Error al enviar",
+    "backToInbox": "Volver a la bandeja",
+    "with": "Con {name}",
+    "yourTurnToReply": "Te toca responder",
+    "waitingForReply": "Esperando respuesta",
+    "loadingThread": "Cargando...",
+    "threadNotFound": "Hilo no encontrado.",
+    "fromYou": "De ti",
+    "fromSender": "De {name}",
+    "yourReply": "Tu respuesta",
+    "slowPace": "Ritmo lento",
+    "replyPlaceholder": "Escribe tu respuesta...",
+    "replyPlaceholderWaiting": "Espera la respuesta antes de escribir.",
+    "replyHint": "Solo puedes responder en tu turno.",
+    "sendReply": "Enviar respuesta",
+    "replyFailed": "Error en la respuesta"
+  },
+  "errors": {
+    "title": "Algo salió mal",
+    "description": "Lo sentimos, inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "backHome": "Inicio"
+  },
+  "legal": {
+    "privacyTitle": "Privacidad",
+    "privacyBody": "Respetamos tu privacidad. Más en ajustes.",
+    "termsTitle": "Términos",
+    "termsBody": "Usa el servicio de forma legal y con respeto.",
+    "backHome": "Inicio"
   }
 }

@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
+import { useTranslations } from 'next-intl';
+import { toDateLocale } from '@/lib/dateLocale';
 
 type ThreadRow = {
   _id: string;
@@ -26,9 +28,11 @@ type ThreadRow = {
 export default function LettersPage() {
   useAuthGuard();
 
+  const t = useTranslations('letters');
   const router = useRouter();
   const params = useParams();
   const locale = (params.locale as string) || 'zh';
+  const dateLocale = toDateLocale(locale);
 
   const threads = useQuery(api.letter_threads.listForCurrentUser, { limit: 50 }) as
     | ThreadRow[]
@@ -56,7 +60,7 @@ export default function LettersPage() {
       setSubject('');
       router.push(`/${locale}/letters/${threadId}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to send letter';
+      const message = error instanceof Error ? error.message : t('sendFailed');
       setErrorMessage(message);
     } finally {
       setIsSending(false);
@@ -67,39 +71,37 @@ export default function LettersPage() {
     <div className="min-h-screen bg-gradient-to-b from-rice-50 via-white to-stone-100">
       <div className="max-w-5xl mx-auto p-4 sm:p-8 space-y-10">
         <header className="space-y-2">
-          <p className="text-sm uppercase tracking-[0.3em] text-stone-400">Letters</p>
-          <h1 className="text-4xl font-serif text-ink-800">Slow Correspondence</h1>
-          <p className="text-stone-600">
-            One thoughtful reply at a time. Up to three letters per day.
-          </p>
+          <p className="text-sm uppercase tracking-[0.3em] text-stone-400">{t('badge')}</p>
+          <h1 className="text-4xl font-serif text-ink-800">{t('title')}</h1>
+          <p className="text-stone-600">{t('subtitle')}</p>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <Card className="p-6 sm:p-8 bg-[linear-gradient(180deg,#fffdf7_0%,#fdf8ee_100%)] border-stone-200/70 shadow-[0_20px_60px_rgba(0,0,0,0.08)]">
             <div className="space-y-5">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-serif text-ink-800">Write a Letter</h2>
+                <h2 className="text-xl font-serif text-ink-800">{t('writeTitle')}</h2>
                 <span className="text-xs uppercase tracking-[0.2em] text-stone-400">
-                  Daily Rhythm
+                  {t('dailyRhythm')}
                 </span>
               </div>
               <div className="space-y-3">
                 <Input
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
-                  placeholder="Recipient email"
+                  placeholder={t('recipientPlaceholder')}
                   className="bg-white/60 border-stone-200"
                 />
                 <Input
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Subject (optional)"
+                  placeholder={t('subjectPlaceholder')}
                   className="bg-white/60 border-stone-200"
                 />
                 <Textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Write slowly, with care..."
+                  placeholder={t('bodyPlaceholder')}
                   rows={8}
                   className="bg-white/70 border-stone-200 font-handwriting text-lg leading-relaxed text-ink-700"
                 />
@@ -112,11 +114,9 @@ export default function LettersPage() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                <p className="text-xs text-stone-500">
-                  Letters alternate between you and the recipient.
-                </p>
+                <p className="text-xs text-stone-500">{t('alternateHint')}</p>
                 <Button onClick={handleSend} disabled={isSending}>
-                  {isSending ? 'Sending...' : 'Send Letter'}
+                  {isSending ? t('sending') : t('sendLetter')}
                 </Button>
               </div>
             </div>
@@ -124,14 +124,14 @@ export default function LettersPage() {
 
           <Card className="p-6 sm:p-8 bg-white/80 border-stone-200/70">
             <div className="space-y-4">
-              <h3 className="text-lg font-serif text-ink-800">How it works</h3>
+              <h3 className="text-lg font-serif text-ink-800">{t('howItWorksTitle')}</h3>
               <ul className="space-y-3 text-sm text-stone-600">
-                <li>One letter, one reply. No overlap.</li>
-                <li>Up to three letters per day for a calm pace.</li>
-                <li>Each thread lives as its own archive.</li>
+                <li>{t('howItWorks1')}</li>
+                <li>{t('howItWorks2')}</li>
+                <li>{t('howItWorks3')}</li>
               </ul>
               <div className="border-t border-stone-200 pt-4 text-xs uppercase tracking-[0.25em] text-stone-400">
-                Slow is fast
+                {t('slowIsFast')}
               </div>
             </div>
           </Card>
@@ -139,23 +139,24 @@ export default function LettersPage() {
 
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-serif text-ink-800">Inbox</h2>
+            <h2 className="text-2xl font-serif text-ink-800">{t('inbox')}</h2>
             <span className="text-sm text-stone-500">
-              {threads ? `${threads.length} threads` : 'Loading...'}
+              {threads ? t('threadsCount', { count: threads.length }) : t('loadingThreads')}
             </span>
           </div>
 
           {threads === undefined ? (
-            <Card className="p-6 text-stone-500">Loading letters...</Card>
+            <Card className="p-6 text-stone-500">{t('loadingLetters')}</Card>
           ) : threads.length === 0 ? (
-            <Card className="p-6 text-stone-500">
-              No letters yet. Start with a thoughtful note.
-            </Card>
+            <Card className="p-6 text-stone-500">{t('emptyInbox')}</Card>
           ) : (
             <div className="space-y-4">
               {threads.map((thread) => {
-                const name = thread.counterpart?.full_name || thread.counterpart?.email || 'Unknown';
-                const date = new Date(thread.last_letter_at).toLocaleDateString();
+                const name =
+                  thread.counterpart?.full_name ||
+                  thread.counterpart?.email ||
+                  t('unknownCounterpart');
+                const date = new Date(thread.last_letter_at).toLocaleDateString(dateLocale);
                 return (
                   <Card
                     key={thread._id}
@@ -174,11 +175,13 @@ export default function LettersPage() {
                                 : 'border-stone-200 bg-stone-100 text-stone-500'
                             }`}
                           >
-                            {thread.canSend ? 'Your turn' : 'Waiting'}
+                            {thread.canSend ? t('yourTurn') : t('waiting')}
                           </span>
                         </div>
-                        <h3 className="text-lg font-serif text-ink-800">{thread.subject || 'Untitled letter'}</h3>
-                        <p className="text-sm text-stone-500">With {name}</p>
+                        <h3 className="text-lg font-serif text-ink-800">
+                          {thread.subject || t('untitled')}
+                        </h3>
+                        <p className="text-sm text-stone-500">{t('with', { name })}</p>
                         <p className="text-base font-handwriting text-ink-700 leading-relaxed">
                           {thread.last_letter_preview || '...'}
                         </p>
@@ -188,7 +191,7 @@ export default function LettersPage() {
                           variant="outline"
                           onClick={() => router.push(`/${locale}/letters/${thread._id}`)}
                         >
-                          Open Thread
+                          {t('openThread')}
                         </Button>
                       </div>
                     </div>

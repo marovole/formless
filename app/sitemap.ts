@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ? `${protocol}://${host}`
     : (process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro')
 
-  const routes = ['', '/chat', '/history', '/settings']
+  const routes = ['', '/chat', '/history', '/settings', '/privacy', '/terms']
 
   const entries: MetadataRoute.Sitemap = []
 

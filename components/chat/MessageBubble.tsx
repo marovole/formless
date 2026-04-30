@@ -6,9 +6,16 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ToolSuggestionButtons, type ToolSuggestion } from '@/components/chat/ToolSuggestionButtons';
-import { AudioPlayer } from '@/components/chat/AudioPlayer';
+import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
+
+const AudioPlayer = dynamic(
+  () => import('@/components/chat/AudioPlayer').then((m) => m.AudioPlayer),
+  { ssr: false }
+);
 
 export interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   error?: boolean;
@@ -26,11 +33,17 @@ interface MessageBubbleProps {
  * Renders a single message bubble
  */
 export function MessageBubble({ message, onRetry, onSuggestionChoose }: MessageBubbleProps) {
+  const t = useTranslations('chat');
   const isUser = message.role === 'user';
   const isError = message.error;
+  const bubbleLabel = isUser ? t('userBubbleLabel') : t('assistantBubbleLabel');
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div
+      className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+      role="article"
+      aria-label={bubbleLabel}
+    >
       <Card
         className={`max-w-[85%] p-4 ${
           isUser
@@ -62,7 +75,7 @@ export function MessageBubble({ message, onRetry, onSuggestionChoose }: MessageB
         {isError && onRetry && (
           <div className="mt-3 pt-3 border-t border-stone-200/50 flex gap-2">
             <Button size="sm" variant="outline" onClick={onRetry} className="text-xs h-7">
-              Retry
+              {t('retry')}
             </Button>
           </div>
         )}
@@ -85,7 +98,7 @@ export function MessageList({ messages, onRetry, onSuggestionChoose }: MessageLi
     <>
       {messages.map((msg) => (
         <MessageBubble
-          key={`${msg.role}-${msg.content}`}
+          key={msg.id}
           message={msg}
           onRetry={msg.error ? onRetry : undefined}
           onSuggestionChoose={onSuggestionChoose}

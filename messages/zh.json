@@ -77,6 +77,13 @@
       "copyright": "无相。保留所有权利。"
     }
   },
+  "metadata": {
+    "title": "无相 Formless — AI 智慧伴侣",
+    "description": "一位充满佛性与耐心的 AI 长老，通过智慧对话帮助你答疑解惑、疏导情绪、获得内心平静。",
+    "siteName": "无相 Formless",
+    "ogLocale": "zh_CN",
+    "keywords": "AI,佛学,智慧,对话,正念,陪伴"
+  },
   "nav": {
     "home": "首页",
     "chat": "对话",
@@ -84,9 +91,39 @@
     "settings": "设置"
   },
   "chat": {
-    "title": "与无相长老对话",
-    "placeholder": "说出你的困惑...",
+    "title": "对话无相",
+    "subtitle": "一位充满佛性与耐心的 AI 长老",
+    "navHistory": "历史",
+    "navSettings": "设置",
+    "quote": "「凡所有相，皆是虚妄。无相，即不执着于外在形式，回归内心本质。」",
+    "quoteAuthor": "— 无相",
+    "prompt": "此刻你想谈论什么？",
+    "chips": {
+      "anxious": {
+        "label": "最近有些焦虑",
+        "value": "最近有些焦虑，想找你说说话"
+      },
+      "work": {
+        "label": "工作压力大",
+        "value": "工作压力很大，感到疲惫"
+      },
+      "relationship": {
+        "label": "对人际困惑",
+        "value": "对人际关系有些困惑"
+      },
+      "calm": {
+        "label": "想静心冥想",
+        "value": "想找个方式让心静下来"
+      }
+    },
+    "placeholder": "输入你的想法...",
+    "sending": "发送中...",
     "send": "发送",
+    "retry": "重试",
+    "streamingStatus": "长老正在书写回复。",
+    "messageComposerLabel": "你的消息",
+    "userBubbleLabel": "你",
+    "assistantBubbleLabel": "长老",
     "newChat": "新对话",
     "thinking": "长老正在凝思...",
     "empty": "开始一段对话吧"
@@ -94,14 +131,88 @@
   "history": {
     "title": "对话历史",
     "empty": "暂无对话记录",
+    "emptyTitle": "暂无对话记录",
+    "emptySubtitle": "开始一次对话，开启内心探索之旅",
+    "emptyCta": "开始第一次对话",
+    "continue": "继续",
     "delete": "删除",
+    "startNew": "开始新的对话",
     "confirmDelete": "确定删除此对话？"
   },
   "settings": {
     "title": "设置",
+    "subtitle": "管理你的账户偏好和体验",
+    "accountTitle": "账户信息",
+    "accountSubtitle": "查看和管理的个人账户信息",
+    "emailLabel": "邮箱地址",
+    "languageTitle": "语言偏好",
+    "languageSubtitle": "选择你偏好的界面语言",
+    "actionsTitle": "快捷操作",
+    "actionsSubtitle": "快速访问其他功能",
+    "history": "查看对话历史",
+    "letters": "查看来信",
+    "memory": "记忆设置",
+    "signOut": "退出登录",
     "language": "语言",
     "theme": "主题",
     "profile": "个人信息"
+  },
+  "letters": {
+    "badge": "来信",
+    "title": "慢递书信",
+    "subtitle": "一次只回一封。每天最多三封，保持从容的节奏。",
+    "writeTitle": "写一封信",
+    "dailyRhythm": "每日节奏",
+    "recipientPlaceholder": "收信人邮箱",
+    "subjectPlaceholder": "主题（可选）",
+    "bodyPlaceholder": "慢慢写，带着心意…",
+    "alternateHint": "你与收信人轮流写信，不会重叠。",
+    "sendLetter": "发送信件",
+    "sending": "发送中...",
+    "howItWorksTitle": "如何使用",
+    "howItWorks1": "一封信，一封回。不穿插。",
+    "howItWorks2": "每天最多三封，节奏更从容。",
+    "howItWorks3": "每个线程都是一本独立的存档。",
+    "slowIsFast": "慢即是快",
+    "inbox": "收件箱",
+    "threadsCount": "{count} 个会话",
+    "loadingThreads": "加载中...",
+    "loadingLetters": "加载信件中...",
+    "emptyInbox": "还没有信件。写一封心意满满的信吧。",
+    "yourTurn": "轮到你了",
+    "waiting": "等待中",
+    "openThread": "打开会话",
+    "untitled": "无主题信件",
+    "unknownCounterpart": "未知",
+    "sendFailed": "发送失败",
+    "backToInbox": "返回收件箱",
+    "with": "与 {name}",
+    "yourTurnToReply": "轮到你回复",
+    "waitingForReply": "等待对方回复",
+    "loadingThread": "加载信件线程中...",
+    "threadNotFound": "未找到该会话。",
+    "fromYou": "你写的",
+    "fromSender": "来自 {name}",
+    "yourReply": "你的回信",
+    "slowPace": "慢节奏",
+    "replyPlaceholder": "写你的回信...",
+    "replyPlaceholderWaiting": "请等对方回信后再撰写。",
+    "replyHint": "只有轮到你时才能回复。",
+    "sendReply": "发送回信",
+    "replyFailed": "发送回信失败"
+  },
+  "errors": {
+    "title": "出错了",
+    "description": "抱歉，发生了一些问题。请稍后重试。",
+    "retry": "重试",
+    "backHome": "返回首页"
+  },
+  "legal": {
+    "privacyTitle": "隐私政策",
+    "privacyBody": "我们重视你的隐私。本页概述无相如何处理你的数据。完整说明可通过设置联系团队。",
+    "termsTitle": "服务条款",
+    "termsBody": "使用即表示你承诺守法、善意地使用无相。如有疑问，请通过设置中的联系方式与我们沟通。",
+    "backHome": "返回首页"
   },
   "auth": {
     "login": "登录",

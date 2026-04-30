@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { logger } from '@/lib/logger';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/routing';
 
 export default function Error({
   error,
@@ -12,8 +14,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslations('errors');
   useEffect(() => {
-    // Log the error to an error reporting service
     logger.error('Application error', error);
   }, [error]);
 
@@ -27,6 +29,7 @@ export default function Error({
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -36,12 +39,8 @@ export default function Error({
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-serif text-stone-800 mb-2">
-            出错了
-          </h2>
-          <p className="text-stone-600 text-sm">
-            抱歉，发生了一些问题。请稍后重试。
-          </p>
+          <h2 className="text-2xl font-serif text-stone-800 mb-2">{t('title')}</h2>
+          <p className="text-stone-600 text-sm">{t('description')}</p>
           {process.env.NODE_ENV === 'development' && error.message && (
             <p className="mt-4 p-3 bg-stone-100 rounded text-xs text-stone-500 text-left font-mono break-all">
               {error.message}
@@ -50,14 +49,10 @@ export default function Error({
         </div>
         <div className="space-y-3">
           <Button onClick={reset} className="w-full">
-            重试
+            {t('retry')}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => (window.location.href = '/')}
-            className="w-full"
-          >
-            返回首页
+          <Button variant="outline" asChild className="w-full">
+            <Link href="/">{t('backHome')}</Link>
           </Button>
         </div>
       </Card>

@@ -1,6 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs'
 import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { routing, type Locale } from '@/i18n/routing'
 import { GeistSans } from 'geist/font/sans'
@@ -9,29 +9,48 @@ import { EnsureCurrentUser } from '@/components/EnsureCurrentUser'
 import type { Metadata } from 'next'
 import '@/app/globals.css'
 
-export const dynamic = 'force-dynamic'
-
 const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://formless.pro'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: '无相 Formless - AI Wisdom Companion',
-  description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations with an elder who remembers your journey.',
-  keywords: ['AI', 'Buddhist philosophy', 'wisdom', 'conversation', 'mindfulness', 'companion'],
-  authors: [{ name: 'Formless Team' }],
-  openGraph: {
-    title: '无相 Formless - AI Wisdom Companion',
-    description: 'Find clarity through conversations with a wise AI elder',
-    type: 'website',
-    locale: 'en_US',
-    siteName: 'Formless',
-    url: siteUrl,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: '无相 Formless - AI Wisdom Companion',
-    description: 'Find clarity through conversations with a wise AI elder',
-  },
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>
+}): Promise<Metadata> {
+  const { locale } = await params
+  const t = await getTranslations({ locale, namespace: 'metadata' })
+  const keywords = t('keywords')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean)
+
+  const languages = Object.fromEntries(
+    routing.locales.map((l) => [l, `${siteUrl}/${l}`])
+  ) as Record<string, string>
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: t('title'),
+    description: t('description'),
+    keywords,
+    authors: [{ name: 'Formless Team' }],
+    openGraph: {
+      title: t('title'),
+      description: t('description'),
+      type: 'website',
+      locale: t('ogLocale'),
+      siteName: t('siteName'),
+      url: `${siteUrl}/${locale}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: t('title'),
+      description: t('description'),
+    },
+    alternates: {
+      canonical: `${siteUrl}/${locale}`,
+      languages,
+    },
+  }
 }
 
 export default async function LocaleLayout({
@@ -47,11 +66,35 @@ export default async function LocaleLayout({
     notFound()
   }
 
+  setRequestLocale(locale)
+
   const messages = await getMessages()
+  const tApp = await getTranslations({ locale, namespace: 'app' })
+  const tMeta = await getTranslations({ locale, namespace: 'metadata' })
+
   const signInUrl = `/${locale}/sign-in`
   const signUpUrl = `/${locale}/sign-up`
   const afterSignInUrl = `/${locale}/chat`
   const afterSignUpUrl = `/${locale}/chat`
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: tApp('name'),
+    description: tMeta('description'),
+    url: siteUrl,
+    applicationCategory: 'LifestyleApplication',
+    operatingSystem: 'Web',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+    author: {
+      '@type': 'Organization',
+      name: 'Formless Team',
+    },
+  }
 
   return (
     <html lang={locale} className={GeistSans.className}>
@@ -60,27 +103,7 @@ export default async function LocaleLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>
-        {/* JSON-LD Structured Data */}
-        <script type="application/ld+json">
-          {JSON.stringify({
-            '@context': 'https://schema.org',
-            '@type': 'WebApplication',
-            name: '无相 Formless',
-            description: 'A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations.',
-            url: siteUrl,
-            applicationCategory: 'LifestyleApplication',
-            operatingSystem: 'Web',
-            offers: {
-              '@type': 'Offer',
-              price: '0',
-              priceCurrency: 'USD',
-            },
-            author: {
-              '@type': 'Organization',
-              name: 'Formless Team',
-            },
-          })}
-        </script>
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
         <ClerkProvider
           signInUrl={signInUrl}
           signUpUrl={signUpUrl}

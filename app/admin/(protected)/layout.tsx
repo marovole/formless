@@ -2,6 +2,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { getConvexClientWithAuth } from '@/lib/convex'
 import { api } from '@/convex/_generated/api'
+import { routing } from '@/i18n/routing'
 
 function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
@@ -25,7 +26,7 @@ export default async function AdminProtectedLayout({
   try {
     const { userId, getToken } = await auth()
     if (!userId) {
-      redirect('/en/sign-in')
+      redirect(`/${routing.defaultLocale}/sign-in`)
     }
 
     const user = await currentUser()
@@ -33,7 +34,7 @@ export default async function AdminProtectedLayout({
       user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress
 
     if (!isAdminEmail(email)) {
-      redirect('/en')
+      redirect(`/${routing.defaultLocale}`)
     }
 
     const token = await getToken({ template: 'convex' })
@@ -48,7 +49,7 @@ export default async function AdminProtectedLayout({
     return <>{children}</>
   } catch (error) {
     console.error('Admin layout error:', error)
-    redirect('/en/sign-in')
+    redirect(`/${routing.defaultLocale}/sign-in`)
   }
 }
 

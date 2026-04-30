@@ -77,6 +77,13 @@
       "copyright": "Formless. All rights reserved."
     }
   },
+  "metadata": {
+    "title": "Formless — AI Wisdom Companion",
+    "description": "A wise AI companion guided by Buddhist philosophy. Find clarity through thoughtful conversations with an elder who remembers your journey.",
+    "siteName": "Formless",
+    "ogLocale": "en_US",
+    "keywords": "AI,Buddhist philosophy,wisdom,conversation,mindfulness,companion"
+  },
   "nav": {
     "home": "Home",
     "chat": "Chat",
@@ -84,9 +91,39 @@
     "settings": "Settings"
   },
   "chat": {
-    "title": "Chat with the Formless Elder",
-    "placeholder": "Share your thoughts...",
+    "title": "Formless Chat",
+    "subtitle": "A patient AI elder guided by Buddhist wisdom",
+    "navHistory": "History",
+    "navSettings": "Settings",
+    "quote": "\"All forms are transient; return to inner clarity.\"",
+    "quoteAuthor": "— Formless",
+    "prompt": "What would you like to talk about?",
+    "chips": {
+      "anxious": {
+        "label": "Feeling anxious",
+        "value": "I have been feeling anxious lately and want to talk."
+      },
+      "work": {
+        "label": "Work pressure",
+        "value": "Work has been heavy and I feel exhausted."
+      },
+      "relationship": {
+        "label": "Relationship worries",
+        "value": "I feel confused about a relationship."
+      },
+      "calm": {
+        "label": "Quiet my mind",
+        "value": "I want a way to calm my mind."
+      }
+    },
+    "placeholder": "Type your message...",
+    "sending": "Sending...",
     "send": "Send",
+    "retry": "Retry",
+    "streamingStatus": "The elder is writing a response.",
+    "messageComposerLabel": "Your message",
+    "userBubbleLabel": "You",
+    "assistantBubbleLabel": "The elder",
     "newChat": "New Chat",
     "thinking": "The Elder is reflecting...",
     "empty": "Start a conversation"
@@ -94,14 +131,88 @@
   "history": {
     "title": "Conversation History",
     "empty": "No conversations yet",
+    "emptyTitle": "No conversations yet",
+    "emptySubtitle": "Start a new chat to begin your reflection.",
+    "emptyCta": "Start your first chat",
+    "continue": "Continue",
     "delete": "Delete",
+    "startNew": "Start New Conversation",
     "confirmDelete": "Delete this conversation?"
   },
   "settings": {
     "title": "Settings",
+    "subtitle": "Manage your account preferences and experience",
+    "accountTitle": "Account",
+    "accountSubtitle": "View and manage your account details",
+    "emailLabel": "Email",
+    "languageTitle": "Language",
+    "languageSubtitle": "Choose your preferred interface language",
+    "actionsTitle": "Quick Actions",
+    "actionsSubtitle": "Jump to common destinations",
+    "history": "View Conversation History",
+    "letters": "Open Letters Inbox",
+    "memory": "Memory",
+    "signOut": "Sign Out",
     "language": "Language",
     "theme": "Theme",
     "profile": "Profile"
+  },
+  "letters": {
+    "badge": "Letters",
+    "title": "Slow Correspondence",
+    "subtitle": "One thoughtful reply at a time. Up to three letters per day.",
+    "writeTitle": "Write a Letter",
+    "dailyRhythm": "Daily Rhythm",
+    "recipientPlaceholder": "Recipient email",
+    "subjectPlaceholder": "Subject (optional)",
+    "bodyPlaceholder": "Write slowly, with care...",
+    "alternateHint": "Letters alternate between you and the recipient.",
+    "sendLetter": "Send Letter",
+    "sending": "Sending...",
+    "howItWorksTitle": "How it works",
+    "howItWorks1": "One letter, one reply. No overlap.",
+    "howItWorks2": "Up to three letters per day for a calm pace.",
+    "howItWorks3": "Each thread lives as its own archive.",
+    "slowIsFast": "Slow is fast",
+    "inbox": "Inbox",
+    "threadsCount": "{count} threads",
+    "loadingThreads": "Loading...",
+    "loadingLetters": "Loading letters...",
+    "emptyInbox": "No letters yet. Start with a thoughtful note.",
+    "yourTurn": "Your turn",
+    "waiting": "Waiting",
+    "openThread": "Open Thread",
+    "untitled": "Untitled letter",
+    "unknownCounterpart": "Unknown",
+    "sendFailed": "Failed to send letter",
+    "backToInbox": "Back to inbox",
+    "with": "With {name}",
+    "yourTurnToReply": "Your turn to reply",
+    "waitingForReply": "Waiting for reply",
+    "loadingThread": "Loading letter thread...",
+    "threadNotFound": "Thread not found.",
+    "fromYou": "From you",
+    "fromSender": "From {name}",
+    "yourReply": "Your Reply",
+    "slowPace": "Slow pace",
+    "replyPlaceholder": "Write your reply...",
+    "replyPlaceholderWaiting": "Waiting for a reply before you can write again.",
+    "replyHint": "You can only reply when it is your turn.",
+    "sendReply": "Send Reply",
+    "replyFailed": "Failed to send reply"
+  },
+  "errors": {
+    "title": "Something went wrong",
+    "description": "Sorry, something went wrong. Please try again.",
+    "retry": "Try again",
+    "backHome": "Back to home"
+  },
+  "legal": {
+    "privacyTitle": "Privacy Policy",
+    "privacyBody": "We respect your privacy. This page summarizes how Formless handles your data. For full details, contact the team through your account settings.",
+    "termsTitle": "Terms of Service",
+    "termsBody": "By using Formless, you agree to use the service thoughtfully and lawfully. For questions, reach out via the contact options in settings.",
+    "backHome": "Back to home"
   },
   "auth": {
     "login": "Login",
