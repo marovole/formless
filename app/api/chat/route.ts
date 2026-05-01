@@ -1,18 +1,25 @@
 import { NextRequest } from 'next/server';
 import { streamToSSE } from '@/lib/llm/streaming';
 import { ChatSchema } from '@/lib/validation/schemas';
-import { unauthorizedResponse, validationErrorResponse, handleApiError } from '@/lib/api/responses';
+import {
+  unauthorizedResponse,
+  validationErrorResponse,
+  handleApiError,
+} from '@/lib/api/responses';
+import { checkChatRateLimit } from '@/lib/api/chatRateLimit';
 import { logger } from '@/lib/logger';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { getConvexAdminClient, getConvexClientWithAuth } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import { LLM_DEFAULTS, TOOL_MESSAGE_PATTERN, CHAT_STREAMING } from '@/lib/constants';
+import {
+  LLM_DEFAULTS,
+  TOOL_MESSAGE_PATTERN,
+  CHAT_STREAMING,
+} from '@/lib/constants';
 import type { ChatMessage } from '@/lib/llm/types';
 
-import { tryBuildSuggestions } from './suggestions';
 import { formatMemoryContext } from './utils';
-import { setupConversation } from './conversation';
 import { getApiKey, getSystemPrompt } from './config';
 import { handleStreamingResponse } from './streaming';
 import { recallCrossSessionMemories } from './memory';
@@ -43,9 +50,23 @@ function parseToolMessage(message: string): { isTool: boolean; effectiveMessage:
 
 export async function POST(request: NextRequest) {
   const requestStartTime = Date.now();
+  let stageAt = requestStartTime;
+
+  const logStage = (label: string) => {
+    const now = Date.now();
+    const ms = now - stageAt;
+    stageAt = now;
+    logger.debug(`[chat] ${label}`, { ms, sinceRequestMs: now - requestStartTime });
+  };
+
   try {
-    const { userId: clerkId, getToken } = await auth();
-    const user = await currentUser();
+    const [{ userId: clerkId, getToken }, user, body] = await Promise.all([
+      auth(),
+      currentUser(),
+      request.json(),
+    ]);
+
+    logStage('auth_parallel');
 
     if (!clerkId || !user) {
       return unauthorizedResponse();
@@ -56,7 +77,8 @@ export async function POST(request: NextRequest) {
       return unauthorizedResponse();
     }
 
-    const body = await request.json();
+    logStage('convex_token');
+
     const validationResult = ChatSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -69,42 +91,76 @@ export async function POST(request: NextRequest) {
       return validationErrorResponse('Validation failed', errors);
     }
 
-    const { message, conversationId, language = CHAT_STREAMING.DEFAULT_LANGUAGE } = validationResult.data;
+    const rl = checkChatRateLimit(clerkId);
+    if (!rl.ok) {
+      return new Response(
+        JSON.stringify({
+          error: 'Too many requests',
+          retryAfterMs: rl.retryAfterMs,
+        }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.ceil(rl.retryAfterMs / 1000)),
+          },
+        }
+      );
+    }
+
+    const {
+      message,
+      conversationId,
+      language = CHAT_STREAMING.DEFAULT_LANGUAGE,
+    } = validationResult.data;
 
     const { effectiveMessage } = parseToolMessage(message);
 
     const convex = getConvexClientWithAuth(convexToken);
     const convexAdmin = getConvexAdminClient();
 
-    const convexUserId = (await convex.mutation(api.users.ensureCurrent, {
+    const prep = (await convex.mutation(api.chat_prep.prepareChatContext, {
+      titleSeed: effectiveMessage.slice(0, LLM_DEFAULTS.TITLE_MAX_LENGTH),
+      conversationId: conversationId
+        ? (conversationId as Id<'conversations'>)
+        : undefined,
       preferredLanguage: language,
       fullName: user.fullName || undefined,
       avatarUrl: user.imageUrl || undefined,
-    })) as Id<'users'>;
+      memoryLimit: CHAT_STREAMING.MEMORY_LIMIT,
+      historyLimit: CHAT_STREAMING.HISTORY_MESSAGE_LIMIT,
+    })) as {
+      convexUserId: Id<'users'>;
+      activeConversationId: Id<'conversations'>;
+      conversationHistory: Array<{ role: string; content: string }>;
+      memorySnapshot: {
+        quotes: Array<{ quote: string; context?: string | null }>;
+        insights: {
+          personality?: string | null;
+          interests?: string[];
+          concerns?: string[];
+        };
+      };
+    };
 
-    const { activeConversationId, conversationHistory } = await setupConversation(
-      { convex, logger, LLM_DEFAULTS },
-      conversationId || undefined,
-      effectiveMessage,
-      clerkId
-    );
+    logStage('convex_prepareChat');
 
-    const apiKey = await getApiKey({ convexAdmin, logger }, clerkId, activeConversationId.toString());
-    const systemPrompt = await getSystemPrompt({ convexAdmin }, language);
+    const { convexUserId, activeConversationId, conversationHistory, memorySnapshot } =
+      prep;
 
-    // Parallel memory fetch:
-    //   (1) current conversation key_quotes + insights (existing)
-    //   (2) cross-session semantic recall (new) — bounded by CROSS_SESSION_TIMEOUT_MS
-    const [memorySnapshot, crossSessionMemories] = await Promise.all([
-      convex.query(api.memories.list, {
-        conversationId: activeConversationId,
-        limit: CHAT_STREAMING.MEMORY_LIMIT,
-      }),
+    const [[apiKey, systemPrompt], crossSessionMemories] = await Promise.all([
+      Promise.all([
+        getApiKey({ convexAdmin, logger }, clerkId, activeConversationId.toString()),
+        getSystemPrompt({ convexAdmin }, language),
+      ]),
       recallCrossSessionMemories(convex, effectiveMessage, {
         topK: CHAT_STREAMING.CROSS_SESSION_TOP_K,
         timeoutMs: CHAT_STREAMING.CROSS_SESSION_TIMEOUT_MS,
       }),
     ]);
+
+    logStage('admin_keys_prompt_and_recall');
+
     const memoryContext = formatMemoryContext(
       memorySnapshot as {
         quotes: Array<{ quote: string; context?: string | null }>;
@@ -136,6 +192,13 @@ export async function POST(request: NextRequest) {
       content: message,
     });
 
+    logStage('append_user_message');
+
+    logger.info('[chat] pre_stream_ready', {
+      sinceRequestMs: Date.now() - requestStartTime,
+      conversationId: activeConversationId,
+    });
+
     return streamToSSE(async (stream) => {
       await handleStreamingResponse({
         convex,
@@ -149,7 +212,6 @@ export async function POST(request: NextRequest) {
         requestStartTime,
       });
     });
-
   } catch (error) {
     return handleApiError(error, 'Chat API error');
   }

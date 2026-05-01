@@ -52,25 +52,13 @@ export const list = query({
       .order("desc")
       .take(limit);
 
-    return await Promise.all(
-      conversations.map(async (conv) => {
-        const lastMsg = await ctx.db
-          .query("messages")
-          .withIndex("by_conversation_id", (q) =>
-            q.eq("conversation_id", conv._id),
-          )
-          .order("desc")
-          .first();
-
-        return {
-          ...conv,
-          preview:
-            lastMsg?.content.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH) ||
-            conv.title ||
-            "",
-        };
-      }),
-    );
+    return conversations.map((conv) => ({
+      ...conv,
+      preview:
+        (conv.last_message_preview && conv.last_message_preview.slice(0, CONVERSATION_DEFAULTS.PREVIEW_LENGTH)) ||
+        conv.title ||
+        "",
+    }));
   },
 });
 

@@ -30,7 +30,9 @@ export async function POST() {
     const results: string[] = [];
 
     try {
-      const promptResult = await (convexAdmin as any).mutation(internal.seed.seedPrompts, {});
+      const promptResult = (await convexAdmin.mutation(internal.seed.seedPrompts, {})) as {
+        message: string;
+      };
       results.push(`Prompts: ${promptResult.message}`);
     } catch (e) {
       results.push(`Prompts: ${String(e)}`);
@@ -60,14 +62,14 @@ export async function POST() {
       const keys = openrouterKeys.split(',').map(k => k.trim()).filter(Boolean);
       for (let i = 0; i < keys.length; i++) {
         try {
-          const result = await (convexAdmin as any).mutation(internal.api_keys.seedApiKeyInternal, {
+          const result = (await convexAdmin.mutation(internal.api_keys.seedApiKeyInternal, {
             provider: 'openrouter',
             api_key: keys[i],
             model_name: 'nvidia/nemotron-3-nano-30b-a3b:free',
             daily_limit: 1000,
             priority: i + 1,
             is_active: true,
-          });
+          })) as { action: string };
           results.push(`OpenRouter API key ${i + 1}: ${result.action}`);
         } catch (e) {
           results.push(`OpenRouter API key ${i + 1}: ${String(e)}`);

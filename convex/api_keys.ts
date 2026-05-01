@@ -1,4 +1,4 @@
-import { internalMutation, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "./_lib/auth";
 
@@ -143,7 +143,8 @@ export const getUsageStats = query({
   },
 });
 
-export const getAvailableInternal = internalMutation({
+/** Read-only key selection. Daily limit resets are applied lazily in incrementUsageInternal. */
+export const peekAvailableInternal = internalQuery({
   args: { provider: v.string() },
   handler: async (ctx, args) => {
     const keys = await ctx.db
@@ -154,19 +155,12 @@ export const getAvailableInternal = internalMutation({
 
     if (!keys.length) return null;
 
+    const now = Date.now();
     for (const key of keys) {
-      const resetAt = key.reset_at || 0;
-      if (resetAt < Date.now()) {
-        await ctx.db.patch(key._id, {
-          daily_used: 0,
-          reset_at: Date.now() + API_KEY_DEFAULTS.RESET_INTERVAL_MS,
-          updated_at: Date.now(),
-        });
-        key.daily_used = 0;
-      }
-
       const limit = key.daily_limit ?? API_KEY_DEFAULTS.DAILY_LIMIT;
-      if ((key.daily_used || 0) < limit) {
+      const resetAt = key.reset_at || 0;
+      const effectiveUsed = resetAt < now ? 0 : key.daily_used || 0;
+      if (effectiveUsed < limit) {
         return key;
       }
     }
@@ -184,11 +178,22 @@ export const incrementUsageInternal = internalMutation({
     const key = await ctx.db.get(args.keyId);
     if (!key) return;
 
-    await ctx.db.patch(args.keyId, {
-      daily_used: (key.daily_used || 0) + args.tokenCount,
-      last_used_at: Date.now(),
-      updated_at: Date.now(),
-    });
+    const now = Date.now();
+    const resetAt = key.reset_at || 0;
+    if (resetAt < now) {
+      await ctx.db.patch(args.keyId, {
+        daily_used: args.tokenCount,
+        reset_at: now + API_KEY_DEFAULTS.RESET_INTERVAL_MS,
+        last_used_at: now,
+        updated_at: now,
+      });
+    } else {
+      await ctx.db.patch(args.keyId, {
+        daily_used: (key.daily_used || 0) + args.tokenCount,
+        last_used_at: now,
+        updated_at: now,
+      });
+    }
   },
 });
 

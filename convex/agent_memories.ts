@@ -5,6 +5,7 @@ import {
   internalAction,
   internalMutation,
   internalQuery,
+  type MutationCtx,
 } from "./_generated/server";
 import { v } from "convex/values";
 import { requireCurrentUser } from "./_lib/auth";
@@ -14,6 +15,25 @@ import type { Id, Doc } from "./_generated/dataModel";
 const EMBEDDING_DIMENSIONS = 1536;
 const RECALL_SCORE_THRESHOLD = 0.35;
 const MAX_CROSS_SESSION_TOP_K = 10;
+/** Max non-archived rows scanned for substring recall (avoids full-table collect). */
+const RECALL_TEXT_SCAN_MAX = 400;
+
+async function ensureUserMemoryCountFields(ctx: MutationCtx, userId: Id<"users">) {
+  const u = await ctx.db.get(userId);
+  if (!u) return;
+  if (u.agent_memory_total_count !== undefined && u.agent_memory_active_count !== undefined) {
+    return;
+  }
+  const memories = await ctx.db
+    .query("agent_memories")
+    .withIndex("by_user_id", (q) => q.eq("user_id", userId))
+    .collect();
+  await ctx.db.patch(userId, {
+    agent_memory_total_count: memories.length,
+    agent_memory_active_count: memories.filter((m) => !m.archived).length,
+    updated_at: Date.now(),
+  });
+}
 
 export type AgentMemoryCategory =
   | "concern"
@@ -47,14 +67,30 @@ export const count = query({
   args: {},
   handler: async (ctx) => {
     const user = await requireCurrentUser(ctx);
+    if (
+      user.agent_memory_total_count !== undefined &&
+      user.agent_memory_active_count !== undefined
+    ) {
+      return {
+        total: user.agent_memory_total_count,
+        active: user.agent_memory_active_count,
+        approximate: false as const,
+      };
+    }
+
+    const CAP = 10_000;
     const memories = await ctx.db
       .query("agent_memories")
       .withIndex("by_user_id", (q) => q.eq("user_id", user._id))
-      .collect();
+      .take(CAP + 1);
+
+    const hitCap = memories.length > CAP;
+    const slice = hitCap ? memories.slice(0, CAP) : memories;
 
     return {
-      total: memories.length,
-      active: memories.filter((m) => !m.archived).length,
+      total: slice.length,
+      active: slice.filter((m) => !m.archived).length,
+      approximate: hitCap,
     };
   },
 });
@@ -72,6 +108,8 @@ export const save = mutation({
     const content = args.content.trim();
     if (!content) return null;
 
+    await ensureUserMemoryCountFields(ctx, user._id);
+
     const importance = Math.max(1, Math.min(10, Math.round(args.importance)));
 
     const existing = await ctx.db
@@ -83,11 +121,21 @@ export const save = mutation({
     const now = Date.now();
 
     if (existing) {
+      const wasArchived = existing.archived === true;
       await ctx.db.patch(existing._id, {
         importance: Math.max(existing.importance ?? 1, importance),
         last_referenced: now,
         archived: false,
       });
+      if (wasArchived) {
+        const u = await ctx.db.get(user._id);
+        if (u) {
+          await ctx.db.patch(user._id, {
+            agent_memory_active_count: (u.agent_memory_active_count ?? 0) + 1,
+            updated_at: Date.now(),
+          });
+        }
+      }
       // Only (re)generate embedding if the existing row is missing one —
       // content hasn't changed, so the old vector (if present) is still valid.
       if (!existing.embedding) {
@@ -107,6 +155,15 @@ export const save = mutation({
       source_conversation: args.sourceConversationId,
       archived: false,
     });
+
+    const u = await ctx.db.get(user._id);
+    if (u) {
+      await ctx.db.patch(user._id, {
+        agent_memory_total_count: (u.agent_memory_total_count ?? 0) + 1,
+        agent_memory_active_count: (u.agent_memory_active_count ?? 0) + 1,
+        updated_at: Date.now(),
+      });
+    }
 
     await ctx.scheduler.runAfter(0, internal.agent_memories.generateEmbedding, {
       memoryId: insertedId,
@@ -311,7 +368,8 @@ export const recall = query({
     const memories = await ctx.db
       .query("agent_memories")
       .withIndex("by_user_archived", (qq) => qq.eq("user_id", user._id).eq("archived", false))
-      .collect();
+      .order("desc")
+      .take(RECALL_TEXT_SCAN_MAX);
 
     const scored = memories
       .map((m) => {
@@ -357,7 +415,12 @@ export const clearAll = mutation({
       last_memory_update: new Date().toISOString(),
     };
 
-    await ctx.db.patch(user._id, { profile: updatedProfile, updated_at: Date.now() });
+    await ctx.db.patch(user._id, {
+      profile: updatedProfile,
+      agent_memory_total_count: 0,
+      agent_memory_active_count: 0,
+      updated_at: Date.now(),
+    });
     return { deleted: memories.length };
   },
 });

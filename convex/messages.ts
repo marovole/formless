@@ -2,8 +2,15 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { requireCurrentUser } from "./_lib/auth";
 
+const LIST_DEFAULT = 500;
+const LIST_MAX = 2000;
+const PREVIEW_LENGTH = 100;
+
 export const listByConversation = query({
-  args: { conversationId: v.id("conversations") },
+  args: {
+    conversationId: v.id("conversations"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const user = await requireCurrentUser(ctx);
     const conversation = await ctx.db.get(args.conversationId);
@@ -12,13 +19,18 @@ export const listByConversation = query({
       throw new Error("Forbidden");
     }
 
-    return await ctx.db
+    const cap = Math.min(args.limit ?? LIST_DEFAULT, LIST_MAX);
+    if (cap < 1) return [];
+
+    const batch = await ctx.db
       .query("messages")
       .withIndex("by_conversation_id", (q) =>
         q.eq("conversation_id", args.conversationId),
       )
-      .order("asc")
-      .collect();
+      .order("desc")
+      .take(cap);
+
+    return batch.reverse();
   },
 });
 
@@ -39,6 +51,8 @@ export const append = mutation({
       throw new Error("Forbidden");
     }
 
+    const now = Date.now();
+
     await ctx.db.insert("messages", {
       conversation_id: args.conversationId,
       role: args.role,
@@ -48,9 +62,9 @@ export const append = mutation({
 
     await ctx.db.patch(args.conversationId, {
       message_count: (conversation.message_count || 0) + 1,
-      last_message_at: Date.now(),
-      updated_at: Date.now(),
+      last_message_at: now,
+      updated_at: now,
+      last_message_preview: args.content.slice(0, PREVIEW_LENGTH),
     });
   },
 });
-

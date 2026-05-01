@@ -41,7 +41,26 @@ export const CHAT_STREAMING = {
   /** Cross-session semantic recall: top-k results to inject */
   CROSS_SESSION_TOP_K: 3,
   /** Cross-session semantic recall: hard timeout (ms) — skipped if slower */
-  CROSS_SESSION_TIMEOUT_MS: 600,
+  CROSS_SESSION_TIMEOUT_MS: 1200,
+  /** Recent messages sent to the LLM context (not necessarily full thread in DB) */
+  HISTORY_MESSAGE_LIMIT: 80,
+} as const;
+
+/**
+ * Convex message list fetch limits — avoids unbounded reads as threads grow.
+ */
+export const CONVERSATION_MESSAGES = {
+  /** Default for chat UI (useQuery without explicit limit) */
+  LIST_DEFAULT: 500,
+  LIST_MAX: 2000,
+  /** Memory extraction LLM input — recent slice only */
+  EXTRACTION_MAX: 250,
+} as const;
+
+/** Max requests per clerk user per rolling window for POST /api/chat */
+export const CHAT_RATE_LIMIT = {
+  LIMIT: 60,
+  WINDOW_MS: 60_000,
 } as const;
 
 /**

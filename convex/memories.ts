@@ -56,6 +56,8 @@ function getInsights(user: Doc<"users">) {
   };
 }
 
+const EXTRACTION_MESSAGE_MAX = 250;
+
 export const prepareExtraction = mutation({
   args: {
     conversationId: v.id("conversations"),
@@ -66,17 +68,19 @@ export const prepareExtraction = mutation({
     if (!conversation) throw new Error("Conversation not found");
     if (conversation.user_id !== user._id) throw new Error("Forbidden");
 
-    const messages = await ctx.db
+    const batch = await ctx.db
       .query("messages")
       .withIndex("by_conversation_id", (q) =>
         q.eq("conversation_id", args.conversationId),
       )
-      .order("asc")
-      .collect();
+      .order("desc")
+      .take(EXTRACTION_MESSAGE_MAX);
+
+    const ordered = batch.reverse();
 
     return {
       userId: user._id,
-      conversationText: messages.map((m) => `${m.role}: ${m.content}`).join("\n"),
+      conversationText: ordered.map((m) => `${m.role}: ${m.content}`).join("\n"),
     };
   },
 });
@@ -152,7 +156,7 @@ export const extractFromConversation = internalAction({
 
     const prompt = buildExtractionPrompt(conversationText);
 
-    const apiKey = await ctx.runMutation(internal.api_keys.getAvailableInternal, {
+    const apiKey = await ctx.runQuery(internal.api_keys.peekAvailableInternal, {
       provider: "openrouter",
     });
 

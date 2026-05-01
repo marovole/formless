@@ -9,10 +9,12 @@
  */
 
 import type * as _lib_auth from "../_lib/auth.js";
+import type * as _lib_ensure_user from "../_lib/ensure_user.js";
 import type * as admin from "../admin.js";
 import type * as agent_memories from "../agent_memories.js";
 import type * as api_keys from "../api_keys.js";
 import type * as api_usage from "../api_usage.js";
+import type * as chat_prep from "../chat_prep.js";
 import type * as conversations from "../conversations.js";
 import type * as guanzhao from "../guanzhao.js";
 import type * as guanzhao_actions from "../guanzhao/actions.js";
@@ -41,10 +43,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "_lib/auth": typeof _lib_auth;
+  "_lib/ensure_user": typeof _lib_ensure_user;
   admin: typeof admin;
   agent_memories: typeof agent_memories;
   api_keys: typeof api_keys;
   api_usage: typeof api_usage;
+  chat_prep: typeof chat_prep;
   conversations: typeof conversations;
   guanzhao: typeof guanzhao;
   "guanzhao/actions": typeof guanzhao_actions;

@@ -42,10 +42,9 @@ export async function getAvailableApiKey(
   client: EdgeConvexClient,
   provider: string
 ): Promise<ApiKeyRecord | null> {
-  return client.mutation<ApiKeyRecord | null>(
-    internal.api_keys.getAvailableInternal,
-    { provider }
-  );
+  return client.query<ApiKeyRecord | null>(internal.api_keys.peekAvailableInternal, {
+    provider,
+  });
 }
 
 export async function getActivePrompt(

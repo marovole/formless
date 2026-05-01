@@ -21,6 +21,9 @@ export default defineSchema({
       active_concerns: v.optional(v.array(v.string())),
       last_memory_update: v.optional(v.string()),
     })),
+    /** Denormalized counts for agent_memories — maintained in mutations; legacy rows may omit. */
+    agent_memory_total_count: v.optional(v.number()),
+    agent_memory_active_count: v.optional(v.number()),
     updated_at: v.optional(v.number()),
     // created_at handled by _creationTime
   })
@@ -34,6 +37,8 @@ export default defineSchema({
     language: v.optional(v.string()),
     message_count: v.optional(v.number()),
     last_message_at: v.optional(v.number()),
+    /** Last message body preview; updated in messages.append for list UX without N+1. */
+    last_message_preview: v.optional(v.string()),
     updated_at: v.optional(v.number()),
   })
   .index("by_user_id", ["user_id"])
