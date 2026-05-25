@@ -111,28 +111,6 @@ export default defineSchema({
     filterFields: ["user_id", "archived"],
   }),
 
-  healing_books: defineTable({
-    title: v.string(),
-    author: v.string(),
-    tags: v.array(v.string()),
-    description: v.optional(v.string()),
-    link: v.optional(v.string()),
-    language: v.string(),
-  })
-  .index("by_language", ["language"]),
-
-  meditation_audios: defineTable({
-    title: v.string(),
-    duration: v.number(),
-    style: v.string(),
-    tags: v.array(v.string()),
-    url: v.string(),
-    instructions: v.optional(v.string()),
-    language: v.string(),
-  })
-  .index("by_language", ["language"])
-  .index("by_style_language", ["style", "language"]),
-
   api_keys: defineTable({
     provider: v.string(), // 'chutes', 'openrouter'
     api_key: v.string(),

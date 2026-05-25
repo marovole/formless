@@ -6,8 +6,6 @@ export type ToolName =
   | 'save_user_insight'
   | 'recall_user_context'
   | 'update_user_mood'
-  | 'search_books'
-  | 'get_meditation_audio'
   | 'web_search';
 
 export interface ToolCall {
@@ -92,43 +90,6 @@ export const memoryTools = [
         properties: {
           mood: { type: 'string' },
           trigger: { type: 'string' },
-        },
-        required: ['mood'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'search_books',
-      description: '搜索心理疗愈/哲学/佛学相关书籍推荐。返回结构化书单，不要编造。',
-      parameters: {
-        type: 'object',
-        properties: {
-          query: { type: 'string' },
-          mood: { type: 'string' },
-          topic: { type: 'string' },
-          language: { type: 'string', enum: ['zh', 'en'] },
-          limit: { type: 'number', minimum: 1, maximum: 5 },
-        },
-        required: ['query'],
-        additionalProperties: false,
-      },
-    },
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_meditation_audio',
-      description: '获取冥想/呼吸练习音频。返回可播放的音频 URL 与标题。',
-      parameters: {
-        type: 'object',
-        properties: {
-          mood: { type: 'string' },
-          duration: { type: 'number', minimum: 1, maximum: 30 },
-          style: { type: 'string', enum: ['breathing', 'body_scan', 'zen'] },
-          language: { type: 'string', enum: ['zh', 'en'] },
         },
         required: ['mood'],
         additionalProperties: false,
@@ -248,60 +209,6 @@ async function handleUpdateUserMood(args: unknown, ctx: ToolContext): Promise<To
 }
 
 /**
- * 搜索书籍
- */
-async function handleSearchBooks(args: unknown, ctx: ToolContext): Promise<ToolResult> {
-  const parsed = args as {
-    query?: string;
-    mood?: string;
-    topic?: string;
-    language?: string;
-    limit?: number;
-  };
-  const query = String(parsed.query || '');
-  const mood = parsed.mood === undefined ? undefined : String(parsed.mood);
-  const topic = parsed.topic === undefined ? undefined : String(parsed.topic);
-  const language = parsed.language === undefined ? undefined : String(parsed.language);
-  const limit = parsed.limit === undefined ? undefined : Number(parsed.limit);
-
-  const result = await ctx.convex.query(api.resources.searchBooks, {
-    query,
-    mood,
-    topic,
-    language,
-    limit,
-  });
-
-  const items = (result as { items?: unknown[] } | null)?.items ?? [];
-  return createSuccessResult('search_books', ctx, { items });
-}
-
-/**
- * 获取冥想音频
- */
-async function handleGetMeditationAudio(args: unknown, ctx: ToolContext): Promise<ToolResult> {
-  const parsed = args as {
-    mood?: string;
-    duration?: number;
-    style?: string;
-    language?: string;
-  };
-  const mood = String(parsed.mood || '');
-  const durationMinutes = parsed.duration === undefined ? undefined : Number(parsed.duration);
-  const style = parsed.style === undefined ? undefined : String(parsed.style);
-  const language = parsed.language === undefined ? undefined : String(parsed.language);
-
-  const audio = await ctx.convex.query(api.resources.pickMeditationAudio, {
-    mood,
-    durationMinutes,
-    style,
-    language,
-  });
-
-  return createSuccessResult('get_meditation_audio', ctx, { audio });
-}
-
-/**
  * 网络搜索 (MVP: 未配置外部搜索)
  */
 async function handleWebSearch(args: unknown, ctx: ToolContext): Promise<ToolResult> {
@@ -325,8 +232,6 @@ const TOOL_HANDLERS: Record<string, ToolHandler> = {
   save_user_insight: handleSaveUserInsight,
   recall_user_context: handleRecallUserContext,
   update_user_mood: handleUpdateUserMood,
-  search_books: handleSearchBooks,
-  get_meditation_audio: handleGetMeditationAudio,
   web_search: handleWebSearch,
 };
 
