@@ -4,11 +4,14 @@ import { headers } from 'next/headers'
 const locales = ['en', 'zh', 'ja', 'ko', 'de', 'fr', 'es', 'pt']
 
 // ────────────────────────────────────────────────────────────────────────────
-// Only publicly reachable, indexable routes belong in the sitemap. Auth-gated
-// pages (/chat, /history, /settings, /letters) redirect unauthenticated
-// crawlers to sign-in, so advertising them wastes crawl budget and produces
-// soft-404 signals. Each entry carries an intent-based priority/frequency.
-// 8 locales × 4 routes = 32 URLs (TEST_PLAN.md TC-011).
+// Only publicly reachable, *indexable content* routes belong in the sitemap.
+// Excluded:
+//   - Auth-gated pages (/chat, /history, /settings, /letters) redirect
+//     crawlers to sign-in → wasted crawl budget + soft-404 signals.
+//   - Auth entry pages (/sign-in, /sign-up) are functional login forms, not
+//     landing content; they are also marked noindex via their route layouts.
+// Each entry carries an intent-based priority/frequency.
+// 8 locales × 3 routes = 24 URLs (TEST_PLAN.md TC-011).
 // ────────────────────────────────────────────────────────────────────────────
 const routes: Array<{
   path: string
@@ -16,7 +19,6 @@ const routes: Array<{
   changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency']
 }> = [
   { path: '', priority: 1.0, changeFrequency: 'weekly' },
-  { path: '/sign-in', priority: 0.5, changeFrequency: 'monthly' },
   { path: '/privacy', priority: 0.3, changeFrequency: 'yearly' },
   { path: '/terms', priority: 0.3, changeFrequency: 'yearly' },
 ]

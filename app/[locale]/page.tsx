@@ -1,6 +1,17 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
 import { LandingHeader } from '@/components/landing/LandingHeader';
 import { LandingSections } from '@/components/landing/LandingSections';
+import { localeAlternates } from '@/lib/seo';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { alternates: localeAlternates(locale, '') };
+}
 
 export default async function HomePage({
   params,

@@ -23,10 +23,6 @@ export async function generateMetadata({
     .map((k) => k.trim())
     .filter(Boolean)
 
-  const languages = Object.fromEntries(
-    routing.locales.map((l) => [l, `${siteUrl}/${l}`])
-  ) as Record<string, string>
-
   // Optional social-card image. Injected only when configured so unset
   // deployments fall back to platform defaults instead of a broken link.
   const ogImageUrl = process.env.NEXT_PUBLIC_OG_IMAGE_URL
@@ -41,12 +37,14 @@ export async function generateMetadata({
     keywords,
     authors: [{ name: 'Formless Team' }],
     openGraph: {
+      // No `url` here: canonical/og:url are route-specific and set per page
+      // (see lib/seo.ts). A layout-level url would fold every sub-route onto
+      // the homepage.
       title: t('title'),
       description: t('description'),
       type: 'website',
       locale: t('ogLocale'),
       siteName: t('siteName'),
-      url: `${siteUrl}/${locale}`,
       images: ogImages,
     },
     twitter: {
@@ -55,10 +53,8 @@ export async function generateMetadata({
       description: t('description'),
       images: ogImageUrl ? [ogImageUrl] : undefined,
     },
-    alternates: {
-      canonical: `${siteUrl}/${locale}`,
-      languages,
-    },
+    // `alternates` (canonical + hreflang) intentionally omitted here and set
+    // per page so each route is its own canonical, not the homepage.
   }
 }
 
