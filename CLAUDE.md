@@ -17,9 +17,9 @@ npm run dev                 # 终端2：启动 Next.js 开发服务器
 npm run test                # 单元测试（监听模式）
 npm run test:run            # 单元测试（单次运行）
 npm run test:coverage       # 单元测试 + 覆盖率
-npm run test:e2e            # E2E 测试
-npm run test:e2e:ui         # E2E 测试（UI 模式）
-npm run test:all            # 全部测试
+npm run test:e2e            # E2E 测试（环境未配齐时自动跳过并 exit 0）
+npm run test:e2e:ui         # E2E 测试（UI 模式，需手动配齐 env）
+npm run test:all            # 全部测试（test:run + test:e2e）
 
 # 代码检查
 npm run lint                # ESLint
@@ -79,6 +79,23 @@ lib/
 用户输入 → /api/chat → Clerk 认证 → 加载历史 + 召回记忆
     → Agent 工具循环（最多 4 轮）→ SSE 流式响应 → 保存消息
 ```
+
+### E2E 测试结构（Playwright）
+
+应用在模块加载期即构造 Clerk + Convex Provider，缺少密钥时**任何**页面都会 500。
+因此 E2E 用一道环境闸门决定「跑还是跳过」，避免无凭据环境卡 webServer 超时。
+
+```
+scripts/run-e2e.mjs        # 环境闸门：缺 Clerk PK / Convex URL → 打印提示并 exit 0
+e2e/
+├── global.setup.ts        # clerkSetup() 取测试 token（无 PK 时 no-op）
+├── fixtures/test-data.ts   # 环境标志 + 语言感知/角色选择器 + login() + /api/chat mock
+├── smoke/                 # 公开面回归门禁：路由/i18n/登录页/中间件保护（只需 PK + Convex URL）
+└── authenticated/         # 登录后对话流：需 E2E_USER_EMAIL + (CLERK_SECRET_KEY 或 E2E_USER_PASSWORD)，mock SSE
+```
+
+- 选择器走 `getByRole` + 语言文案（`/zh/chat` 的发送按钮是「发送」而非 "Send"），不依赖 CSS class。
+- 未配齐 env：`test:all` 仍全绿（E2E 跳过，单测兜底）；CI/验收配齐后即为真实浏览器回归门禁。
 
 ## 关键约束
 
