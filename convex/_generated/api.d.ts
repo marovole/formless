@@ -30,6 +30,7 @@ import type * as letter_threads from "../letter_threads.js";
 import type * as letters from "../letters.js";
 import type * as memories from "../memories.js";
 import type * as messages from "../messages.js";
+import type * as monitoring from "../monitoring.js";
 import type * as prompts from "../prompts.js";
 import type * as resources from "../resources.js";
 import type * as seed from "../seed.js";
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   letters: typeof letters;
   memories: typeof memories;
   messages: typeof messages;
+  monitoring: typeof monitoring;
   prompts: typeof prompts;
   resources: typeof resources;
   seed: typeof seed;
