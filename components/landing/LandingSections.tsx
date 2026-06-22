@@ -1,9 +1,14 @@
-'use client';
+// ────────────────────────────────────────────────────────────────────────────
+// LandingSections — fully server-rendered static content (no 'use client').
+// next-intl's useTranslations is isomorphic and resolves on the server here
+// because page.tsx calls setRequestLocale(locale). The result is real HTML in
+// the initial response, which is the dominant lever for FCP/LCP (TEST_PLAN
+// TC-013). Interactivity lives only in LandingHeader.
+// ────────────────────────────────────────────────────────────────────────────
 
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { Button } from '@/components/ui/button';
-import { LanguageSwitcher } from '@/components/ui/language-switcher';
 import {
   Leaf,
   Wind,
@@ -14,11 +19,8 @@ import {
   ArrowRight,
   Heart,
   Infinity,
-  Menu,
-  X,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 const NoiseOverlay = () => (
   <div
@@ -33,17 +35,12 @@ const FeatureCard = ({
   icon: Icon,
   title,
   description,
-  delay = 0,
 }: {
   icon: LucideIcon;
   title: string;
   description: string;
-  delay?: number;
 }) => (
-  <div
-    className="group relative p-8 bg-rice-50/50 hover:bg-white border border-stone-200/60 hover:border-sandalwood-300 rounded-xl transition-all duration-500 ease-out hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm"
-    style={{ animationDelay: `${delay}ms` }}
-  >
+  <div className="group relative p-8 bg-rice-50/50 hover:bg-white border border-stone-200/60 hover:border-sandalwood-300 rounded-xl transition-all duration-500 ease-out hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm">
     <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-amber-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
     <div className="relative z-10">
       <div className="w-12 h-12 mb-6 rounded-full bg-stone-100 group-hover:bg-sandalwood-100 text-stone-600 group-hover:text-sandalwood-600 flex items-center justify-center transition-colors duration-500">
@@ -80,84 +77,13 @@ const Step = ({
   </div>
 );
 
-export default function HomePageClient() {
+export function LandingSections() {
   const t = useTranslations('app');
   const tLanding = useTranslations('landing');
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   return (
-    <div className="min-h-screen bg-rice-50 text-ink-800 font-sans selection:bg-sandalwood-200 selection:text-ink-900 overflow-x-hidden">
+    <>
       <NoiseOverlay />
-
-      <header
-        className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${scrolled ? 'bg-rice-50/80 backdrop-blur-md border-b border-stone-100 py-3' : 'bg-transparent py-6'}`}
-      >
-        <div className="container mx-auto px-6 flex items-center justify-between">
-          <Link href="/" className="group flex items-center gap-2 z-50">
-            <div className="w-8 h-8 rounded-full bg-ink-800 text-rice-50 flex items-center justify-center font-serif italic font-bold group-hover:scale-105 transition-transform duration-300">
-              无
-            </div>
-            <span className="font-serif text-xl tracking-tight text-ink-800 group-hover:text-ink-600 transition-colors">
-              Formless
-            </span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <nav className="hidden md:flex items-center gap-8 text-sm text-ink-500 font-medium">
-              <Link href="#features" className="hover:text-ink-900 transition-colors">
-                {tLanding('nav.features')}
-              </Link>
-              <Link href="#how-it-works" className="hover:text-ink-900 transition-colors">
-                {tLanding('nav.howItWorks')}
-              </Link>
-              <Link href="/sign-in" className="hover:text-ink-900 transition-colors">
-                {tLanding('nav.signIn')}
-              </Link>
-            </nav>
-            <LanguageSwitcher className="w-auto" />
-            <button
-              type="button"
-              className="md:hidden p-2 text-ink-600 hover:text-ink-900 transition-colors"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-expanded={mobileMenuOpen}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-        {mobileMenuOpen && (
-          <nav className="md:hidden bg-rice-50/95 backdrop-blur-md border-t border-stone-100 px-6 py-4 flex flex-col gap-4">
-            <Link
-              href="#features"
-              className="text-ink-600 hover:text-ink-900 transition-colors py-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {tLanding('nav.features')}
-            </Link>
-            <Link
-              href="#how-it-works"
-              className="text-ink-600 hover:text-ink-900 transition-colors py-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {tLanding('nav.howItWorks')}
-            </Link>
-            <Link
-              href="/sign-in"
-              className="text-ink-600 hover:text-ink-900 transition-colors py-2"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              {tLanding('nav.signIn')}
-            </Link>
-          </nav>
-        )}
-      </header>
 
       <main>
         <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 px-6 overflow-hidden">
@@ -239,37 +165,31 @@ export default function HomePageClient() {
                 icon={MessageCircle}
                 title={tLanding('features.mindfulDialogue.title')}
                 description={tLanding('features.mindfulDialogue.description')}
-                delay={0}
               />
               <FeatureCard
                 icon={Infinity}
                 title={tLanding('features.eternalMemory.title')}
                 description={tLanding('features.eternalMemory.description')}
-                delay={100}
               />
               <FeatureCard
                 icon={Heart}
                 title={tLanding('features.emotionalResonance.title')}
                 description={tLanding('features.emotionalResonance.description')}
-                delay={200}
               />
               <FeatureCard
                 icon={Moon}
                 title={tLanding('features.nightlyReflection.title')}
                 description={tLanding('features.nightlyReflection.description')}
-                delay={300}
               />
               <FeatureCard
                 icon={Wind}
                 title={tLanding('features.breathAndSpace.title')}
                 description={tLanding('features.breathAndSpace.description')}
-                delay={400}
               />
               <FeatureCard
                 icon={Sun}
                 title={tLanding('features.dailyAwakening.title')}
                 description={tLanding('features.dailyAwakening.description')}
-                delay={500}
               />
             </div>
           </div>
@@ -362,6 +282,6 @@ export default function HomePageClient() {
           </div>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

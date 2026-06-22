@@ -192,7 +192,7 @@
 | 步骤 | 操作 | 预期结果 |
 |------|------|----------|
 | 1 | 访问 `/robots.txt` | 显示 robots 配置 |
-| 2 | 访问 `/sitemap.xml` | 显示 sitemap，包含 32 个 URL |
+| 2 | 访问 `/sitemap.xml` | 显示 sitemap，包含 24 个 URL（8 语言 × 3 公开内容路由：首页/privacy/terms；auth 入口已排除并 noindex） |
 | 3 | 查看页面源码 | 包含 JSON-LD structured data |
 | 4 | 检查 `<head>` | 包含 OpenGraph 和 Twitter meta tags |
 

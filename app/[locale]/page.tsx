@@ -1,5 +1,17 @@
+import type { Metadata } from 'next';
 import { setRequestLocale } from 'next-intl/server';
-import HomePageClient from '@/components/landing/HomePageClient';
+import { LandingHeader } from '@/components/landing/LandingHeader';
+import { LandingSections } from '@/components/landing/LandingSections';
+import { localeAlternates } from '@/lib/seo';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return { alternates: localeAlternates(locale, '') };
+}
 
 export default async function HomePage({
   params,
@@ -7,6 +19,14 @@ export default async function HomePage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
+  // Required for next-intl's useTranslations to resolve in the static
+  // server-rendered sections below.
   setRequestLocale(locale);
-  return <HomePageClient />;
+
+  return (
+    <div className="min-h-screen bg-rice-50 text-ink-800 font-sans selection:bg-sandalwood-200 selection:text-ink-900 overflow-x-hidden">
+      <LandingHeader />
+      <LandingSections />
+    </div>
+  );
 }
