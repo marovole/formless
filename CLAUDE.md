@@ -30,6 +30,10 @@ npm run pages:build         # 构建 Cloudflare Pages
 npm run preview             # 本地预览 Cloudflare 环境
 npm run deploy              # 构建 + 部署到 Cloudflare Pages
 npx convex deploy           # 部署 Convex 后端
+
+# 监控与排障（详见 docs/OPERATIONS.md）
+npm run pages:tail          # 实时查看 Cloudflare Workers 日志
+curl -i <域名>/api/health   # 健康端点：healthy/degraded(200) | unhealthy(503)
 ```
 
 ## 技术栈
