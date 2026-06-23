@@ -35,7 +35,7 @@ curl -i https://<域名>/api/health
 |--------|------|------|------------------------------------------|
 | `healthy` | 200 | 正常 | Convex 可达、有可用 key、近 15 min LLM 错误率正常 |
 | `degraded` | 200 | 降级仍可服务 | 部分 provider 无可用 key,或错误率 ≥ 20%(达到最小样本) |
-| `unhealthy` | 503 | 不可服务 | Convex 不可达,或**所有** provider 无可用 key,或错误率 ≥ 50% |
+| `unhealthy` | 503 | 不可服务 | Convex 不可达,或**无任何可用 key**(未配置 key / 全部 provider 耗尽 → 聊天主链路 `config.ts` 会抛 `ConfigError`),或错误率 ≥ 50% |
 
 ### 管理员详情(定位用)
 

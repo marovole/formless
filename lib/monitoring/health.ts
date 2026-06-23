@@ -62,12 +62,16 @@ export function deriveHealthStatus(m: HealthMetrics): HealthResult {
 
   const reasons: string[] = [];
 
-  // Key availability. A provider with keys configured but none available means
-  // that provider's traffic will fail.
+  // Key availability. Only providers that actually have keys configured count.
   const providersWithKeys = m.providers.filter((p) => p.total > 0);
   const starved = providersWithKeys.filter((p) => p.available === 0);
-  const allStarved =
-    providersWithKeys.length > 0 && starved.length === providersWithKeys.length;
+  const totalAvailable = providersWithKeys.reduce((n, p) => n + p.available, 0);
+
+  // No usable LLM capacity at all ⇒ the chat main path (app/api/chat/config.ts
+  // getApiKey) throws ConfigError, so the core feature is DOWN. This covers both
+  // "no keys configured anywhere" (empty providers) and "every configured key is
+  // exhausted/inactive" (all starved) — either way /api/health must not say healthy.
+  const noCapacity = totalAvailable === 0;
 
   // LLM error rate over the window, only trusted past a minimum sample size.
   const { calls, failures } = m.llm;
@@ -77,9 +81,13 @@ export function deriveHealthStatus(m: HealthMetrics): HealthResult {
   let status: HealthStatus = 'healthy';
 
   // --- Unhealthy (cannot serve) ---
-  if (allStarved) {
+  if (noCapacity) {
     status = 'unhealthy';
-    reasons.push('all_providers_no_available_key');
+    reasons.push(
+      providersWithKeys.length === 0
+        ? 'no_keys_configured'
+        : 'all_providers_no_available_key'
+    );
   }
   if (rateTrusted && errorRate >= HEALTH_THRESHOLDS.UNHEALTHY_ERROR_RATE) {
     status = 'unhealthy';

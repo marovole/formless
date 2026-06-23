@@ -74,9 +74,12 @@ export async function GET(request: NextRequest) {
 
   let { status, reasons } = deriveHealthStatus(metrics);
 
-  // Convex is up but we couldn't read the detail — surface the misconfig as
-  // degraded instead of a false "healthy" or a false full outage.
-  if (detailUnavailable && metrics.convexReachable && status === 'healthy') {
+  // Fallback path: we couldn't read key/usage detail, so the empty `providers`
+  // above means "unknown", NOT a real zero-capacity outage. If Convex itself is
+  // reachable, surface the misconfig as degraded — never a false "healthy" and
+  // never a false full outage. (Convex-down already yields unhealthy via
+  // deriveHealthStatus, and is excluded here by the convexReachable guard.)
+  if (detailUnavailable && metrics.convexReachable) {
     status = 'degraded';
     reasons = ['health_detail_unavailable'];
   }

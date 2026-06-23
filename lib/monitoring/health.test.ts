@@ -74,6 +74,29 @@ describe('deriveHealthStatus', () => {
     expect(status).toBe('healthy');
   });
 
+  it('reports unhealthy when NO keys are configured anywhere (empty providers)', () => {
+    // Regression guard: zero configured keys means the chat main path
+    // (app/api/chat/config.ts getApiKey) throws ConfigError, so reporting
+    // healthy would be a lie. Must be unhealthy, not a false 200/healthy.
+    const { status, reasons } = deriveHealthStatus(metrics({ providers: [] }));
+    expect(status).toBe('unhealthy');
+    expect(reasons).toContain('no_keys_configured');
+  });
+
+  it('reports unhealthy when every provider entry has zero configured keys', () => {
+    // All entries total === 0 ⇒ no real capacity ⇒ same as empty providers.
+    const { status, reasons } = deriveHealthStatus(
+      metrics({
+        providers: [
+          { provider: 'chutes', total: 0, active: 0, available: 0 },
+          { provider: 'openrouter', total: 0, active: 0, available: 0 },
+        ],
+      })
+    );
+    expect(status).toBe('unhealthy');
+    expect(reasons).toContain('no_keys_configured');
+  });
+
   it('reports unhealthy when the LLM error rate is critical (trusted sample)', () => {
     const calls = 10;
     const failures = Math.ceil(calls * HEALTH_THRESHOLDS.UNHEALTHY_ERROR_RATE);
